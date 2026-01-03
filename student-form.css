@@ -1,0 +1,289 @@
+/* Student Form Styles */
+.student-submission-form-container {
+    max-width: 1000px;
+    margin: 0 auto;
+    font-family: "Poppins", sans-serif;
+    color: #333;
+    background-color: #fff;
+    border-radius: 12px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
+    padding: 40px;
+}
+
+.form-header {
+    text-align: center;
+    margin-bottom: 40px;
+}
+
+.form-header h2 {
+    color: #3a66db;
+    font-weight: 600;
+    font-size: 28px;
+    margin: 0 0 10px 0;
+}
+
+.form-header p {
+    color: #666;
+    font-size: 16px;
+    margin: 0;
+}
+
+.top-fields {
+    display: flex;
+    gap: 30px;
+    margin-bottom: 40px;
+    flex-wrap: wrap;
+}
+
+.top-fields .form-field {
+    flex: 1;
+    min-width: 300px;
+}
+
+.form-tabs {
+    margin: 20px 0 10px 0;
+    position: relative;
+}
+
+.form-tabs ul {
+    display: flex;
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    border-bottom: 1px solid #eee;
+    flex-wrap: wrap;
+}
+
+.form-tabs li {
+    margin-right: 4px;
+}
+
+.form-tabs .tab-link {
+    padding: 12px 16px;
+    display: inline-block;
+    text-decoration: none;
+    color: #555;
+    border-radius: 6px 6px 0 0;
+    font-weight: 500;
+    font-size: 14px;
+    transition: all 0.2s ease;
+    border: 1px solid transparent;
+    border-bottom: none;
+    position: relative;
+    bottom: -1px;
+}
+
+.form-tabs .tab-link:hover {
+    color: #3a66db;
+}
+
+.form-tabs .tab-link.active {
+    color: #3a66db;
+    border-color: #eee;
+    border-bottom: 1px solid #fff;
+    background-color: #fff;
+}
+
+.tab-content {
+    display: none;
+    padding: 20px 0;
+    animation: fadeIn 0.3s ease;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+.tab-content.active {
+    display: block;
+}
+
+.field-group-container {
+    background: #ffffff;
+    border: 1px solid #eaedf2;
+    padding: 25px;
+    margin-bottom: 30px;
+    border-radius: 8px;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.03);
+}
+
+.field-group-container h3 {
+    margin-top: 0;
+    padding-bottom: 15px;
+    border-bottom: 1px solid #eaedf2;
+    color: #3a66db;
+    font-weight: 600;
+    font-size: 18px;
+}
+
+.field-group-container h4 {
+    margin: 15px 0 10px 0;
+    color: #4b5563;
+    font-size: 16px;
+    font-weight: 500;
+}
+
+.form-field {
+    margin-bottom: 20px;
+}
+
+.form-field label {
+    display: block;
+    margin-bottom: 8px;
+    font-weight: 500;
+    color: #444;
+    font-size: 14px;
+}
+
+.form-field .required {
+    color: #e74c3c;
+    margin-left: 3px;
+}
+
+.form-field input,
+.form-field select,
+.form-field textarea {
+    width: 100%;
+    padding: 12px 15px;
+    box-sizing: border-box;
+    border: 1px solid #dce0e8;
+    border-radius: 6px;
+    background-color: #f9fafc;
+    font-family: "Poppins", sans-serif;
+    font-size: 14px;
+    color: #333;
+    transition: all 0.2s ease;
+}
+
+.form-field input:focus,
+.form-field select:focus,
+.form-field textarea:focus {
+    border-color: #3a66db;
+    background-color: #fff;
+    box-shadow: 0 0 0 3px rgba(58, 102, 219, 0.1);
+    outline: none;
+}
+
+.form-field select {
+    appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%23333' width='18px' height='18px'%3E%3Cpath d='M7 10l5 5 5-5z'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 15px center;
+}
+
+.form-field textarea {
+    min-height: 100px;
+    resize: vertical;
+}
+
+.tab-navigation {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 30px;
+}
+
+.btn-prev, .btn-next, .submit-btn {
+    padding: 12px 24px;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 15px;
+    font-weight: 500;
+    font-family: "Poppins", sans-serif;
+    transition: all 0.3s ease;
+}
+
+.btn-prev {
+    background-color: #99a3b5;
+}
+
+.btn-prev:hover {
+    background-color: #89939f;
+}
+
+.btn-next, .submit-btn {
+    background: linear-gradient(45deg, #3a66db, #5a85f3);
+}
+
+.btn-next:hover, .submit-btn:hover {
+    background: linear-gradient(45deg, #2a56cb, #4a75e3);
+}
+
+.student-form-success {
+    background-color: #e8f5e9;
+    color: #388e3c;
+    padding: 15px 20px;
+    margin-bottom: 30px;
+    border-radius: 8px;
+    font-weight: 500;
+}
+
+.error-message, .notice {
+    background-color: #ffebee;
+    color: #e53935;
+    padding: 15px 20px;
+    margin-bottom: 30px;
+    border-radius: 8px;
+    font-weight: 500;
+}
+
+.notice {
+    background-color: #fff8e1;
+    color: #f57c00;
+}
+
+.main-field {
+    background-color: #f0f7ff;
+    padding: 25px;
+    border-radius: 8px;
+}
+
+.subject-separator {
+    border: 0;
+    height: 1px;
+    background-color: #eaedf2;
+    margin: 25px 0;
+}
+
+.subject-container {
+    margin-bottom: 20px;
+}
+
+/* Responsive styles */
+@media (max-width: 992px) {
+    .student-submission-form-container {
+        padding: 30px;
+    }
+}
+
+@media (max-width: 768px) {
+    .student-submission-form-container {
+        padding: 20px;
+    }
+    
+    .form-tabs ul {
+        flex-wrap: nowrap;
+        overflow-x: auto;
+        padding-bottom: 5px;
+    }
+    
+    .form-tabs li {
+        flex: 0 0 auto;
+    }
+    
+    .field-group-container {
+        padding: 15px;
+    }
+}
+
+@media (max-width: 480px) {
+    .top-fields {
+        flex-direction: column;
+    }
+    
+    .form-header h2 {
+        font-size: 24px;
+    }
+}
