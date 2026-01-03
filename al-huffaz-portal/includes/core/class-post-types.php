@@ -29,8 +29,8 @@ class Post_Types {
      * Register custom post types
      */
     public function register_post_types() {
-        // Student Post Type
-        register_post_type('alhuffaz_student', array(
+        // Student Post Type - Using 'student' to match original system and preserve existing data
+        register_post_type('student', array(
             'labels' => array(
                 'name'               => __('Students', 'al-huffaz-portal'),
                 'singular_name'      => __('Student', 'al-huffaz-portal'),
@@ -44,17 +44,17 @@ class Post_Types {
                 'not_found'          => __('No students found', 'al-huffaz-portal'),
                 'not_found_in_trash' => __('No students found in trash', 'al-huffaz-portal'),
             ),
-            'public'              => false,
-            'publicly_queryable'  => false,
-            'show_ui'             => false,
-            'show_in_menu'        => false,
+            'public'              => true,
+            'publicly_queryable'  => true,
+            'show_ui'             => true,
+            'show_in_menu'        => false, // We use our custom admin menu
             'show_in_rest'        => true,
             'capability_type'     => 'post',
             'hierarchical'        => false,
-            'supports'            => array('title', 'thumbnail'),
-            'has_archive'         => false,
-            'rewrite'             => false,
-            'query_var'           => false,
+            'supports'            => array('title', 'thumbnail', 'custom-fields'),
+            'has_archive'         => true,
+            'rewrite'             => array('slug' => 'students', 'with_front' => false),
+            'query_var'           => true,
         ));
 
         // Sponsorship Post Type
@@ -91,7 +91,7 @@ class Post_Types {
      */
     public function register_taxonomies() {
         // Grade Level Taxonomy
-        register_taxonomy('alhuffaz_grade', 'alhuffaz_student', array(
+        register_taxonomy('student_grade', 'student', array(
             'labels' => array(
                 'name'              => __('Grade Levels', 'al-huffaz-portal'),
                 'singular_name'     => __('Grade Level', 'al-huffaz-portal'),
@@ -104,15 +104,15 @@ class Post_Types {
                 'menu_name'         => __('Grades', 'al-huffaz-portal'),
             ),
             'hierarchical'      => true,
-            'public'            => false,
-            'show_ui'           => false,
-            'show_admin_column' => false,
+            'public'            => true,
+            'show_ui'           => true,
+            'show_admin_column' => true,
             'show_in_rest'      => true,
-            'rewrite'           => false,
+            'rewrite'           => array('slug' => 'grade'),
         ));
 
         // Islamic Studies Category
-        register_taxonomy('alhuffaz_islamic_cat', 'alhuffaz_student', array(
+        register_taxonomy('islamic_category', 'student', array(
             'labels' => array(
                 'name'              => __('Islamic Studies', 'al-huffaz-portal'),
                 'singular_name'     => __('Islamic Study', 'al-huffaz-portal'),
@@ -125,11 +125,11 @@ class Post_Types {
                 'menu_name'         => __('Islamic Studies', 'al-huffaz-portal'),
             ),
             'hierarchical'      => true,
-            'public'            => false,
-            'show_ui'           => false,
-            'show_admin_column' => false,
+            'public'            => true,
+            'show_ui'           => true,
+            'show_admin_column' => true,
             'show_in_rest'      => true,
-            'rewrite'           => false,
+            'rewrite'           => array('slug' => 'islamic-category'),
         ));
     }
 

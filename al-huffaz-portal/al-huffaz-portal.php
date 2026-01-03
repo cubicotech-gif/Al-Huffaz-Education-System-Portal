@@ -157,6 +157,11 @@ final class Al_Huffaz_Portal {
         // Create custom roles
         AlHuffaz\Core\Roles::create_roles();
 
+        // Register post types before flushing (needed for rewrites)
+        $post_types = new AlHuffaz\Core\Post_Types();
+        $post_types->register_post_types();
+        $post_types->register_taxonomies();
+
         // Flush rewrite rules
         flush_rewrite_rules();
 
