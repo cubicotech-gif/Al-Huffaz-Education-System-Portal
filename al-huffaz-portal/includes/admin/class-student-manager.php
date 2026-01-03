@@ -33,7 +33,7 @@ class Student_Manager {
     public static function get_student($student_id) {
         $student = get_post($student_id);
 
-        if (!$student || $student->post_type !== 'alhuffaz_student') {
+        if (!$student || $student->post_type !== 'student') {
             return null;
         }
 
@@ -44,11 +44,11 @@ class Student_Manager {
             'updated_at'   => $student->post_modified,
         );
 
-        // Get all meta
+        // Get all meta (without underscore prefix to match original system)
         $fields = Post_Types::get_student_fields();
 
         foreach ($fields as $key => $field) {
-            $data[$key] = get_post_meta($student_id, '_' . $key, true);
+            $data[$key] = get_post_meta($student_id, $key, true);
         }
 
         return $data;
@@ -72,7 +72,7 @@ class Student_Manager {
         $args = wp_parse_args($args, $defaults);
 
         $query_args = array(
-            'post_type'      => 'alhuffaz_student',
+            'post_type'      => 'student',
             'posts_per_page' => $args['per_page'],
             'paged'          => $args['page'],
             'post_status'    => 'publish',
@@ -88,21 +88,21 @@ class Student_Manager {
 
         if (!empty($args['grade'])) {
             $meta_query[] = array(
-                'key'   => '_grade_level',
+                'key'   => 'grade_level',
                 'value' => $args['grade'],
             );
         }
 
         if (!empty($args['gender'])) {
             $meta_query[] = array(
-                'key'   => '_gender',
+                'key'   => 'gender',
                 'value' => $args['gender'],
             );
         }
 
         if ($args['sponsored'] === 'yes' || $args['sponsored'] === 'no') {
             $meta_query[] = array(
-                'key'   => '_is_sponsored',
+                'key'   => 'is_sponsored',
                 'value' => $args['sponsored'],
             );
         }
@@ -119,16 +119,16 @@ class Student_Manager {
             $students[] = array(
                 'id'               => $post->ID,
                 'name'             => $post->post_title,
-                'gr_number'        => get_post_meta($post->ID, '_gr_number', true),
-                'roll_number'      => get_post_meta($post->ID, '_roll_number', true),
-                'grade_level'      => get_post_meta($post->ID, '_grade_level', true),
-                'grade_label'      => Helpers::get_grade_label(get_post_meta($post->ID, '_grade_level', true)),
-                'islamic_category' => Helpers::get_islamic_category_label(get_post_meta($post->ID, '_islamic_category', true)),
-                'gender'           => get_post_meta($post->ID, '_gender', true),
-                'father_name'      => get_post_meta($post->ID, '_father_name', true),
+                'gr_number'        => get_post_meta($post->ID, 'gr_number', true),
+                'roll_number'      => get_post_meta($post->ID, 'roll_number', true),
+                'grade_level'      => get_post_meta($post->ID, 'grade_level', true),
+                'grade_label'      => Helpers::get_grade_label(get_post_meta($post->ID, 'grade_level', true)),
+                'islamic_category' => Helpers::get_islamic_category_label(get_post_meta($post->ID, 'islamic_studies_category', true)),
+                'gender'           => get_post_meta($post->ID, 'gender', true),
+                'father_name'      => get_post_meta($post->ID, 'father_name', true),
                 'photo'            => Helpers::get_student_photo($post->ID),
-                'is_sponsored'     => get_post_meta($post->ID, '_is_sponsored', true) === 'yes',
-                'monthly_fee'      => Helpers::format_currency(get_post_meta($post->ID, '_monthly_fee', true)),
+                'is_sponsored'     => get_post_meta($post->ID, 'is_sponsored', true) === 'yes',
+                'monthly_fee'      => Helpers::format_currency(get_post_meta($post->ID, 'monthly_tuition_fee', true)),
                 'created_at'       => Helpers::format_date($post->post_date),
             );
         }
@@ -150,7 +150,7 @@ class Student_Manager {
         }
 
         $student_id = wp_insert_post(array(
-            'post_type'   => 'alhuffaz_student',
+            'post_type'   => 'student',
             'post_title'  => sanitize_text_field($data['student_name']),
             'post_status' => 'publish',
         ));
@@ -174,7 +174,7 @@ class Student_Manager {
     public static function update_student($student_id, $data) {
         $student = get_post($student_id);
 
-        if (!$student || $student->post_type !== 'alhuffaz_student') {
+        if (!$student || $student->post_type !== 'student') {
             return new \WP_Error('not_found', __('Student not found.', 'al-huffaz-portal'));
         }
 
@@ -195,7 +195,7 @@ class Student_Manager {
     }
 
     /**
-     * Save student meta
+     * Save student meta (without underscore prefix to match original system)
      */
     private static function save_student_meta($student_id, $data) {
         $fields = Post_Types::get_student_fields();
@@ -228,7 +228,7 @@ class Student_Manager {
                     $value = sanitize_text_field($value);
             }
 
-            update_post_meta($student_id, '_' . $key, $value);
+            update_post_meta($student_id, $key, $value);
         }
     }
 
@@ -238,7 +238,7 @@ class Student_Manager {
     public static function delete_student($student_id) {
         $student = get_post($student_id);
 
-        if (!$student || $student->post_type !== 'alhuffaz_student') {
+        if (!$student || $student->post_type !== 'student') {
             return new \WP_Error('not_found', __('Student not found.', 'al-huffaz-portal'));
         }
 
@@ -260,13 +260,13 @@ class Student_Manager {
      * Get academic data for student
      */
     public static function get_academic_data($student_id) {
-        $subjects = get_post_meta($student_id, '_subjects', true);
+        $subjects = get_post_meta($student_id, 'subjects', true);
 
         if (!is_array($subjects)) {
             $subjects = array();
         }
 
-        $overall_percentage = get_post_meta($student_id, '_overall_percentage', true);
+        $overall_percentage = get_post_meta($student_id, 'overall_percentage', true);
 
         return array(
             'subjects'           => $subjects,
@@ -300,8 +300,8 @@ class Student_Manager {
 
         $overall = $count > 0 ? $total_percentage / $count : 0;
 
-        update_post_meta($student_id, '_subjects', $subjects);
-        update_post_meta($student_id, '_overall_percentage', round($overall, 2));
+        update_post_meta($student_id, 'subjects', $subjects);
+        update_post_meta($student_id, 'overall_percentage', round($overall, 2));
 
         return true;
     }
@@ -311,8 +311,8 @@ class Student_Manager {
      */
     public static function get_attendance($student_id) {
         return array(
-            'total_days'   => intval(get_post_meta($student_id, '_total_school_days', true)),
-            'present_days' => intval(get_post_meta($student_id, '_present_days', true)),
+            'total_days'   => intval(get_post_meta($student_id, 'total_school_days', true)),
+            'present_days' => intval(get_post_meta($student_id, 'present_days', true)),
             'percentage'   => self::calculate_attendance_percentage($student_id),
         );
     }
@@ -321,8 +321,8 @@ class Student_Manager {
      * Calculate attendance percentage
      */
     public static function calculate_attendance_percentage($student_id) {
-        $total = intval(get_post_meta($student_id, '_total_school_days', true));
-        $present = intval(get_post_meta($student_id, '_present_days', true));
+        $total = intval(get_post_meta($student_id, 'total_school_days', true));
+        $present = intval(get_post_meta($student_id, 'present_days', true));
 
         if ($total <= 0) {
             return 0;
