@@ -28,6 +28,10 @@ class Ajax_Handler {
         add_action('wp_ajax_alhuffaz_get_students', array($this, 'get_students'));
         add_action('wp_ajax_alhuffaz_search_students', array($this, 'search_students'));
 
+        // Enhanced student form handlers
+        add_action('wp_ajax_ahp_add_student', array($this, 'ahp_save_student'));
+        add_action('wp_ajax_ahp_update_student', array($this, 'ahp_save_student'));
+
         add_action('wp_ajax_alhuffaz_approve_sponsorship', array($this, 'approve_sponsorship'));
         add_action('wp_ajax_alhuffaz_reject_sponsorship', array($this, 'reject_sponsorship'));
         add_action('wp_ajax_alhuffaz_link_sponsor', array($this, 'link_sponsor'));
@@ -149,6 +153,216 @@ class Ajax_Handler {
             'message'    => __('Student saved successfully.', 'al-huffaz-portal'),
             'student_id' => $student_id,
         ));
+    }
+
+    /**
+     * Enhanced student form - Save student with all 46+ fields
+     */
+    public function ahp_save_student() {
+        // Verify nonce
+        if (!isset($_POST['ahp_nonce']) || !wp_verify_nonce($_POST['ahp_nonce'], 'ahp_student_form')) {
+            wp_send_json_error('Security check failed.');
+        }
+
+        if (!current_user_can('edit_posts')) {
+            wp_send_json_error('Permission denied.');
+        }
+
+        $student_id = isset($_POST['student_id']) ? intval($_POST['student_id']) : 0;
+        $student_name = isset($_POST['student_name']) ? sanitize_text_field($_POST['student_name']) : '';
+        $gr_number = isset($_POST['gr_number']) ? sanitize_text_field($_POST['gr_number']) : '';
+
+        if (empty($student_name)) {
+            wp_send_json_error('Student name is required.');
+        }
+
+        if (empty($gr_number)) {
+            wp_send_json_error('GR Number is required.');
+        }
+
+        // Prepare post data
+        $post_data = array(
+            'post_title'  => $student_name,
+            'post_type'   => 'student',
+            'post_status' => 'publish',
+        );
+
+        if ($student_id) {
+            $post_data['ID'] = $student_id;
+            $result = wp_update_post($post_data);
+        } else {
+            $result = wp_insert_post($post_data);
+        }
+
+        if (is_wp_error($result)) {
+            wp_send_json_error($result->get_error_message());
+        }
+
+        $student_id = $result;
+
+        // List of all text/select fields to save
+        $text_fields = array(
+            'gr_number', 'roll_number', 'gender', 'date_of_birth', 'admission_date',
+            'grade_level', 'islamic_studies_category', 'permanent_address', 'current_address',
+            'father_name', 'father_cnic', 'father_email',
+            'guardian_name', 'guardian_cnic', 'guardian_email', 'guardian_phone', 'guardian_whatsapp',
+            'relationship_to_student', 'emergency_contact', 'emergency_whatsapp',
+            'academic_year', 'academic_term',
+            'blood_group', 'allergies', 'medical_conditions',
+            'teacher_overall_comments', 'goal_1', 'goal_2', 'goal_3'
+        );
+
+        foreach ($text_fields as $field) {
+            if (isset($_POST[$field])) {
+                update_post_meta($student_id, $field, sanitize_text_field($_POST[$field]));
+            }
+        }
+
+        // Number fields
+        $number_fields = array(
+            'monthly_tuition_fee', 'course_fee', 'uniform_fee', 'annual_fee', 'admission_fee',
+            'total_school_days', 'present_days',
+            'health_rating', 'cleanness_rating', 'completes_homework', 'participates_in_class',
+            'works_well_in_groups', 'problem_solving_skills', 'organization_preparedness'
+        );
+
+        foreach ($number_fields as $field) {
+            if (isset($_POST[$field])) {
+                update_post_meta($student_id, $field, floatval($_POST[$field]));
+            }
+        }
+
+        // Checkbox fields
+        $checkbox_fields = array('zakat_eligible', 'donation_eligible');
+
+        foreach ($checkbox_fields as $field) {
+            $value = isset($_POST[$field]) && $_POST[$field] === 'yes' ? 'yes' : 'no';
+            update_post_meta($student_id, $field, $value);
+        }
+
+        // Subjects array with nested monthly exams, mid/final semester
+        if (isset($_POST['subjects']) && is_array($_POST['subjects'])) {
+            $subjects = array();
+
+            foreach ($_POST['subjects'] as $index => $subject) {
+                $subject_data = array(
+                    'name' => sanitize_text_field($subject['name'] ?? ''),
+                    'strengths' => sanitize_textarea_field($subject['strengths'] ?? ''),
+                    'areas_for_improvement' => sanitize_textarea_field($subject['areas_for_improvement'] ?? ''),
+                    'teacher_comments' => sanitize_textarea_field($subject['teacher_comments'] ?? ''),
+                    'monthly_exams' => array(),
+                    'mid_semester' => array(),
+                    'final_semester' => array(),
+                );
+
+                // Monthly exams
+                if (isset($subject['monthly_exams']) && is_array($subject['monthly_exams'])) {
+                    foreach ($subject['monthly_exams'] as $monthly) {
+                        $oral_total = floatval($monthly['oral_total'] ?? 0);
+                        $oral_obtained = floatval($monthly['oral_obtained'] ?? 0);
+                        $written_total = floatval($monthly['written_total'] ?? 0);
+                        $written_obtained = floatval($monthly['written_obtained'] ?? 0);
+                        $overall_total = $oral_total + $written_total;
+                        $overall_obtained = $oral_obtained + $written_obtained;
+                        $percentage = $overall_total > 0 ? round(($overall_obtained / $overall_total) * 100, 1) : 0;
+                        $grade = $this->calculate_grade($percentage);
+
+                        $subject_data['monthly_exams'][] = array(
+                            'month_name' => sanitize_text_field($monthly['month_name'] ?? ''),
+                            'oral_total' => $oral_total,
+                            'oral_obtained' => $oral_obtained,
+                            'written_total' => $written_total,
+                            'written_obtained' => $written_obtained,
+                            'overall_total' => $overall_total,
+                            'overall_obtained' => $overall_obtained,
+                            'percentage' => $percentage,
+                            'grade' => $grade,
+                        );
+                    }
+                }
+
+                // Mid semester
+                if (isset($subject['mid_semester'])) {
+                    $mid = $subject['mid_semester'];
+                    $oral_total = floatval($mid['oral_total'] ?? 0);
+                    $oral_obtained = floatval($mid['oral_obtained'] ?? 0);
+                    $written_total = floatval($mid['written_total'] ?? 0);
+                    $written_obtained = floatval($mid['written_obtained'] ?? 0);
+                    $overall_total = $oral_total + $written_total;
+                    $overall_obtained = $oral_obtained + $written_obtained;
+                    $percentage = $overall_total > 0 ? round(($overall_obtained / $overall_total) * 100, 1) : 0;
+
+                    $subject_data['mid_semester'] = array(
+                        'oral_total' => $oral_total,
+                        'oral_obtained' => $oral_obtained,
+                        'written_total' => $written_total,
+                        'written_obtained' => $written_obtained,
+                        'overall_total' => $overall_total,
+                        'overall_obtained' => $overall_obtained,
+                        'percentage' => $percentage,
+                        'grade' => $this->calculate_grade($percentage),
+                    );
+                }
+
+                // Final semester
+                if (isset($subject['final_semester'])) {
+                    $final = $subject['final_semester'];
+                    $oral_total = floatval($final['oral_total'] ?? 0);
+                    $oral_obtained = floatval($final['oral_obtained'] ?? 0);
+                    $written_total = floatval($final['written_total'] ?? 0);
+                    $written_obtained = floatval($final['written_obtained'] ?? 0);
+                    $overall_total = $oral_total + $written_total;
+                    $overall_obtained = $oral_obtained + $written_obtained;
+                    $percentage = $overall_total > 0 ? round(($overall_obtained / $overall_total) * 100, 1) : 0;
+
+                    $subject_data['final_semester'] = array(
+                        'oral_total' => $oral_total,
+                        'oral_obtained' => $oral_obtained,
+                        'written_total' => $written_total,
+                        'written_obtained' => $written_obtained,
+                        'overall_total' => $overall_total,
+                        'overall_obtained' => $overall_obtained,
+                        'percentage' => $percentage,
+                        'grade' => $this->calculate_grade($percentage),
+                    );
+                }
+
+                $subjects[] = $subject_data;
+            }
+
+            update_post_meta($student_id, 'subjects', $subjects);
+        }
+
+        // Handle photo upload
+        if (!empty($_FILES['student_photo']) && $_FILES['student_photo']['size'] > 0) {
+            require_once(ABSPATH . 'wp-admin/includes/image.php');
+            require_once(ABSPATH . 'wp-admin/includes/file.php');
+            require_once(ABSPATH . 'wp-admin/includes/media.php');
+
+            $attachment_id = media_handle_upload('student_photo', $student_id);
+
+            if (!is_wp_error($attachment_id)) {
+                update_post_meta($student_id, 'student_photo', $attachment_id);
+            }
+        }
+
+        wp_send_json_success(array(
+            'message' => $student_id ? __('Student updated successfully!', 'al-huffaz-portal') : __('Student enrolled successfully!', 'al-huffaz-portal'),
+            'student_id' => $student_id,
+            'redirect' => admin_url('admin.php?page=alhuffaz-students'),
+        ));
+    }
+
+    /**
+     * Calculate grade from percentage
+     */
+    private function calculate_grade($percentage) {
+        if ($percentage >= 90) return 'A+';
+        if ($percentage >= 80) return 'A';
+        if ($percentage >= 70) return 'B';
+        if ($percentage >= 60) return 'C';
+        if ($percentage >= 50) return 'D';
+        return 'F';
     }
 
     /**

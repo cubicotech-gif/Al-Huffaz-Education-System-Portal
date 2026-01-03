@@ -34,11 +34,19 @@ class Assets {
             return;
         }
 
+        // Font Awesome for icons
+        wp_enqueue_style(
+            'font-awesome',
+            'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css',
+            array(),
+            '6.4.2'
+        );
+
         // Admin CSS
         wp_enqueue_style(
             'alhuffaz-admin',
             ALHUFFAZ_ASSETS_URL . 'css/admin.css',
-            array(),
+            array('font-awesome'),
             ALHUFFAZ_VERSION
         );
 

@@ -15,25 +15,16 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Setup PHP
-        uses: shivammathur/setup-php@v2
-        with:
-          php-version: '8.1'
-
-      - name: Deploy via FTP
-        uses: SamKirkland/FTP-Deploy-Action@v4.3.4
+      - name: Deploy via SFTP
+        uses: wlixcc/SFTP-Deploy-Action@v1.2.4
         with:
           server: ${{ secrets.FTP_SERVER }}
           username: ${{ secrets.FTP_USERNAME }}
           password: ${{ secrets.FTP_PASSWORD }}
-          local-dir: ./al-huffaz-portal/
-          server-dir: ${{ secrets.FTP_PATH }}
-          exclude: |
-            **/.git*
-            **/.git*/**
-            **/node_modules/**
-            **/.DS_Store
-            **/README.md
+          local_path: './al-huffaz-portal/*'
+          remote_path: ${{ secrets.FTP_PATH }}
+          sftp_only: true
+          port: 21098
 
       - name: Deployment Complete
         run: echo "🚀 Deployment to Namecheap completed successfully!"
