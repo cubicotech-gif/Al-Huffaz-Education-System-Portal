@@ -29,33 +29,35 @@ class Post_Types {
      * Register custom post types
      */
     public function register_post_types() {
-        // Student Post Type - Using 'student' to match original system and preserve existing data
-        register_post_type('student', array(
-            'labels' => array(
-                'name'               => __('Students', 'al-huffaz-portal'),
-                'singular_name'      => __('Student', 'al-huffaz-portal'),
-                'menu_name'          => __('Students', 'al-huffaz-portal'),
-                'add_new'            => __('Add New', 'al-huffaz-portal'),
-                'add_new_item'       => __('Add New Student', 'al-huffaz-portal'),
-                'edit_item'          => __('Edit Student', 'al-huffaz-portal'),
-                'new_item'           => __('New Student', 'al-huffaz-portal'),
-                'view_item'          => __('View Student', 'al-huffaz-portal'),
-                'search_items'       => __('Search Students', 'al-huffaz-portal'),
-                'not_found'          => __('No students found', 'al-huffaz-portal'),
-                'not_found_in_trash' => __('No students found in trash', 'al-huffaz-portal'),
-            ),
-            'public'              => true,
-            'publicly_queryable'  => true,
-            'show_ui'             => true,
-            'show_in_menu'        => false, // We use our custom admin menu
-            'show_in_rest'        => true,
-            'capability_type'     => 'post',
-            'hierarchical'        => false,
-            'supports'            => array('title', 'thumbnail', 'custom-fields'),
-            'has_archive'         => true,
-            'rewrite'             => array('slug' => 'students', 'with_front' => false),
-            'query_var'           => true,
-        ));
+        // Student Post Type - Only register if not already registered by CPT UI or another plugin
+        if (!post_type_exists('student')) {
+            register_post_type('student', array(
+                'labels' => array(
+                    'name'               => __('Students', 'al-huffaz-portal'),
+                    'singular_name'      => __('Student', 'al-huffaz-portal'),
+                    'menu_name'          => __('Students', 'al-huffaz-portal'),
+                    'add_new'            => __('Add New', 'al-huffaz-portal'),
+                    'add_new_item'       => __('Add New Student', 'al-huffaz-portal'),
+                    'edit_item'          => __('Edit Student', 'al-huffaz-portal'),
+                    'new_item'           => __('New Student', 'al-huffaz-portal'),
+                    'view_item'          => __('View Student', 'al-huffaz-portal'),
+                    'search_items'       => __('Search Students', 'al-huffaz-portal'),
+                    'not_found'          => __('No students found', 'al-huffaz-portal'),
+                    'not_found_in_trash' => __('No students found in trash', 'al-huffaz-portal'),
+                ),
+                'public'              => true,
+                'publicly_queryable'  => true,
+                'show_ui'             => true,
+                'show_in_menu'        => false, // We use our custom admin menu
+                'show_in_rest'        => true,
+                'capability_type'     => 'post',
+                'hierarchical'        => false,
+                'supports'            => array('title', 'thumbnail', 'custom-fields'),
+                'has_archive'         => true,
+                'rewrite'             => array('slug' => 'students', 'with_front' => false),
+                'query_var'           => true,
+            ));
+        }
 
         // Sponsorship Post Type
         register_post_type('alhuffaz_sponsor', array(
