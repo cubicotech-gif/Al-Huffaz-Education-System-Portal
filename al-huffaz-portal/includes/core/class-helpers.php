@@ -152,7 +152,7 @@ class Helpers {
      * Get student photo URL
      */
     public static function get_student_photo($student_id, $size = 'thumbnail') {
-        $photo_id = get_post_meta($student_id, '_student_photo', true);
+        $photo_id = get_post_meta($student_id, 'student_photo', true);
 
         if ($photo_id) {
             $image = wp_get_attachment_image_src($photo_id, $size);

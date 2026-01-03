@@ -95,7 +95,7 @@ class Ajax_Handler {
         // Prepare post data
         $post_data = array(
             'post_title'  => sanitize_text_field($data['student_name']),
-            'post_type'   => 'alhuffaz_student',
+            'post_type'   => 'student',
             'post_status' => 'publish',
         );
 
@@ -379,7 +379,7 @@ class Ajax_Handler {
 
         $student = get_post($student_id);
 
-        if (!$student || $student->post_type !== 'alhuffaz_student') {
+        if (!$student || $student->post_type !== 'student') {
             wp_send_json_error(array('message' => __('Student not found.', 'al-huffaz-portal')));
         }
 
@@ -410,7 +410,7 @@ class Ajax_Handler {
 
         $student = get_post($student_id);
 
-        if (!$student || $student->post_type !== 'alhuffaz_student') {
+        if (!$student || $student->post_type !== 'student') {
             wp_send_json_error(array('message' => __('Student not found.', 'al-huffaz-portal')));
         }
 
@@ -445,7 +445,7 @@ class Ajax_Handler {
         $sponsored = isset($_POST['sponsored']) ? sanitize_text_field($_POST['sponsored']) : '';
 
         $args = array(
-            'post_type'      => 'alhuffaz_student',
+            'post_type'      => 'student',
             'posts_per_page' => $per_page,
             'paged'          => $page,
             'post_status'    => 'publish',
@@ -519,7 +519,7 @@ class Ajax_Handler {
         }
 
         $args = array(
-            'post_type'      => 'alhuffaz_student',
+            'post_type'      => 'student',
             'posts_per_page' => 10,
             's'              => $search,
             'post_status'    => 'publish',
@@ -786,10 +786,10 @@ class Ajax_Handler {
     public function get_dashboard_stats() {
         $this->verify_admin_nonce();
 
-        $student_count = wp_count_posts('alhuffaz_student')->publish;
+        $student_count = wp_count_posts('student')->publish;
 
         $sponsored_count = get_posts(array(
-            'post_type'      => 'alhuffaz_student',
+            'post_type'      => 'student',
             'posts_per_page' => -1,
             'fields'         => 'ids',
             'meta_query'     => array(
@@ -977,7 +977,7 @@ class Ajax_Handler {
         $this->verify_public_nonce();
 
         $args = array(
-            'post_type'      => 'alhuffaz_student',
+            'post_type'      => 'student',
             'posts_per_page' => -1,
             'post_status'    => 'publish',
             'meta_query'     => array(
@@ -1053,7 +1053,7 @@ class Ajax_Handler {
 
         if ($type === 'students') {
             $students = get_posts(array(
-                'post_type'      => 'alhuffaz_student',
+                'post_type'      => 'student',
                 'posts_per_page' => -1,
                 'post_status'    => 'publish',
             ));
@@ -1108,7 +1108,7 @@ class Ajax_Handler {
             }
 
             $student_id = wp_insert_post(array(
-                'post_type'   => 'alhuffaz_student',
+                'post_type'   => 'student',
                 'post_title'  => sanitize_text_field($data['student_name']),
                 'post_status' => 'publish',
             ));
