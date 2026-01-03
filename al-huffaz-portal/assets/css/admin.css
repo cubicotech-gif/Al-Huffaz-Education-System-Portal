@@ -913,3 +913,868 @@
     font-weight: 500;
     color: var(--alhuffaz-gray-700);
 }
+
+/* ========================================
+   ENHANCED STUDENT FORM WIZARD STYLES
+   ======================================== */
+
+.ahp-student-form-wrapper {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 20px;
+}
+
+/* Form Header */
+.ahp-form-header {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    background: linear-gradient(135deg, #0080ff 0%, #0059b3 100%);
+    padding: 30px;
+    border-radius: 16px;
+    color: #fff;
+    margin-bottom: 30px;
+    flex-wrap: wrap;
+}
+
+.ahp-header-icon {
+    width: 70px;
+    height: 70px;
+    background: rgba(255,255,255,0.2);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 28px;
+}
+
+.ahp-header-content {
+    flex: 1;
+}
+
+.ahp-header-content h1 {
+    margin: 0 0 5px 0;
+    font-size: 28px;
+    font-weight: 700;
+    color: #fff;
+}
+
+.ahp-header-content p {
+    margin: 0;
+    opacity: 0.9;
+    font-size: 15px;
+}
+
+.ahp-header-photo {
+    width: 80px;
+    height: 80px;
+    border-radius: 50%;
+    border: 4px solid rgba(255,255,255,0.3);
+    overflow: hidden;
+}
+
+.ahp-header-photo img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.ahp-form-header .ahp-btn {
+    background: rgba(255,255,255,0.2);
+    color: #fff;
+    border: 1px solid rgba(255,255,255,0.3);
+}
+
+.ahp-form-header .ahp-btn:hover {
+    background: rgba(255,255,255,0.3);
+}
+
+/* Progress Bar */
+.ahp-progress-bar {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #fff;
+    padding: 25px 30px;
+    border-radius: 16px;
+    margin-bottom: 30px;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+    flex-wrap: wrap;
+    gap: 10px;
+}
+
+.ahp-progress-step {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+    transition: all 0.3s;
+}
+
+.ahp-step-number {
+    width: 45px;
+    height: 45px;
+    border-radius: 50%;
+    background: #e5e7eb;
+    color: #6b7280;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    font-size: 16px;
+    transition: all 0.3s;
+}
+
+.ahp-step-label {
+    font-size: 13px;
+    font-weight: 600;
+    color: #6b7280;
+    transition: all 0.3s;
+}
+
+.ahp-progress-line {
+    flex: 1;
+    min-width: 40px;
+    max-width: 80px;
+    height: 4px;
+    background: #e5e7eb;
+    border-radius: 2px;
+    transition: all 0.3s;
+}
+
+.ahp-progress-step.active .ahp-step-number,
+.ahp-progress-step.completed .ahp-step-number {
+    background: #0080ff;
+    color: #fff;
+}
+
+.ahp-progress-step.active .ahp-step-label,
+.ahp-progress-step.completed .ahp-step-label {
+    color: #0080ff;
+}
+
+.ahp-progress-step.completed .ahp-step-number {
+    background: #10b981;
+}
+
+.ahp-progress-step.completed + .ahp-progress-line {
+    background: #10b981;
+}
+
+/* Form Steps */
+.ahp-form-step {
+    display: none;
+    background: #fff;
+    border-radius: 16px;
+    padding: 30px;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+    animation: fadeIn 0.3s ease;
+}
+
+.ahp-form-step.active {
+    display: block;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.ahp-step-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 25px;
+    padding-bottom: 15px;
+    border-bottom: 2px solid #e5e7eb;
+}
+
+.ahp-step-header i {
+    width: 45px;
+    height: 45px;
+    background: linear-gradient(135deg, #0080ff, #0059b3);
+    color: #fff;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 20px;
+}
+
+.ahp-step-header h2 {
+    margin: 0;
+    font-size: 22px;
+    font-weight: 700;
+    color: #1f2937;
+}
+
+/* Form Grid */
+.ahp-form-grid {
+    display: grid;
+    grid-template-columns: repeat(12, 1fr);
+    gap: 20px;
+}
+
+.ahp-col-12 { grid-column: span 12; }
+.ahp-col-6 { grid-column: span 6; }
+.ahp-col-4 { grid-column: span 4; }
+.ahp-col-3 { grid-column: span 3; }
+
+@media (max-width: 768px) {
+    .ahp-col-6, .ahp-col-4, .ahp-col-3 { grid-column: span 12; }
+}
+
+/* Form Groups */
+.ahp-form-group {
+    margin-bottom: 0;
+}
+
+.ahp-label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 14px;
+    font-weight: 600;
+    color: #374151;
+    margin-bottom: 8px;
+}
+
+.ahp-label i {
+    color: #0080ff;
+    font-size: 14px;
+}
+
+.ahp-label.required::after {
+    content: '*';
+    color: #ef4444;
+    margin-left: 2px;
+}
+
+.ahp-input {
+    width: 100%;
+    padding: 12px 16px;
+    font-size: 15px;
+    border: 2px solid #e5e7eb;
+    border-radius: 10px;
+    background: #fff;
+    transition: all 0.3s;
+    color: #1f2937;
+    font-family: inherit;
+}
+
+.ahp-input:focus {
+    outline: none;
+    border-color: #0080ff;
+    box-shadow: 0 0 0 4px rgba(0, 128, 255, 0.1);
+}
+
+.ahp-input::placeholder {
+    color: #9ca3af;
+}
+
+.ahp-input-error {
+    border-color: #ef4444 !important;
+}
+
+.ahp-input-file {
+    padding: 10px;
+    border-style: dashed;
+    cursor: pointer;
+}
+
+.ahp-help-text {
+    font-size: 12px;
+    color: #6b7280;
+    margin-top: 5px;
+    display: block;
+}
+
+/* Info Sections */
+.ahp-info-section {
+    background: #f9fafb;
+    border-radius: 12px;
+    padding: 20px;
+    margin-bottom: 20px;
+}
+
+.ahp-section-title {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 16px;
+    font-weight: 700;
+    color: #1f2937;
+    margin: 0 0 15px 0;
+}
+
+.ahp-section-title i {
+    color: #0080ff;
+}
+
+.ahp-section-header-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 15px;
+}
+
+/* Buttons */
+.ahp-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 12px 24px;
+    font-size: 15px;
+    font-weight: 600;
+    border-radius: 10px;
+    border: none;
+    cursor: pointer;
+    transition: all 0.3s;
+    font-family: inherit;
+}
+
+.ahp-btn-primary {
+    background: linear-gradient(135deg, #0080ff, #0059b3);
+    color: #fff;
+}
+
+.ahp-btn-primary:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 15px rgba(0, 128, 255, 0.3);
+}
+
+.ahp-btn-secondary {
+    background: #f3f4f6;
+    color: #374151;
+}
+
+.ahp-btn-secondary:hover {
+    background: #e5e7eb;
+}
+
+.ahp-btn-success {
+    background: linear-gradient(135deg, #10b981, #059669);
+    color: #fff;
+}
+
+.ahp-btn-success:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 15px rgba(16, 185, 129, 0.3);
+}
+
+.ahp-btn-danger {
+    background: #ef4444;
+    color: #fff;
+}
+
+.ahp-btn-danger:hover {
+    background: #dc2626;
+}
+
+.ahp-btn-sm {
+    padding: 8px 16px;
+    font-size: 13px;
+}
+
+.ahp-btn-xs {
+    padding: 6px 10px;
+    font-size: 12px;
+}
+
+/* Subject Box */
+.ahp-subject-box {
+    background: #fff;
+    border: 2px solid #e5e7eb;
+    border-radius: 12px;
+    margin-bottom: 20px;
+    overflow: hidden;
+}
+
+.ahp-subject-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 15px 20px;
+    background: linear-gradient(135deg, #f0f7ff, #e6f2ff);
+    border-bottom: 1px solid #e5e7eb;
+}
+
+.ahp-subject-title {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex: 1;
+}
+
+.ahp-subject-title i {
+    color: #0080ff;
+    font-size: 18px;
+}
+
+.ahp-subject-name {
+    flex: 1;
+    border: none !important;
+    background: transparent;
+    font-size: 16px;
+    font-weight: 600;
+    padding: 8px 0;
+}
+
+.ahp-subject-name:focus {
+    outline: none;
+    border-bottom: 2px solid #0080ff !important;
+}
+
+.ahp-subject-content {
+    padding: 20px;
+}
+
+/* Exam Sections */
+.ahp-exam-section {
+    background: #f9fafb;
+    border-radius: 10px;
+    padding: 15px;
+    margin-bottom: 15px;
+}
+
+.ahp-exam-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 15px;
+}
+
+.ahp-exam-header h4 {
+    margin: 0;
+    font-size: 14px;
+    font-weight: 700;
+    color: #374151;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.ahp-exam-header h4 i {
+    color: #0080ff;
+}
+
+/* Monthly Exam */
+.ahp-monthly-exam {
+    background: #fff;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    padding: 15px;
+    margin-bottom: 10px;
+}
+
+.ahp-monthly-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 12px;
+}
+
+.ahp-month-name {
+    flex: 1;
+    padding: 8px 12px;
+    font-weight: 600;
+}
+
+/* Marks Row */
+.ahp-marks-row {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 10px;
+}
+
+.ahp-marks-group {
+    display: flex;
+    flex-direction: column;
+}
+
+.ahp-marks-group label {
+    font-size: 11px;
+    font-weight: 600;
+    color: #6b7280;
+    margin-bottom: 4px;
+    text-transform: uppercase;
+}
+
+.ahp-marks-group input {
+    padding: 8px 10px;
+    font-size: 14px;
+    text-align: center;
+}
+
+/* Marks Result */
+.ahp-marks-result {
+    margin-top: 12px;
+}
+
+.ahp-result-box {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 15px;
+    padding: 12px;
+    border-radius: 8px;
+    font-weight: 600;
+}
+
+.ahp-result-excellent { background: #d1fae5; color: #065f46; }
+.ahp-result-good { background: #fef3c7; color: #92400e; }
+.ahp-result-poor { background: #fee2e2; color: #991b1b; }
+
+.ahp-grade-badge {
+    background: #fff;
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-weight: 700;
+    font-size: 14px;
+}
+
+/* Teacher Assessment */
+.ahp-teacher-assessment {
+    margin-top: 15px;
+    padding-top: 15px;
+    border-top: 1px solid #e5e7eb;
+}
+
+.ahp-teacher-assessment h4 {
+    margin: 0 0 15px 0;
+    font-size: 14px;
+    font-weight: 700;
+    color: #374151;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.ahp-assessment-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 15px;
+}
+
+.ahp-assessment-grid .ahp-col-full {
+    grid-column: span 2;
+}
+
+/* Empty Subjects */
+.ahp-empty-subjects {
+    text-align: center;
+    padding: 40px;
+    color: #6b7280;
+}
+
+.ahp-empty-subjects i {
+    font-size: 48px;
+    margin-bottom: 15px;
+    opacity: 0.5;
+}
+
+.ahp-empty-subjects p {
+    margin: 0;
+}
+
+/* Fee Cards */
+.ahp-fee-cards {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 20px;
+    margin-bottom: 25px;
+}
+
+.ahp-fee-card {
+    background: #fff;
+    border: 2px solid #e5e7eb;
+    border-radius: 12px;
+    padding: 20px;
+    text-align: center;
+    transition: all 0.3s;
+}
+
+.ahp-fee-card:hover {
+    border-color: #0080ff;
+    box-shadow: 0 4px 15px rgba(0, 128, 255, 0.1);
+}
+
+.ahp-fee-icon {
+    width: 50px;
+    height: 50px;
+    background: linear-gradient(135deg, #e6f2ff, #cce6ff);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto 12px;
+    color: #0080ff;
+    font-size: 20px;
+}
+
+.ahp-fee-card h4 {
+    margin: 0 0 12px 0;
+    font-size: 14px;
+    font-weight: 600;
+    color: #374151;
+}
+
+.ahp-fee-input {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.ahp-currency {
+    font-weight: 700;
+    color: #6b7280;
+    font-size: 14px;
+}
+
+.ahp-fee-input .ahp-input {
+    text-align: right;
+    font-weight: 700;
+}
+
+/* Fee Summary */
+.ahp-fee-summary {
+    background: linear-gradient(135deg, #f0f7ff, #e6f2ff);
+    border-radius: 12px;
+    padding: 20px;
+    margin-bottom: 25px;
+}
+
+.ahp-fee-summary-row {
+    display: flex;
+    justify-content: space-between;
+    padding: 10px 0;
+    border-bottom: 1px solid rgba(0, 128, 255, 0.2);
+    font-size: 15px;
+}
+
+.ahp-fee-summary-row:last-child {
+    border-bottom: none;
+}
+
+.ahp-fee-grand-total {
+    font-size: 18px;
+    font-weight: 700;
+    color: #0059b3;
+    padding-top: 15px;
+    margin-top: 5px;
+    border-top: 2px solid #0080ff;
+}
+
+/* Checkbox Group */
+.ahp-checkbox-group {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 20px;
+}
+
+.ahp-checkbox-label {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    cursor: pointer;
+    padding: 12px 20px;
+    background: #fff;
+    border: 2px solid #e5e7eb;
+    border-radius: 10px;
+    transition: all 0.3s;
+}
+
+.ahp-checkbox-label:hover {
+    border-color: #0080ff;
+}
+
+.ahp-checkbox-label input:checked + .ahp-checkbox-text {
+    color: #0080ff;
+}
+
+.ahp-checkbox-text {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-weight: 600;
+}
+
+.ahp-checkbox-text i {
+    color: #10b981;
+}
+
+/* Rating Grid */
+.ahp-rating-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 15px;
+}
+
+.ahp-rating-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 15px;
+    background: #fff;
+    border: 1px solid #e5e7eb;
+    border-radius: 10px;
+}
+
+.ahp-rating-label {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-weight: 600;
+    color: #374151;
+    font-size: 14px;
+}
+
+.ahp-rating-label i {
+    color: #0080ff;
+}
+
+.ahp-rating-stars {
+    display: flex;
+    gap: 4px;
+}
+
+.ahp-star {
+    font-size: 20px;
+    color: #d1d5db;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.ahp-star:hover,
+.ahp-star.active {
+    color: #fbbf24;
+    transform: scale(1.1);
+}
+
+/* Attendance Display */
+.ahp-attendance-display {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 5px;
+    padding: 15px;
+    background: #f3f4f6;
+    border-radius: 10px;
+    font-size: 24px;
+    font-weight: 700;
+    color: #6b7280;
+    min-height: 54px;
+}
+
+.ahp-attendance-display.excellent {
+    background: #d1fae5;
+    color: #065f46;
+}
+
+.ahp-attendance-display.good {
+    background: #fef3c7;
+    color: #92400e;
+}
+
+.ahp-attendance-display.poor {
+    background: #fee2e2;
+    color: #991b1b;
+}
+
+.ahp-attendance-label {
+    font-size: 14px;
+}
+
+/* Form Navigation */
+.ahp-form-navigation {
+    display: flex;
+    justify-content: center;
+    gap: 15px;
+    margin-top: 30px;
+    padding: 25px;
+    background: #fff;
+    border-radius: 16px;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+}
+
+.ahp-form-navigation .ahp-btn {
+    min-width: 150px;
+    padding: 14px 30px;
+    font-size: 16px;
+}
+
+/* Notification Toast */
+.ahp-notification {
+    position: fixed;
+    top: 50px;
+    right: 20px;
+    padding: 16px 24px;
+    border-radius: 12px;
+    color: #fff;
+    font-weight: 600;
+    z-index: 99999;
+    animation: slideInRight 0.3s ease;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    max-width: 400px;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+}
+
+.ahp-notification.success {
+    background: linear-gradient(135deg, #10b981, #059669);
+}
+
+.ahp-notification.error {
+    background: linear-gradient(135deg, #ef4444, #dc2626);
+}
+
+@keyframes slideInRight {
+    from { transform: translateX(100%); opacity: 0; }
+    to { transform: translateX(0); opacity: 1; }
+}
+
+/* Responsive */
+@media (max-width: 992px) {
+    .ahp-marks-row {
+        grid-template-columns: repeat(2, 1fr);
+    }
+
+    .ahp-assessment-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .ahp-assessment-grid .ahp-col-full {
+        grid-column: span 1;
+    }
+}
+
+@media (max-width: 768px) {
+    .ahp-form-header {
+        flex-direction: column;
+        text-align: center;
+    }
+
+    .ahp-progress-bar {
+        padding: 15px;
+    }
+
+    .ahp-step-label {
+        display: none;
+    }
+
+    .ahp-marks-row {
+        grid-template-columns: 1fr;
+    }
+
+    .ahp-form-navigation {
+        flex-direction: column;
+    }
+
+    .ahp-form-navigation .ahp-btn {
+        width: 100%;
+    }
+}

@@ -522,3 +522,252 @@
     window.AlHuffazAdmin = AlHuffazAdmin;
 
 })(jQuery);
+
+/**
+ * Enhanced Student Form Wizard
+ */
+(function($) {
+    'use strict';
+
+    // Only run on student form page
+    if ($('#ahpStudentForm').length === 0) return;
+
+    let currentStep = 1;
+    const totalSteps = 5;
+    let subjectIndex = $('.ahp-subject-box').length;
+    let monthlyExamCounters = {};
+
+    // Initialize existing subject counters
+    $('.ahp-subject-box').each(function() {
+        const idx = $(this).data('index');
+        monthlyExamCounters[idx] = $(this).find('.ahp-monthly-exam').length;
+    });
+
+    // Show specific step
+    function showStep(step) {
+        $('.ahp-form-step').removeClass('active');
+        $(`.ahp-form-step[data-step="${step}"]`).addClass('active');
+
+        $('.ahp-progress-step').removeClass('active completed');
+        $('.ahp-progress-step').each(function() {
+            const s = $(this).data('step');
+            if (s < step) $(this).addClass('completed');
+            if (s === step) $(this).addClass('active');
+        });
+
+        $('#prevStepBtn').toggle(step > 1);
+        $('#nextStepBtn').toggle(step < totalSteps);
+        $('#submitFormBtn').toggle(step === totalSteps);
+
+        $('html, body').animate({ scrollTop: $('.ahp-student-form-wrapper').offset().top - 20 }, 300);
+    }
+
+    // Validate current step
+    function validateStep(step) {
+        let valid = true;
+        const stepEl = $(`.ahp-form-step[data-step="${step}"]`);
+        stepEl.find('[required]').each(function() {
+            if (!$(this).val()) {
+                $(this).addClass('ahp-input-error').focus();
+                valid = false;
+                return false;
+            }
+        });
+        return valid;
+    }
+
+    // Calculate grade from percentage
+    function calculateGrade(p) {
+        if (p >= 90) return 'A+';
+        if (p >= 80) return 'A';
+        if (p >= 70) return 'B';
+        if (p >= 60) return 'C';
+        if (p >= 50) return 'D';
+        return 'F';
+    }
+
+    // Show notification
+    function ahpShowNotification(type, message) {
+        const notification = $(`<div class="ahp-notification ${type}"><i class="fas fa-${type === 'success' ? 'check-circle' : 'exclamation-circle'}"></i> ${message}</div>`);
+        $('body').append(notification);
+        setTimeout(() => notification.remove(), 5000);
+    }
+
+    // Next step button
+    $('#nextStepBtn').on('click', function() {
+        if (validateStep(currentStep) && currentStep < totalSteps) {
+            currentStep++;
+            showStep(currentStep);
+        }
+    });
+
+    // Previous step button
+    $('#prevStepBtn').on('click', function() {
+        if (currentStep > 1) {
+            currentStep--;
+            showStep(currentStep);
+        }
+    });
+
+    // Click on progress step
+    $(document).on('click', '.ahp-progress-step', function() {
+        const targetStep = $(this).data('step');
+        if (targetStep < currentStep || validateStep(currentStep)) {
+            currentStep = targetStep;
+            showStep(currentStep);
+        }
+    });
+
+    // Remove input error on change
+    $(document).on('input change', '.ahp-input-error', function() {
+        $(this).removeClass('ahp-input-error');
+    });
+
+    // Add Subject
+    $('#addSubjectBtn').on('click', function() {
+        const template = $('#subjectTemplate').html().replace(/SUBJECT_INDEX/g, subjectIndex);
+        $('#subjectsContainer').append(template);
+        $('#noSubjectsMessage').hide();
+        monthlyExamCounters[subjectIndex] = 0;
+        subjectIndex++;
+    });
+
+    // Remove Subject
+    $(document).on('click', '.ahp-remove-subject', function() {
+        if (confirm('Remove this subject and all its data?')) {
+            $(this).closest('.ahp-subject-box').remove();
+            if ($('.ahp-subject-box').length === 0) {
+                $('#noSubjectsMessage').show();
+            }
+        }
+    });
+
+    // Add Monthly Exam
+    $(document).on('click', '.ahp-add-monthly', function() {
+        const subjIdx = $(this).data('subject-index');
+        if (!monthlyExamCounters[subjIdx]) monthlyExamCounters[subjIdx] = 0;
+        const monthIdx = monthlyExamCounters[subjIdx];
+
+        const template = $('#monthlyExamTemplate').html()
+            .replace(/SUBJECT_INDEX/g, subjIdx)
+            .replace(/MONTH_INDEX/g, monthIdx);
+
+        $(`.ahp-monthly-container[data-subject="${subjIdx}"]`).append(template);
+        monthlyExamCounters[subjIdx]++;
+    });
+
+    // Remove Monthly Exam
+    $(document).on('click', '.ahp-remove-monthly', function() {
+        $(this).closest('.ahp-monthly-exam').remove();
+    });
+
+    // Auto-calculate marks
+    $(document).on('input', '.marks-input', function() {
+        const container = $(this).closest('.ahp-marks-row');
+        const oralTotal = parseFloat(container.find('.oral-total').val()) || 0;
+        const oralObtained = parseFloat(container.find('.oral-obtained').val()) || 0;
+        const writtenTotal = parseFloat(container.find('.written-total').val()) || 0;
+        const writtenObtained = parseFloat(container.find('.written-obtained').val()) || 0;
+
+        const total = oralTotal + writtenTotal;
+        const obtained = oralObtained + writtenObtained;
+        const percentage = total > 0 ? ((obtained / total) * 100).toFixed(1) : 0;
+        const grade = calculateGrade(percentage);
+
+        const resultEl = container.siblings('.ahp-marks-result');
+        if (total > 0) {
+            const statusClass = percentage >= 80 ? 'excellent' : (percentage >= 60 ? 'good' : 'poor');
+            resultEl.html(`
+                <div class="ahp-result-box ahp-result-${statusClass}">
+                    <span><strong>${obtained}</strong>/${total}</span>
+                    <span><strong>${percentage}%</strong></span>
+                    <span class="ahp-grade-badge">${grade}</span>
+                </div>
+            `).show();
+        } else {
+            resultEl.hide();
+        }
+    });
+
+    // Fee calculations
+    $('.fee-input').on('input', function() {
+        const monthly = parseFloat($('[name="monthly_tuition_fee"]').val()) || 0;
+        const course = parseFloat($('[name="course_fee"]').val()) || 0;
+        const uniform = parseFloat($('[name="uniform_fee"]').val()) || 0;
+        const annual = parseFloat($('[name="annual_fee"]').val()) || 0;
+        const admission = parseFloat($('[name="admission_fee"]').val()) || 0;
+
+        const oneTime = course + uniform + annual + admission;
+        const total = monthly + oneTime;
+
+        $('#monthlyTotal').text('PKR ' + monthly.toLocaleString());
+        $('#oneTimeTotal').text('PKR ' + oneTime.toLocaleString());
+        $('#grandTotal').text('PKR ' + total.toLocaleString());
+    }).trigger('input');
+
+    // Attendance calculation
+    $('#totalSchoolDays, #presentDays').on('input', function() {
+        const total = parseFloat($('#totalSchoolDays').val()) || 0;
+        const present = parseFloat($('#presentDays').val()) || 0;
+        const display = $('#attendanceDisplay');
+
+        if (total > 0 && present >= 0) {
+            const pct = ((present / total) * 100).toFixed(1);
+            const statusClass = pct >= 85 ? 'excellent' : (pct >= 75 ? 'good' : 'poor');
+            display.removeClass('excellent good poor').addClass(statusClass);
+            display.find('.ahp-attendance-value').text(pct);
+        } else {
+            display.removeClass('excellent good poor');
+            display.find('.ahp-attendance-value').text('--');
+        }
+    }).trigger('input');
+
+    // Star ratings
+    $(document).on('click', '.ahp-star', function() {
+        const value = $(this).data('value');
+        const container = $(this).closest('.ahp-rating-stars');
+        container.find('.ahp-star').removeClass('active');
+        container.find('.ahp-star').each(function() {
+            if ($(this).data('value') <= value) $(this).addClass('active');
+        });
+        container.find('input').val(value);
+    });
+
+    // Form submission
+    $('#ahpStudentForm').on('submit', function(e) {
+        e.preventDefault();
+
+        const btn = $('#submitFormBtn');
+        const originalText = btn.html();
+        btn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin"></i> Saving...');
+
+        const formData = new FormData(this);
+
+        $.ajax({
+            url: typeof alhuffazAdmin !== 'undefined' ? alhuffazAdmin.ajaxUrl : ajaxurl,
+            type: 'POST',
+            data: formData,
+            processData: false,
+            contentType: false,
+            success: function(response) {
+                if (response.success) {
+                    ahpShowNotification('success', response.data.message || 'Student saved successfully!');
+                    setTimeout(() => {
+                        window.location.href = response.data.redirect || '?page=alhuffaz-students';
+                    }, 1000);
+                } else {
+                    ahpShowNotification('error', response.data || 'An error occurred');
+                    btn.prop('disabled', false).html(originalText);
+                }
+            },
+            error: function() {
+                ahpShowNotification('error', 'Connection error. Please try again.');
+                btn.prop('disabled', false).html(originalText);
+            }
+        });
+    });
+
+    // Export notification function globally
+    window.ahpShowNotification = ahpShowNotification;
+
+})(jQuery);

@@ -22,6 +22,7 @@ if (!defined('ABSPATH')) {
 // Plugin constants
 define('ALHUFFAZ_VERSION', '2.0.0');
 define('ALHUFFAZ_PLUGIN_DIR', plugin_dir_path(__FILE__));
+define('ALHUFFAZ_PLUGIN_PATH', plugin_dir_path(__FILE__)); // Alias
 define('ALHUFFAZ_PLUGIN_URL', plugin_dir_url(__FILE__));
 define('ALHUFFAZ_PLUGIN_BASENAME', plugin_basename(__FILE__));
 define('ALHUFFAZ_ASSETS_URL', ALHUFFAZ_PLUGIN_URL . 'assets/');
