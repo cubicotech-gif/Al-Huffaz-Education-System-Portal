@@ -71,7 +71,7 @@ class Student_Display {
         $args = wp_parse_args($args, $defaults);
 
         $query_args = array(
-            'post_type'      => 'alhuffaz_student',
+            'post_type'      => 'student',
             'posts_per_page' => $args['per_page'],
             'paged'          => $args['page'],
             'post_status'    => 'publish',
@@ -85,21 +85,21 @@ class Student_Display {
 
         if (!empty($args['grade'])) {
             $meta_query[] = array(
-                'key'   => '_grade_level',
+                'key'   => 'grade_level',
                 'value' => $args['grade'],
             );
         }
 
         if (!empty($args['category'])) {
             $meta_query[] = array(
-                'key'   => '_islamic_category',
+                'key'   => 'islamic_studies_category',
                 'value' => $args['category'],
             );
         }
 
         if (!empty($args['gender'])) {
             $meta_query[] = array(
-                'key'   => '_gender',
+                'key'   => 'gender',
                 'value' => $args['gender'],
             );
         }
@@ -109,17 +109,17 @@ class Student_Display {
             $meta_query[] = array(
                 'relation' => 'OR',
                 array(
-                    'key'     => '_is_sponsored',
+                    'key'     => 'is_sponsored',
                     'value'   => 'no',
                 ),
                 array(
-                    'key'     => '_is_sponsored',
+                    'key'     => 'is_sponsored',
                     'compare' => 'NOT EXISTS',
                 ),
             );
         } elseif ($args['sponsored'] === 'sponsored') {
             $meta_query[] = array(
-                'key'   => '_is_sponsored',
+                'key'   => 'is_sponsored',
                 'value' => 'yes',
             );
         }
@@ -155,17 +155,17 @@ class Student_Display {
             return null;
         }
 
-        $monthly_fee = get_post_meta($student_id, '_monthly_fee', true);
-        $is_sponsored = get_post_meta($student_id, '_is_sponsored', true) === 'yes';
+        $monthly_fee = get_post_meta($student_id, 'monthly_tuition_fee', true);
+        $is_sponsored = get_post_meta($student_id, 'is_sponsored', true) === 'yes';
 
         return array(
             'id'           => $student_id,
             'name'         => $student->post_title,
             'photo'        => Helpers::get_student_photo($student_id, 'medium'),
-            'grade'        => Helpers::get_grade_label(get_post_meta($student_id, '_grade_level', true)),
-            'category'     => Helpers::get_islamic_category_label(get_post_meta($student_id, '_islamic_category', true)),
-            'gender'       => get_post_meta($student_id, '_gender', true),
-            'age'          => self::calculate_age(get_post_meta($student_id, '_date_of_birth', true)),
+            'grade'        => Helpers::get_grade_label(get_post_meta($student_id, 'grade_level', true)),
+            'category'     => Helpers::get_islamic_category_label(get_post_meta($student_id, 'islamic_studies_category', true)),
+            'gender'       => get_post_meta($student_id, 'gender', true),
+            'age'          => self::calculate_age(get_post_meta($student_id, 'date_of_birth', true)),
             'monthly_fee'  => Helpers::format_currency($monthly_fee),
             'is_sponsored' => $is_sponsored,
             'description'  => self::get_student_description($student_id),
@@ -191,9 +191,9 @@ class Student_Display {
      * Get student description for display
      */
     public static function get_student_description($student_id) {
-        $grade = Helpers::get_grade_label(get_post_meta($student_id, '_grade_level', true));
-        $category = Helpers::get_islamic_category_label(get_post_meta($student_id, '_islamic_category', true));
-        $age = self::calculate_age(get_post_meta($student_id, '_date_of_birth', true));
+        $grade = Helpers::get_grade_label(get_post_meta($student_id, 'grade_level', true));
+        $category = Helpers::get_islamic_category_label(get_post_meta($student_id, 'islamic_studies_category', true));
+        $age = self::calculate_age(get_post_meta($student_id, 'date_of_birth', true));
 
         $parts = array();
 
