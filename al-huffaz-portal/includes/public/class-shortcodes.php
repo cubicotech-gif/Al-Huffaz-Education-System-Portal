@@ -107,7 +107,7 @@ class Shortcodes {
 
         $student = get_post($atts['id']);
 
-        if (!$student || $student->post_type !== 'alhuffaz_student') {
+        if (!$student || $student->post_type !== 'student') {
             return '';
         }
 
