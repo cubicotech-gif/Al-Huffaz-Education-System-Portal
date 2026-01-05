@@ -61,11 +61,22 @@ class Ajax_Handler {
      * Verify admin nonce
      */
     private function verify_admin_nonce() {
-        if (!isset($_POST['nonce']) || !wp_verify_nonce($_POST['nonce'], 'alhuffaz_admin_nonce')) {
+        $valid = false;
+
+        if (isset($_POST['nonce'])) {
+            // Check multiple possible nonces for flexibility
+            if (wp_verify_nonce($_POST['nonce'], 'alhuffaz_admin_nonce') ||
+                wp_verify_nonce($_POST['nonce'], 'alhuffaz_student_nonce')) {
+                $valid = true;
+            }
+        }
+
+        if (!$valid) {
             wp_send_json_error(array('message' => __('Security check failed.', 'al-huffaz-portal')));
         }
 
-        if (!current_user_can('alhuffaz_manage_students')) {
+        // Check permissions - allow edit_posts for front-end admin portal
+        if (!current_user_can('alhuffaz_manage_students') && !current_user_can('edit_posts') && !current_user_can('manage_options')) {
             wp_send_json_error(array('message' => __('Permission denied.', 'al-huffaz-portal')));
         }
     }
@@ -86,15 +97,25 @@ class Ajax_Handler {
         $this->verify_admin_nonce();
 
         $student_id = isset($_POST['student_id']) ? intval($_POST['student_id']) : 0;
-        $data = isset($_POST['data']) ? $_POST['data'] : array();
 
-        if (empty($data['student_name'])) {
+        // Handle both nested 'data' array and flat POST data (from front-end portal)
+        $data = isset($_POST['data']) ? $_POST['data'] : $_POST;
+
+        // Get student name from either format
+        $student_name = '';
+        if (!empty($data['student_name'])) {
+            $student_name = $data['student_name'];
+        } elseif (!empty($_POST['student_name'])) {
+            $student_name = $_POST['student_name'];
+        }
+
+        if (empty($student_name)) {
             wp_send_json_error(array('message' => __('Student name is required.', 'al-huffaz-portal')));
         }
 
         // Prepare post data
         $post_data = array(
-            'post_title'  => sanitize_text_field($data['student_name']),
+            'post_title'  => sanitize_text_field($student_name),
             'post_type'   => 'student',
             'post_status' => 'publish',
         );
@@ -112,32 +133,42 @@ class Ajax_Handler {
 
         $student_id = $result;
 
-        // Save meta fields
-        $fields = Post_Types::get_student_fields();
+        // List of all fields to save (without underscore prefix for CPT UI compatibility)
+        $text_fields = array(
+            'gr_number', 'roll_number', 'gender', 'date_of_birth', 'admission_date',
+            'grade_level', 'islamic_studies_category', 'permanent_address', 'current_address',
+            'father_name', 'father_cnic', 'father_email',
+            'guardian_name', 'guardian_cnic', 'guardian_email', 'guardian_phone', 'guardian_whatsapp',
+            'relationship_to_student', 'emergency_contact', 'emergency_whatsapp',
+            'academic_year', 'academic_term',
+            'blood_group', 'allergies', 'medical_conditions',
+            'teacher_overall_comments', 'goal_1', 'goal_2', 'goal_3'
+        );
 
-        foreach ($fields as $key => $field) {
-            if (isset($data[$key])) {
-                $value = $data[$key];
+        foreach ($text_fields as $field) {
+            if (isset($data[$field])) {
+                update_post_meta($student_id, $field, sanitize_text_field($data[$field]));
+            }
+        }
 
-                // Sanitize based on type
-                switch ($field['type']) {
-                    case 'integer':
-                        $value = intval($value);
-                        break;
-                    case 'number':
-                        $value = floatval($value);
-                        break;
-                    case 'boolean':
-                        $value = $value === 'yes' || $value === true || $value === '1' ? 'yes' : 'no';
-                        break;
-                    case 'array':
-                        $value = is_array($value) ? $value : array();
-                        break;
-                    default:
-                        $value = sanitize_text_field($value);
-                }
+        // Number fields
+        $number_fields = array(
+            'monthly_tuition_fee', 'course_fee', 'uniform_fee', 'annual_fee', 'admission_fee',
+            'total_school_days', 'present_days'
+        );
 
-                update_post_meta($student_id, '_' . $key, $value);
+        foreach ($number_fields as $field) {
+            if (isset($data[$field])) {
+                update_post_meta($student_id, $field, floatval($data[$field]));
+            }
+        }
+
+        // Checkbox fields
+        $checkbox_fields = array('zakat_eligible', 'donation_eligible');
+        foreach ($checkbox_fields as $field) {
+            if (isset($data[$field])) {
+                $value = ($data[$field] === 'yes' || $data[$field] === '1' || $data[$field] === true) ? 'yes' : 'no';
+                update_post_meta($student_id, $field, $value);
             }
         }
 
@@ -146,7 +177,7 @@ class Ajax_Handler {
             $student_id ? 'update_student' : 'create_student',
             'student',
             $student_id,
-            sprintf('Student %s %s', $data['student_name'], $student_id ? 'updated' : 'created')
+            sprintf('Student %s %s', $student_name, $student_id ? 'updated' : 'created')
         );
 
         wp_send_json_success(array(
@@ -414,18 +445,22 @@ class Ajax_Handler {
             wp_send_json_error(array('message' => __('Student not found.', 'al-huffaz-portal')));
         }
 
-        // Get all meta
+        // Get all meta - handle both underscore-prefixed and non-prefixed keys (CPT UI uses non-prefixed)
         $meta = get_post_meta($student_id);
         $data = array(
-            'id'           => $student_id,
-            'student_name' => $student->post_title,
+            'id'   => $student_id,
+            'name' => $student->post_title,
         );
 
         foreach ($meta as $key => $value) {
-            if (strpos($key, '_') === 0) {
-                $clean_key = substr($key, 1);
-                $data[$clean_key] = maybe_unserialize($value[0]);
+            // Skip internal WordPress meta
+            if (strpos($key, '_wp_') === 0 || strpos($key, '_edit_') === 0) {
+                continue;
             }
+
+            // Handle both prefixed and non-prefixed keys
+            $clean_key = (strpos($key, '_') === 0) ? substr($key, 1) : $key;
+            $data[$clean_key] = maybe_unserialize($value[0]);
         }
 
         wp_send_json_success($data);
@@ -441,6 +476,7 @@ class Ajax_Handler {
         $per_page  = isset($_POST['per_page']) ? intval($_POST['per_page']) : 20;
         $search    = isset($_POST['search']) ? sanitize_text_field($_POST['search']) : '';
         $grade     = isset($_POST['grade']) ? sanitize_text_field($_POST['grade']) : '';
+        $category  = isset($_POST['category']) ? sanitize_text_field($_POST['category']) : '';
         $gender    = isset($_POST['gender']) ? sanitize_text_field($_POST['gender']) : '';
         $sponsored = isset($_POST['sponsored']) ? sanitize_text_field($_POST['sponsored']) : '';
 
@@ -449,31 +485,61 @@ class Ajax_Handler {
             'posts_per_page' => $per_page,
             'paged'          => $page,
             'post_status'    => 'publish',
+            'orderby'        => 'title',
+            'order'          => 'ASC',
         );
 
+        // Handle search - search by name or GR number
         if ($search) {
-            $args['s'] = $search;
+            // First try searching by GR number
+            $gr_args = array(
+                'post_type'      => 'student',
+                'posts_per_page' => -1,
+                'post_status'    => 'publish',
+                'fields'         => 'ids',
+                'meta_query'     => array(
+                    array(
+                        'key'     => 'gr_number',
+                        'value'   => $search,
+                        'compare' => 'LIKE',
+                    ),
+                ),
+            );
+            $gr_matches = get_posts($gr_args);
+
+            if (!empty($gr_matches)) {
+                $args['post__in'] = $gr_matches;
+            } else {
+                $args['s'] = $search;
+            }
         }
 
         $meta_query = array();
 
         if ($grade) {
             $meta_query[] = array(
-                'key'   => '_grade_level',
+                'key'   => 'grade_level',
                 'value' => $grade,
+            );
+        }
+
+        if ($category) {
+            $meta_query[] = array(
+                'key'   => 'islamic_studies_category',
+                'value' => $category,
             );
         }
 
         if ($gender) {
             $meta_query[] = array(
-                'key'   => '_gender',
+                'key'   => 'gender',
                 'value' => $gender,
             );
         }
 
         if ($sponsored === 'yes' || $sponsored === 'no') {
             $meta_query[] = array(
-                'key'   => '_is_sponsored',
+                'key'   => 'is_sponsored',
                 'value' => $sponsored,
             );
         }
@@ -487,14 +553,21 @@ class Ajax_Handler {
         $students = array();
 
         foreach ($query->posts as $post) {
+            // Get photo URL
+            $photo_id = get_post_meta($post->ID, 'student_photo', true);
+            $photo_url = $photo_id ? wp_get_attachment_image_url($photo_id, 'thumbnail') : '';
+
             $students[] = array(
-                'id'           => $post->ID,
-                'name'         => $post->post_title,
-                'gr_number'    => get_post_meta($post->ID, '_gr_number', true),
-                'grade_level'  => Helpers::get_grade_label(get_post_meta($post->ID, '_grade_level', true)),
-                'gender'       => get_post_meta($post->ID, '_gender', true),
-                'photo'        => Helpers::get_student_photo($post->ID),
-                'is_sponsored' => get_post_meta($post->ID, '_is_sponsored', true) === 'yes',
+                'id'                       => $post->ID,
+                'name'                     => $post->post_title,
+                'gr_number'                => get_post_meta($post->ID, 'gr_number', true),
+                'grade_level'              => get_post_meta($post->ID, 'grade_level', true),
+                'islamic_studies_category' => get_post_meta($post->ID, 'islamic_studies_category', true),
+                'gender'                   => get_post_meta($post->ID, 'gender', true),
+                'father_name'              => get_post_meta($post->ID, 'father_name', true),
+                'photo'                    => $photo_url,
+                'permalink'                => get_permalink($post->ID),
+                'is_sponsored'             => get_post_meta($post->ID, 'is_sponsored', true) === 'yes',
             );
         }
 
