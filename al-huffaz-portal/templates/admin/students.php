@@ -141,6 +141,9 @@ $grades = Settings::get('grade_levels', Settings::get_default_grades());
                                     <?php endif; ?>
                                 </td>
                                 <td>
+                                    <a href="<?php echo get_permalink($student['id']); ?>" class="alhuffaz-btn alhuffaz-btn-sm alhuffaz-btn-primary" target="_blank">
+                                        <?php _e('View', 'al-huffaz-portal'); ?>
+                                    </a>
                                     <a href="<?php echo admin_url('admin.php?page=alhuffaz-add-student&id=' . $student['id']); ?>" class="alhuffaz-btn alhuffaz-btn-sm alhuffaz-btn-secondary">
                                         <?php _e('Edit', 'al-huffaz-portal'); ?>
                                     </a>

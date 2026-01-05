@@ -23,6 +23,58 @@ class Post_Types {
     public function __construct() {
         add_action('init', array($this, 'register_post_types'));
         add_action('init', array($this, 'register_taxonomies'));
+
+        // Template loading for student single page
+        add_filter('single_template', array($this, 'load_student_template'));
+        add_filter('archive_template', array($this, 'load_students_archive_template'));
+    }
+
+    /**
+     * Load custom single student template from plugin
+     */
+    public function load_student_template($template) {
+        global $post;
+
+        if ($post && $post->post_type === 'student') {
+            // Check if theme has a template first
+            $theme_template = locate_template(array('single-student.php'));
+
+            if ($theme_template) {
+                return $theme_template;
+            }
+
+            // Use plugin template
+            $plugin_template = ALHUFFAZ_TEMPLATES_DIR . 'public/single-student.php';
+
+            if (file_exists($plugin_template)) {
+                return $plugin_template;
+            }
+        }
+
+        return $template;
+    }
+
+    /**
+     * Load custom students archive template from plugin
+     */
+    public function load_students_archive_template($template) {
+        if (is_post_type_archive('student')) {
+            // Check if theme has a template first
+            $theme_template = locate_template(array('archive-student.php'));
+
+            if ($theme_template) {
+                return $theme_template;
+            }
+
+            // Use plugin template
+            $plugin_template = ALHUFFAZ_TEMPLATES_DIR . 'public/archive-student.php';
+
+            if (file_exists($plugin_template)) {
+                return $plugin_template;
+            }
+        }
+
+        return $template;
     }
 
     /**
