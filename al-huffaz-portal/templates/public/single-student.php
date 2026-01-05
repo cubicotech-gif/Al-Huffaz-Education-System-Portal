@@ -3,7 +3,7 @@
  * Single Student Profile Template
  * Al-Huffaz Education System Portal
  *
- * This template displays the full student profile with all data
+ * Displays the complete student profile with result card format
  */
 
 defined('ABSPATH') || exit;
@@ -42,6 +42,7 @@ if (have_posts()) {
             'course_fee' => get_post_meta($student_id, 'course_fee', true),
             'uniform_fee' => get_post_meta($student_id, 'uniform_fee', true),
             'annual_fee' => get_post_meta($student_id, 'annual_fee', true),
+            'admission_fee' => get_post_meta($student_id, 'admission_fee', true),
             'zakat_eligible' => get_post_meta($student_id, 'zakat_eligible', true),
             'donation_eligible' => get_post_meta($student_id, 'donation_eligible', true),
             'blood_group' => get_post_meta($student_id, 'blood_group', true),
@@ -75,29 +76,45 @@ if (have_posts()) {
             $photo_url = wp_get_attachment_image_url($student_data['student_photo'], 'medium');
         }
 
+        // Grade mapping
         $grade_map = array(
             'kg1' => 'KG 1', 'kg2' => 'KG 2',
-            'class1' => 'CLASS 1', 'class2' => 'CLASS 2', 'class3' => 'CLASS 3',
-            'level1' => 'LEVEL 1', 'level2' => 'LEVEL 2', 'level3' => 'LEVEL 3',
+            'class1' => 'Class 1', 'class2' => 'Class 2', 'class3' => 'Class 3',
+            'level1' => 'Level 1', 'level2' => 'Level 2', 'level3' => 'Level 3',
             'shb' => 'SHB', 'shg' => 'SHG'
         );
-
         $grade_display = isset($grade_map[$student_data['grade_level']])
             ? $grade_map[$student_data['grade_level']]
             : ucfirst($student_data['grade_level']);
 
+        // Islamic category mapping
         $islamic_map = array('hifz' => 'Hifz', 'nazra' => 'Nazra', 'qaidah' => 'Qaidah');
         $islamic_display = isset($islamic_map[$student_data['islamic_studies_category']])
             ? $islamic_map[$student_data['islamic_studies_category']]
             : ucfirst($student_data['islamic_studies_category']);
 
-        $term_map = array(
-            'term1' => 'Term 1', 'term2' => 'Term 2', 'term3' => 'Term 3',
-            'semester1' => 'Semester 1', 'semester2' => 'Semester 2', 'annual' => 'Annual'
-        );
+        // Term mapping (only Mid and Annual)
+        $term_map = array('mid' => 'Mid Term', 'annual' => 'Annual');
         $term_display = isset($term_map[$student_data['academic_term']])
             ? $term_map[$student_data['academic_term']]
             : ucfirst($student_data['academic_term']);
+
+        // Calculate grade from percentage
+        function sp_get_grade($pct) {
+            if ($pct >= 90) return 'A+';
+            if ($pct >= 80) return 'A';
+            if ($pct >= 70) return 'B';
+            if ($pct >= 60) return 'C';
+            if ($pct >= 50) return 'D';
+            return 'F';
+        }
+
+        function sp_get_grade_class($pct) {
+            if ($pct >= 80) return 'excellent';
+            if ($pct >= 60) return 'good';
+            if ($pct >= 50) return 'average';
+            return 'poor';
+        }
 
         // Edit URL for admin users
         $edit_url = current_user_can('edit_posts') ? admin_url('admin.php?page=alhuffaz-add-student&id=' . $student_id) : '';
@@ -150,23 +167,10 @@ if (have_posts()) {
     gap: 24px;
 }
 
-.sp-header-info h1 {
-    margin: 0 0 8px 0;
-    font-size: 36px;
-    font-weight: 800;
-}
+.sp-header-info h1 { margin: 0 0 8px 0; font-size: 36px; font-weight: 800; }
+.sp-header-info p { margin: 0; opacity: 0.95; font-size: 16px; }
 
-.sp-header-info p {
-    margin: 0;
-    opacity: 0.95;
-    font-size: 16px;
-}
-
-.sp-buttons {
-    display: flex;
-    gap: 12px;
-    flex-wrap: wrap;
-}
+.sp-buttons { display: flex; gap: 12px; flex-wrap: wrap; }
 
 .sp-btn {
     padding: 12px 24px;
@@ -183,21 +187,9 @@ if (have_posts()) {
     font-size: 15px;
 }
 
-.sp-btn-print {
-    background: rgba(255,255,255,0.2);
-    color: white;
-    border: 2px solid rgba(255,255,255,0.5);
-}
-
-.sp-btn-edit {
-    background: white;
-    color: var(--primary);
-}
-
-.sp-btn:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(0,0,0,0.2);
-}
+.sp-btn-print { background: rgba(255,255,255,0.2); color: white; border: 2px solid rgba(255,255,255,0.5); }
+.sp-btn-edit { background: white; color: var(--primary); }
+.sp-btn:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.2); }
 
 /* TABS */
 .sp-tabs {
@@ -225,26 +217,16 @@ if (have_posts()) {
     gap: 8px;
 }
 
-.sp-tab:hover,
-.sp-tab.active {
+.sp-tab:hover, .sp-tab.active {
     color: var(--primary);
     border-bottom-color: var(--primary);
     background: var(--bg-light);
 }
 
 /* CONTENT */
-.sp-content {
-    padding: 40px;
-}
-
-.sp-panel {
-    display: none;
-}
-
-.sp-panel.active {
-    display: block;
-    animation: fadeIn 0.4s;
-}
+.sp-content { padding: 40px; }
+.sp-panel { display: none; }
+.sp-panel.active { display: block; animation: fadeIn 0.4s; }
 
 @keyframes fadeIn {
     from { opacity: 0; transform: translateY(10px); }
@@ -261,9 +243,7 @@ if (have_posts()) {
     gap: 12px;
 }
 
-.sp-section-title i {
-    color: var(--primary);
-}
+.sp-section-title i { color: var(--primary); }
 
 .sp-grid {
     display: grid;
@@ -292,10 +272,7 @@ if (have_posts()) {
     border-bottom: 3px solid var(--light-blue);
 }
 
-.sp-card-title i {
-    font-size: 22px;
-    color: var(--primary);
-}
+.sp-card-title i { font-size: 22px; color: var(--primary); }
 
 /* PROFILE SECTION */
 .sp-profile-card {
@@ -336,19 +313,9 @@ if (have_posts()) {
     box-shadow: 0 8px 24px rgba(0, 128, 255, 0.2);
 }
 
-.sp-profile-info h2 {
-    margin: 0 0 12px 0;
-    font-size: 32px;
-    font-weight: 800;
-    color: var(--text-dark);
-}
+.sp-profile-info h2 { margin: 0 0 12px 0; font-size: 32px; font-weight: 800; color: var(--text-dark); }
 
-.sp-badges {
-    display: flex;
-    gap: 10px;
-    flex-wrap: wrap;
-    margin-bottom: 16px;
-}
+.sp-badges { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 16px; }
 
 .sp-badge {
     padding: 8px 20px;
@@ -360,20 +327,9 @@ if (have_posts()) {
     gap: 6px;
 }
 
-.sp-badge-primary {
-    background: var(--primary);
-    color: white;
-}
-
-.sp-badge-light {
-    background: var(--blue-100);
-    color: var(--primary-dark);
-}
-
-.sp-badge-success {
-    background: #d1fae5;
-    color: #065f46;
-}
+.sp-badge-primary { background: var(--primary); color: white; }
+.sp-badge-light { background: var(--blue-100); color: var(--primary-dark); }
+.sp-badge-success { background: #d1fae5; color: #065f46; }
 
 /* INFO GRID */
 .sp-info-grid {
@@ -414,17 +370,10 @@ if (have_posts()) {
     text-transform: uppercase;
 }
 
-.sp-info-content strong {
-    font-size: 16px;
-    color: var(--text-dark);
-    font-weight: 600;
-}
+.sp-info-content strong { font-size: 16px; color: var(--text-dark); font-weight: 600; }
 
 /* DATA LIST */
-.sp-data-list {
-    display: grid;
-    gap: 12px;
-}
+.sp-data-list { display: grid; gap: 12px; }
 
 .sp-data-row {
     display: flex;
@@ -437,24 +386,178 @@ if (have_posts()) {
     align-items: center;
 }
 
-.sp-data-label {
-    font-weight: 600;
-    color: var(--text-muted);
-    font-size: 14px;
+.sp-data-label { font-weight: 600; color: var(--text-muted); font-size: 14px; }
+.sp-data-value { font-weight: 600; color: var(--text-dark); text-align: right; font-size: 15px; }
+
+/* RESULT CARD TABLE STYLES */
+.sp-result-card {
+    background: white;
+    border: 2px solid var(--border);
+    border-radius: 16px;
+    overflow: hidden;
+    margin-bottom: 32px;
+    box-shadow: 0 4px 20px rgba(0, 128, 255, 0.1);
 }
 
-.sp-data-value {
+.sp-result-header {
+    background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+    color: white;
+    padding: 20px 28px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.sp-result-header h3 {
+    margin: 0;
+    font-size: 22px;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.sp-result-summary {
+    display: flex;
+    gap: 20px;
+    align-items: center;
+}
+
+.sp-result-avg {
+    background: rgba(255,255,255,0.2);
+    padding: 8px 20px;
+    border-radius: 24px;
+    font-weight: 700;
+}
+
+.sp-result-grade {
+    background: white;
+    color: var(--primary);
+    padding: 8px 20px;
+    border-radius: 24px;
+    font-weight: 800;
+    font-size: 18px;
+}
+
+.sp-result-body { padding: 0; }
+
+.sp-result-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.sp-result-table th,
+.sp-result-table td {
+    padding: 14px 16px;
+    text-align: center;
+    border-bottom: 1px solid var(--border);
+}
+
+.sp-result-table thead th {
+    background: var(--bg-light);
+    color: var(--text-dark);
+    font-weight: 700;
+    font-size: 13px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.sp-result-table tbody tr:hover { background: var(--bg-light); }
+
+.sp-result-table tbody td { font-size: 14px; color: var(--text-body); }
+
+.sp-result-table .exam-name {
+    text-align: left;
     font-weight: 600;
     color: var(--text-dark);
-    text-align: right;
-    font-size: 15px;
+    background: var(--bg-light);
+}
+
+.sp-result-table .exam-month {
+    text-align: left;
+    padding-left: 32px;
+    font-weight: 500;
+    color: var(--text-muted);
+}
+
+.sp-grade-badge {
+    display: inline-block;
+    padding: 4px 12px;
+    border-radius: 6px;
+    font-weight: 700;
+    font-size: 13px;
+}
+
+.sp-grade-excellent { background: #d1fae5; color: #065f46; }
+.sp-grade-good { background: #dbeafe; color: #1e40af; }
+.sp-grade-average { background: #fef3c7; color: #92400e; }
+.sp-grade-poor { background: #fee2e2; color: #991b1b; }
+
+.sp-result-footer {
+    background: linear-gradient(135deg, var(--bg-light), white);
+    padding: 20px 28px;
+    border-top: 2px solid var(--border);
+}
+
+.sp-result-footer-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 16px;
+}
+
+.sp-result-footer-item {
+    text-align: center;
+    padding: 12px;
+    background: white;
+    border-radius: 10px;
+    border: 2px solid var(--border);
+}
+
+.sp-result-footer-item label {
+    display: block;
+    font-size: 11px;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    margin-bottom: 4px;
+}
+
+.sp-result-footer-item strong {
+    font-size: 18px;
+    color: var(--primary);
+}
+
+/* Teacher Assessment in Result Card */
+.sp-teacher-assessment {
+    padding: 20px 28px;
+    background: var(--bg-light);
+    border-top: 2px solid var(--border);
+}
+
+.sp-assessment-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 16px;
+}
+
+.sp-assessment-item h5 {
+    margin: 0 0 8px 0;
+    font-size: 13px;
+    color: var(--text-muted);
+    text-transform: uppercase;
+}
+
+.sp-assessment-item p {
+    margin: 0;
+    padding: 12px;
+    background: white;
+    border-radius: 8px;
+    font-size: 14px;
+    color: var(--text-body);
+    border-left: 3px solid var(--primary);
 }
 
 /* FEES */
-.sp-fee-grid {
-    display: grid;
-    gap: 14px;
-}
+.sp-fee-grid { display: grid; gap: 14px; }
 
 .sp-fee-item {
     display: flex;
@@ -475,23 +578,9 @@ if (have_posts()) {
 }
 
 /* ATTENDANCE */
-.sp-attendance-wrapper {
-    display: flex;
-    gap: 36px;
-    align-items: center;
-}
-
-.sp-att-circle {
-    width: 160px;
-    height: 160px;
-    flex-shrink: 0;
-}
-
-.sp-att-stats {
-    display: grid;
-    gap: 14px;
-    flex: 1;
-}
+.sp-attendance-wrapper { display: flex; gap: 36px; align-items: center; }
+.sp-att-circle { width: 160px; height: 160px; flex-shrink: 0; }
+.sp-att-stats { display: grid; gap: 14px; flex: 1; }
 
 .sp-att-stat {
     display: flex;
@@ -515,29 +604,21 @@ if (have_posts()) {
     margin-bottom: 28px;
 }
 
-.sp-blood-icon {
-    font-size: 48px;
-    color: var(--danger);
+.sp-blood-icon { font-size: 48px; color: var(--danger); }
+.sp-blood-value { font-size: 32px; font-weight: 800; color: var(--danger); }
+
+/* BEHAVIOR RATING */
+.sp-rating-display {
+    display: flex;
+    gap: 4px;
 }
 
-.sp-blood-value {
-    font-size: 32px;
-    font-weight: 800;
-    color: var(--danger);
-}
+.sp-rating-star { color: #e2e8f0; font-size: 16px; }
+.sp-rating-star.filled { color: #f59e0b; }
 
 /* NO DATA */
-.sp-no-data {
-    text-align: center;
-    padding: 60px 20px;
-    color: var(--text-muted);
-}
-
-.sp-no-data i {
-    font-size: 64px;
-    margin-bottom: 20px;
-    color: var(--blue-100);
-}
+.sp-no-data { text-align: center; padding: 60px 20px; color: var(--text-muted); }
+.sp-no-data i { font-size: 64px; margin-bottom: 20px; color: var(--blue-100); }
 
 /* RESPONSIVE */
 @media (max-width: 768px) {
@@ -550,12 +631,15 @@ if (have_posts()) {
     .sp-profile-header { flex-direction: column; text-align: center; }
     .sp-attendance-wrapper { flex-direction: column; }
     .sp-grid { grid-template-columns: 1fr; }
+    .sp-result-table { font-size: 12px; }
+    .sp-result-table th, .sp-result-table td { padding: 10px 8px; }
 }
 
 @media print {
     .no-print { display: none !important; }
     .sp-wrapper { box-shadow: none; }
     .sp-panel { display: block !important; page-break-after: always; }
+    .sp-result-card { page-break-inside: avoid; }
 }
 </style>
 
@@ -585,7 +669,7 @@ if (have_posts()) {
             <button class="sp-tab active" data-tab="overview"><i class="fas fa-home"></i> Overview</button>
             <button class="sp-tab" data-tab="personal"><i class="fas fa-user"></i> Personal</button>
             <button class="sp-tab" data-tab="family"><i class="fas fa-users"></i> Family</button>
-            <button class="sp-tab" data-tab="academic"><i class="fas fa-graduation-cap"></i> Academic</button>
+            <button class="sp-tab" data-tab="academic"><i class="fas fa-graduation-cap"></i> Result Card</button>
             <button class="sp-tab" data-tab="financial"><i class="fas fa-dollar-sign"></i> Financial</button>
             <button class="sp-tab" data-tab="health"><i class="fas fa-heartbeat"></i> Health</button>
         </div>
@@ -748,37 +832,215 @@ if (have_posts()) {
                 </div>
             </div>
 
-            <!-- ACADEMIC TAB -->
+            <!-- ACADEMIC / RESULT CARD TAB -->
             <div class="sp-panel" id="academic">
-                <h2 class="sp-section-title"><i class="fas fa-graduation-cap"></i> Academic Performance</h2>
+                <h2 class="sp-section-title"><i class="fas fa-graduation-cap"></i> Academic Result Card</h2>
 
-                <?php if (!empty($subjects)): ?>
-                    <?php foreach ($subjects as $subject): ?>
-                    <div class="sp-card" style="margin-bottom: 28px;">
-                        <h3 class="sp-card-title"><i class="fas fa-book-open"></i> <?php echo esc_html($subject['name']); ?></h3>
+                <?php if ($student_data['academic_year']): ?>
+                <div style="margin-bottom: 24px; padding: 16px 24px; background: var(--bg-light); border-radius: 10px; display: flex; gap: 32px; flex-wrap: wrap;">
+                    <div><strong>Academic Year:</strong> <?php echo esc_html($student_data['academic_year']); ?></div>
+                    <div><strong>Grade:</strong> <?php echo esc_html($grade_display); ?></div>
+                    <div><strong>Term:</strong> <?php echo esc_html($term_display); ?></div>
+                </div>
+                <?php endif; ?>
 
-                        <?php if (!empty($subject['monthly_exams'])): ?>
-                        <h4 style="margin: 16px 0 12px; color: var(--text-dark);"><i class="fas fa-calendar"></i> Monthly Exams</h4>
-                        <?php foreach ($subject['monthly_exams'] as $exam): ?>
-                        <div class="sp-data-list" style="margin-bottom: 16px;">
-                            <div class="sp-data-row"><span class="sp-data-label"><?php echo esc_html($exam['month_name'] ?: 'Monthly'); ?>:</span><span class="sp-data-value"><?php echo esc_html($exam['overall_obtained']); ?>/<?php echo esc_html($exam['overall_total']); ?> (<?php echo esc_html($exam['percentage']); ?>% - <?php echo esc_html($exam['grade']); ?>)</span></div>
+                <?php if (!empty($subjects)):
+                    $grand_total_obtained = 0;
+                    $grand_total_marks = 0;
+
+                    foreach ($subjects as $subject):
+                        if (empty($subject['name'])) continue;
+
+                        // Calculate subject totals
+                        $subject_obtained = 0;
+                        $subject_total = 0;
+                        $exam_count = 0;
+
+                        // Monthly exams
+                        $monthly_exams = isset($subject['monthly_exams']) ? $subject['monthly_exams'] : array();
+
+                        // Mid semester
+                        $mid = isset($subject['mid_semester']) ? $subject['mid_semester'] : array();
+                        $mid_total = (intval($mid['oral_total'] ?? 0) + intval($mid['written_total'] ?? 0));
+                        $mid_obtained = (intval($mid['oral_obtained'] ?? 0) + intval($mid['written_obtained'] ?? 0));
+                        if ($mid_total > 0) {
+                            $mid_pct = round(($mid_obtained / $mid_total) * 100);
+                            $subject_obtained += $mid_obtained;
+                            $subject_total += $mid_total;
+                            $exam_count++;
+                        }
+
+                        // Final/Annual semester
+                        $final = isset($subject['final_semester']) ? $subject['final_semester'] : array();
+                        $final_total = (intval($final['oral_total'] ?? 0) + intval($final['written_total'] ?? 0));
+                        $final_obtained = (intval($final['oral_obtained'] ?? 0) + intval($final['written_obtained'] ?? 0));
+                        if ($final_total > 0) {
+                            $final_pct = round(($final_obtained / $final_total) * 100);
+                            $subject_obtained += $final_obtained;
+                            $subject_total += $final_total;
+                            $exam_count++;
+                        }
+
+                        // Add monthly exams to total
+                        foreach ($monthly_exams as $monthly) {
+                            $m_total = (intval($monthly['oral_total'] ?? 0) + intval($monthly['written_total'] ?? 0));
+                            $m_obtained = (intval($monthly['oral_obtained'] ?? 0) + intval($monthly['written_obtained'] ?? 0));
+                            if ($m_total > 0) {
+                                $subject_obtained += $m_obtained;
+                                $subject_total += $m_total;
+                            }
+                        }
+
+                        $subject_pct = $subject_total > 0 ? round(($subject_obtained / $subject_total) * 100) : 0;
+                        $subject_grade = sp_get_grade($subject_pct);
+                        $subject_grade_class = sp_get_grade_class($subject_pct);
+
+                        $grand_total_obtained += $subject_obtained;
+                        $grand_total_marks += $subject_total;
+                ?>
+
+                <div class="sp-result-card">
+                    <div class="sp-result-header">
+                        <h3><i class="fas fa-book"></i> <?php echo esc_html($subject['name']); ?></h3>
+                        <div class="sp-result-summary">
+                            <span class="sp-result-avg"><?php echo $subject_obtained; ?>/<?php echo $subject_total; ?> (<?php echo $subject_pct; ?>%)</span>
+                            <span class="sp-result-grade"><?php echo $subject_grade; ?></span>
                         </div>
-                        <?php endforeach; ?>
-                        <?php endif; ?>
-
-                        <?php if (!empty($subject['mid_semester']['overall_total'])): ?>
-                        <div class="sp-data-list" style="margin-bottom: 16px;">
-                            <div class="sp-data-row"><span class="sp-data-label">Mid Semester:</span><span class="sp-data-value"><?php echo esc_html($subject['mid_semester']['overall_obtained']); ?>/<?php echo esc_html($subject['mid_semester']['overall_total']); ?> (<?php echo esc_html($subject['mid_semester']['percentage']); ?>% - <?php echo esc_html($subject['mid_semester']['grade']); ?>)</span></div>
-                        </div>
-                        <?php endif; ?>
-
-                        <?php if (!empty($subject['final_semester']['overall_total'])): ?>
-                        <div class="sp-data-list">
-                            <div class="sp-data-row"><span class="sp-data-label">Final Semester:</span><span class="sp-data-value"><?php echo esc_html($subject['final_semester']['overall_obtained']); ?>/<?php echo esc_html($subject['final_semester']['overall_total']); ?> (<?php echo esc_html($subject['final_semester']['percentage']); ?>% - <?php echo esc_html($subject['final_semester']['grade']); ?>)</span></div>
-                        </div>
-                        <?php endif; ?>
                     </div>
-                    <?php endforeach; ?>
+
+                    <div class="sp-result-body">
+                        <table class="sp-result-table">
+                            <thead>
+                                <tr>
+                                    <th style="text-align: left; width: 25%;">Examination</th>
+                                    <th>Oral Total</th>
+                                    <th>Oral Obt.</th>
+                                    <th>Written Total</th>
+                                    <th>Written Obt.</th>
+                                    <th>Total</th>
+                                    <th>Obtained</th>
+                                    <th>%</th>
+                                    <th>Grade</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <?php if (!empty($monthly_exams)): ?>
+                                <tr>
+                                    <td class="exam-name" colspan="9"><i class="fas fa-calendar-alt"></i> Monthly Tests</td>
+                                </tr>
+                                <?php foreach ($monthly_exams as $monthly):
+                                    if (empty($monthly['oral_total']) && empty($monthly['written_total'])) continue;
+                                    $m_oral_total = intval($monthly['oral_total'] ?? 0);
+                                    $m_oral_obt = intval($monthly['oral_obtained'] ?? 0);
+                                    $m_written_total = intval($monthly['written_total'] ?? 0);
+                                    $m_written_obt = intval($monthly['written_obtained'] ?? 0);
+                                    $m_total = $m_oral_total + $m_written_total;
+                                    $m_obtained = $m_oral_obt + $m_written_obt;
+                                    $m_pct = $m_total > 0 ? round(($m_obtained / $m_total) * 100) : 0;
+                                    $m_grade = sp_get_grade($m_pct);
+                                    $m_grade_class = sp_get_grade_class($m_pct);
+                                ?>
+                                <tr>
+                                    <td class="exam-month"><?php echo esc_html($monthly['month_name'] ?: 'Monthly'); ?></td>
+                                    <td><?php echo $m_oral_total; ?></td>
+                                    <td><?php echo $m_oral_obt; ?></td>
+                                    <td><?php echo $m_written_total; ?></td>
+                                    <td><?php echo $m_written_obt; ?></td>
+                                    <td><strong><?php echo $m_total; ?></strong></td>
+                                    <td><strong><?php echo $m_obtained; ?></strong></td>
+                                    <td><strong><?php echo $m_pct; ?>%</strong></td>
+                                    <td><span class="sp-grade-badge sp-grade-<?php echo $m_grade_class; ?>"><?php echo $m_grade; ?></span></td>
+                                </tr>
+                                <?php endforeach; ?>
+                                <?php endif; ?>
+
+                                <?php if ($mid_total > 0): ?>
+                                <tr>
+                                    <td class="exam-name"><i class="fas fa-book-open"></i> Mid Term Exam</td>
+                                    <td><?php echo intval($mid['oral_total'] ?? 0); ?></td>
+                                    <td><?php echo intval($mid['oral_obtained'] ?? 0); ?></td>
+                                    <td><?php echo intval($mid['written_total'] ?? 0); ?></td>
+                                    <td><?php echo intval($mid['written_obtained'] ?? 0); ?></td>
+                                    <td><strong><?php echo $mid_total; ?></strong></td>
+                                    <td><strong><?php echo $mid_obtained; ?></strong></td>
+                                    <td><strong><?php echo $mid_pct; ?>%</strong></td>
+                                    <td><span class="sp-grade-badge sp-grade-<?php echo sp_get_grade_class($mid_pct); ?>"><?php echo sp_get_grade($mid_pct); ?></span></td>
+                                </tr>
+                                <?php endif; ?>
+
+                                <?php if ($final_total > 0): ?>
+                                <tr>
+                                    <td class="exam-name"><i class="fas fa-graduation-cap"></i> Annual Exam</td>
+                                    <td><?php echo intval($final['oral_total'] ?? 0); ?></td>
+                                    <td><?php echo intval($final['oral_obtained'] ?? 0); ?></td>
+                                    <td><?php echo intval($final['written_total'] ?? 0); ?></td>
+                                    <td><?php echo intval($final['written_obtained'] ?? 0); ?></td>
+                                    <td><strong><?php echo $final_total; ?></strong></td>
+                                    <td><strong><?php echo $final_obtained; ?></strong></td>
+                                    <td><strong><?php echo $final_pct; ?>%</strong></td>
+                                    <td><span class="sp-grade-badge sp-grade-<?php echo sp_get_grade_class($final_pct); ?>"><?php echo sp_get_grade($final_pct); ?></span></td>
+                                </tr>
+                                <?php endif; ?>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <?php if (!empty($subject['strengths']) || !empty($subject['areas_for_improvement']) || !empty($subject['teacher_comments'])): ?>
+                    <div class="sp-teacher-assessment">
+                        <div class="sp-assessment-grid">
+                            <?php if (!empty($subject['strengths'])): ?>
+                            <div class="sp-assessment-item">
+                                <h5><i class="fas fa-star"></i> Strengths</h5>
+                                <p><?php echo esc_html($subject['strengths']); ?></p>
+                            </div>
+                            <?php endif; ?>
+                            <?php if (!empty($subject['areas_for_improvement'])): ?>
+                            <div class="sp-assessment-item">
+                                <h5><i class="fas fa-chart-line"></i> Areas for Improvement</h5>
+                                <p><?php echo esc_html($subject['areas_for_improvement']); ?></p>
+                            </div>
+                            <?php endif; ?>
+                            <?php if (!empty($subject['teacher_comments'])): ?>
+                            <div class="sp-assessment-item">
+                                <h5><i class="fas fa-comment"></i> Teacher Comments</h5>
+                                <p><?php echo esc_html($subject['teacher_comments']); ?></p>
+                            </div>
+                            <?php endif; ?>
+                        </div>
+                    </div>
+                    <?php endif; ?>
+                </div>
+
+                <?php endforeach; ?>
+
+                <!-- Grand Total Summary -->
+                <?php
+                $grand_pct = $grand_total_marks > 0 ? round(($grand_total_obtained / $grand_total_marks) * 100) : 0;
+                $grand_grade = sp_get_grade($grand_pct);
+                $grand_grade_class = sp_get_grade_class($grand_pct);
+                ?>
+                <div class="sp-card" style="background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%); color: white;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 20px;">
+                        <div>
+                            <h3 style="margin: 0; font-size: 24px;"><i class="fas fa-trophy"></i> Overall Result</h3>
+                        </div>
+                        <div style="display: flex; gap: 24px; align-items: center;">
+                            <div style="text-align: center;">
+                                <div style="font-size: 12px; opacity: 0.8;">Total Marks</div>
+                                <div style="font-size: 28px; font-weight: 800;"><?php echo $grand_total_obtained; ?>/<?php echo $grand_total_marks; ?></div>
+                            </div>
+                            <div style="text-align: center;">
+                                <div style="font-size: 12px; opacity: 0.8;">Percentage</div>
+                                <div style="font-size: 28px; font-weight: 800;"><?php echo $grand_pct; ?>%</div>
+                            </div>
+                            <div style="background: white; color: var(--primary); padding: 12px 28px; border-radius: 12px; text-align: center;">
+                                <div style="font-size: 12px; color: var(--text-muted);">Grade</div>
+                                <div style="font-size: 32px; font-weight: 800;"><?php echo $grand_grade; ?></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
                 <?php else: ?>
                     <div class="sp-no-data">
                         <i class="fas fa-book"></i>
@@ -787,9 +1049,26 @@ if (have_posts()) {
                 <?php endif; ?>
 
                 <?php if ($student_data['teacher_overall_comments']): ?>
-                <div class="sp-card">
-                    <h3 class="sp-card-title"><i class="fas fa-comment-alt"></i> Teacher's Comments</h3>
+                <div class="sp-card" style="margin-top: 28px;">
+                    <h3 class="sp-card-title"><i class="fas fa-comment-alt"></i> Teacher's Overall Comments</h3>
                     <p style="padding: 16px; background: var(--bg-light); border-radius: 10px; line-height: 1.8;"><?php echo nl2br(esc_html($student_data['teacher_overall_comments'])); ?></p>
+                </div>
+                <?php endif; ?>
+
+                <?php if ($student_data['goal_1'] || $student_data['goal_2'] || $student_data['goal_3']): ?>
+                <div class="sp-card" style="margin-top: 28px;">
+                    <h3 class="sp-card-title"><i class="fas fa-bullseye"></i> Learning Goals</h3>
+                    <div class="sp-data-list">
+                        <?php if ($student_data['goal_1']): ?>
+                        <div class="sp-data-row"><span class="sp-data-label">Goal 1:</span><span class="sp-data-value"><?php echo esc_html($student_data['goal_1']); ?></span></div>
+                        <?php endif; ?>
+                        <?php if ($student_data['goal_2']): ?>
+                        <div class="sp-data-row"><span class="sp-data-label">Goal 2:</span><span class="sp-data-value"><?php echo esc_html($student_data['goal_2']); ?></span></div>
+                        <?php endif; ?>
+                        <?php if ($student_data['goal_3']): ?>
+                        <div class="sp-data-row"><span class="sp-data-label">Goal 3:</span><span class="sp-data-value"><?php echo esc_html($student_data['goal_3']); ?></span></div>
+                        <?php endif; ?>
+                    </div>
                 </div>
                 <?php endif; ?>
             </div>
@@ -807,6 +1086,7 @@ if (have_posts()) {
                         if ($student_data['course_fee']) $fees['Course Fee'] = $student_data['course_fee'];
                         if ($student_data['uniform_fee']) $fees['Uniform Fee'] = $student_data['uniform_fee'];
                         if ($student_data['annual_fee']) $fees['Annual Fee'] = $student_data['annual_fee'];
+                        if ($student_data['admission_fee']) $fees['Admission Fee'] = $student_data['admission_fee'];
                         $total_fees = array_sum($fees);
                         ?>
 
@@ -846,44 +1126,72 @@ if (have_posts()) {
 
             <!-- HEALTH TAB -->
             <div class="sp-panel" id="health">
-                <h2 class="sp-section-title"><i class="fas fa-heartbeat"></i> Health Information</h2>
+                <h2 class="sp-section-title"><i class="fas fa-heartbeat"></i> Health & Behavior</h2>
 
-                <div class="sp-card">
-                    <h3 class="sp-card-title"><i class="fas fa-notes-medical"></i> Health Records</h3>
+                <div class="sp-grid">
+                    <div class="sp-card">
+                        <h3 class="sp-card-title"><i class="fas fa-notes-medical"></i> Health Information</h3>
 
-                    <div class="sp-blood-box">
-                        <div class="sp-blood-icon"><i class="fas fa-tint"></i></div>
-                        <div><label style="display: block; font-size: 13px; color: #991b1b; margin-bottom: 8px; font-weight: 600;">Blood Group</label><div class="sp-blood-value"><?php echo esc_html($student_data['blood_group'] ?: 'Not Specified'); ?></div></div>
+                        <div class="sp-blood-box">
+                            <div class="sp-blood-icon"><i class="fas fa-tint"></i></div>
+                            <div>
+                                <label style="display: block; font-size: 13px; color: #991b1b; margin-bottom: 8px; font-weight: 600;">Blood Group</label>
+                                <div class="sp-blood-value"><?php echo esc_html($student_data['blood_group'] ?: 'Not Specified'); ?></div>
+                            </div>
+                        </div>
+
+                        <div class="sp-data-list">
+                            <?php if ($student_data['allergies']): ?>
+                            <div class="sp-data-row">
+                                <span class="sp-data-label"><i class="fas fa-allergies"></i> Allergies:</span>
+                                <span class="sp-data-value"><?php echo esc_html($student_data['allergies']); ?></span>
+                            </div>
+                            <?php endif; ?>
+                            <?php if ($student_data['medical_conditions']): ?>
+                            <div class="sp-data-row">
+                                <span class="sp-data-label"><i class="fas fa-file-medical"></i> Medical Conditions:</span>
+                                <span class="sp-data-value"><?php echo esc_html($student_data['medical_conditions']); ?></span>
+                            </div>
+                            <?php endif; ?>
+                            <?php if (!$student_data['allergies'] && !$student_data['medical_conditions']): ?>
+                            <div class="sp-data-row">
+                                <span class="sp-data-label"><i class="fas fa-check-circle" style="color: var(--success);"></i></span>
+                                <span class="sp-data-value">No health concerns reported</span>
+                            </div>
+                            <?php endif; ?>
+                        </div>
                     </div>
 
-                    <?php if ($student_data['health_rating'] || $student_data['cleanness_rating']): ?>
-                    <div class="sp-data-list" style="margin-bottom: 24px;">
-                        <?php if ($student_data['health_rating']): ?>
-                        <div class="sp-data-row"><span class="sp-data-label">Health Rating:</span><span class="sp-data-value"><?php echo esc_html(ucfirst($student_data['health_rating'])); ?></span></div>
-                        <?php endif; ?>
-                        <?php if ($student_data['cleanness_rating']): ?>
-                        <div class="sp-data-row"><span class="sp-data-label">Cleanliness Rating:</span><span class="sp-data-value"><?php echo esc_html(ucfirst($student_data['cleanness_rating'])); ?></span></div>
-                        <?php endif; ?>
+                    <div class="sp-card">
+                        <h3 class="sp-card-title"><i class="fas fa-star"></i> Behavior Assessment</h3>
+                        <div class="sp-data-list">
+                            <?php
+                            $ratings = array(
+                                'health_rating' => 'Health & Wellness',
+                                'cleanness_rating' => 'Cleanliness & Hygiene',
+                                'completes_homework' => 'Homework Completion',
+                                'participates_in_class' => 'Class Participation',
+                                'works_well_in_groups' => 'Group Work',
+                                'problem_solving_skills' => 'Problem Solving',
+                                'organization_preparedness' => 'Organization'
+                            );
+                            foreach ($ratings as $field => $label):
+                                $val = intval($student_data[$field] ?? 0);
+                                if ($val > 0):
+                            ?>
+                            <div class="sp-data-row">
+                                <span class="sp-data-label"><?php echo $label; ?>:</span>
+                                <span class="sp-data-value">
+                                    <div class="sp-rating-display">
+                                        <?php for ($i = 1; $i <= 5; $i++): ?>
+                                        <i class="fas fa-star sp-rating-star <?php echo $i <= $val ? 'filled' : ''; ?>"></i>
+                                        <?php endfor; ?>
+                                    </div>
+                                </span>
+                            </div>
+                            <?php endif; endforeach; ?>
+                        </div>
                     </div>
-                    <?php endif; ?>
-
-                    <?php if ($student_data['allergies']): ?>
-                    <div style="margin-bottom: 16px;">
-                        <h4 style="margin-bottom: 8px; color: var(--text-dark);"><i class="fas fa-allergies"></i> Allergies</h4>
-                        <p style="padding: 16px; background: var(--bg-light); border-radius: 10px;"><?php echo nl2br(esc_html($student_data['allergies'])); ?></p>
-                    </div>
-                    <?php endif; ?>
-
-                    <?php if ($student_data['medical_conditions']): ?>
-                    <div>
-                        <h4 style="margin-bottom: 8px; color: var(--text-dark);"><i class="fas fa-file-medical"></i> Medical Conditions</h4>
-                        <p style="padding: 16px; background: var(--bg-light); border-radius: 10px;"><?php echo nl2br(esc_html($student_data['medical_conditions'])); ?></p>
-                    </div>
-                    <?php endif; ?>
-
-                    <?php if (!$student_data['allergies'] && !$student_data['medical_conditions']): ?>
-                    <div class="sp-no-data"><i class="fas fa-check-circle"></i><p>No health concerns reported</p></div>
-                    <?php endif; ?>
                 </div>
             </div>
 

@@ -359,9 +359,8 @@ function ahp_checked($field, $data) {
                         <label class="ahp-label"><i class="fas fa-clock"></i> Academic Term</label>
                         <select name="academic_term" class="ahp-input">
                             <option value="">Select Term</option>
-                            <option value="first" <?php echo ahp_selected('academic_term', 'first', $student_data); ?>>First Term</option>
-                            <option value="second" <?php echo ahp_selected('academic_term', 'second', $student_data); ?>>Second Term</option>
-                            <option value="third" <?php echo ahp_selected('academic_term', 'third', $student_data); ?>>Third Term</option>
+                            <option value="mid" <?php echo ahp_selected('academic_term', 'mid', $student_data); ?>>Mid Term</option>
+                            <option value="annual" <?php echo ahp_selected('academic_term', 'annual', $student_data); ?>>Annual</option>
                         </select>
                     </div>
                 </div>

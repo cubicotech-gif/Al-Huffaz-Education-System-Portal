@@ -135,9 +135,9 @@ $final_semester = $subject['final_semester'] ?? array();
             </div>
         </div>
 
-        <!-- Final Semester -->
+        <!-- Annual Exam -->
         <div class="ahp-exam-section">
-            <h4><i class="fas fa-graduation-cap"></i> Final Semester Exam</h4>
+            <h4><i class="fas fa-graduation-cap"></i> Annual Exam</h4>
             <div class="ahp-marks-row">
                 <div class="ahp-marks-group">
                     <label>Oral Total</label>
