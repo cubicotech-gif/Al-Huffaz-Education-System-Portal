@@ -21,12 +21,19 @@ class Shortcodes {
      * Constructor
      */
     public function __construct() {
+        // Public shortcodes
         add_shortcode('alhuffaz_students', array($this, 'students_display'));
         add_shortcode('alhuffaz_student_display', array($this, 'students_display'));
         add_shortcode('alhuffaz_sponsor_dashboard', array($this, 'sponsor_dashboard'));
         add_shortcode('alhuffaz_sponsorship_form', array($this, 'sponsorship_form'));
         add_shortcode('alhuffaz_payment_form', array($this, 'payment_form'));
         add_shortcode('alhuffaz_student_card', array($this, 'student_card'));
+
+        // Front-end Admin shortcodes (for staff to manage without WP admin)
+        add_shortcode('alhuffaz_admin_dashboard', array($this, 'frontend_admin_dashboard'));
+        add_shortcode('alhuffaz_admin_students', array($this, 'frontend_admin_students'));
+        add_shortcode('alhuffaz_admin_student_form', array($this, 'frontend_admin_student_form'));
+        add_shortcode('alhuffaz_admin_portal', array($this, 'frontend_admin_portal'));
     }
 
     /**
@@ -142,6 +149,101 @@ class Shortcodes {
             </div>
         </div>
         <?php
+        return ob_get_clean();
+    }
+
+    /**
+     * Check if user can access admin features
+     */
+    private function can_access_admin() {
+        if (!is_user_logged_in()) {
+            return false;
+        }
+        return current_user_can('edit_posts') || current_user_can('manage_options') || current_user_can('alhuffaz_manage_students');
+    }
+
+    /**
+     * Admin login form for front-end
+     */
+    private function admin_login_form() {
+        ob_start();
+        ?>
+        <div class="ahp-admin-login">
+            <div class="ahp-admin-login-card">
+                <div class="ahp-admin-login-icon">
+                    <i class="fas fa-lock"></i>
+                </div>
+                <h2><?php _e('Staff Portal', 'al-huffaz-portal'); ?></h2>
+                <p><?php _e('Please login with your staff credentials to access the management portal.', 'al-huffaz-portal'); ?></p>
+                <?php
+                wp_login_form(array(
+                    'redirect' => get_permalink(),
+                    'form_id' => 'ahp-admin-login-form',
+                    'label_username' => __('Username or Email', 'al-huffaz-portal'),
+                    'label_password' => __('Password', 'al-huffaz-portal'),
+                    'label_remember' => __('Remember Me', 'al-huffaz-portal'),
+                    'label_log_in' => __('Login', 'al-huffaz-portal'),
+                ));
+                ?>
+            </div>
+        </div>
+        <?php
+        return ob_get_clean();
+    }
+
+    /**
+     * Front-end Admin Portal (Full admin interface)
+     */
+    public function frontend_admin_portal($atts) {
+        if (!$this->can_access_admin()) {
+            return $this->admin_login_form();
+        }
+
+        ob_start();
+        include ALHUFFAZ_TEMPLATES_DIR . 'frontend-admin/portal.php';
+        return ob_get_clean();
+    }
+
+    /**
+     * Front-end Admin Dashboard shortcode
+     */
+    public function frontend_admin_dashboard($atts) {
+        if (!$this->can_access_admin()) {
+            return $this->admin_login_form();
+        }
+
+        ob_start();
+        include ALHUFFAZ_TEMPLATES_DIR . 'frontend-admin/dashboard.php';
+        return ob_get_clean();
+    }
+
+    /**
+     * Front-end Admin Students List shortcode
+     */
+    public function frontend_admin_students($atts) {
+        if (!$this->can_access_admin()) {
+            return $this->admin_login_form();
+        }
+
+        ob_start();
+        include ALHUFFAZ_TEMPLATES_DIR . 'frontend-admin/students-list.php';
+        return ob_get_clean();
+    }
+
+    /**
+     * Front-end Admin Student Form shortcode
+     */
+    public function frontend_admin_student_form($atts) {
+        if (!$this->can_access_admin()) {
+            return $this->admin_login_form();
+        }
+
+        $atts = shortcode_atts(array(
+            'id' => isset($_GET['id']) ? intval($_GET['id']) : 0,
+        ), $atts);
+
+        ob_start();
+        include ALHUFFAZ_TEMPLATES_DIR . 'frontend-admin/student-form.php';
         return ob_get_clean();
     }
 }
