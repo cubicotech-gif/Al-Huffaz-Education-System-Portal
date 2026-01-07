@@ -2,11 +2,17 @@
 use AlHuffaz\Frontend\Student_Display;
 use AlHuffaz\Core\Helpers;
 if (!defined('ABSPATH')) exit;
-$selected_student_id = isset($_GET['sponsor']) ? intval($_GET['sponsor']) : ($atts['student_id'] ?? 0);
+
+// Accept student from URL (sponsor or student param)
+$selected_student_id = isset($_GET['student']) ? intval($_GET['student']) : (isset($_GET['sponsor']) ? intval($_GET['sponsor']) : ($atts['student_id'] ?? 0));
 $selected_student = $selected_student_id ? Student_Display::format_student_for_display($selected_student_id) : null;
 $available_students = Student_Display::get_available_students(20);
 $payment_methods = Helpers::get_payment_methods();
 $countries = Helpers::get_countries();
+
+// Get pre-selected plan and amount from URL
+$selected_plan = isset($_GET['plan']) ? sanitize_text_field($_GET['plan']) : 'monthly';
+$selected_amount = isset($_GET['amount']) ? floatval($_GET['amount']) : ($selected_student['monthly_fee'] ?? '');
 ?>
 <div class="alhuffaz-container">
     <form id="alhuffaz-sponsorship-form" class="alhuffaz-sponsorship-form" enctype="multipart/form-data">
@@ -48,8 +54,8 @@ $countries = Helpers::get_countries();
             <div class="alhuffaz-form-group"><label class="alhuffaz-form-label"><?php _e('Country', 'al-huffaz-portal'); ?></label><select name="sponsor_country" class="alhuffaz-form-select"><?php foreach ($countries as $code => $name): ?><option value="<?php echo esc_attr($code); ?>" <?php selected($code, 'PK'); ?>><?php echo esc_html($name); ?></option><?php endforeach; ?></select></div>
         </div>
         <div class="alhuffaz-form-row">
-            <div class="alhuffaz-form-group"><label class="alhuffaz-form-label"><?php _e('Amount', 'al-huffaz-portal'); ?> <span class="required">*</span></label><input type="number" name="amount" class="alhuffaz-form-input" required value="<?php echo $selected_student ? $selected_student['monthly_fee'] : ''; ?>"></div>
-            <div class="alhuffaz-form-group"><label class="alhuffaz-form-label"><?php _e('Sponsorship Type', 'al-huffaz-portal'); ?></label><select name="sponsorship_type" class="alhuffaz-form-select"><option value="monthly"><?php _e('Monthly', 'al-huffaz-portal'); ?></option><option value="quarterly"><?php _e('Quarterly', 'al-huffaz-portal'); ?></option><option value="yearly"><?php _e('Yearly', 'al-huffaz-portal'); ?></option></select></div>
+            <div class="alhuffaz-form-group"><label class="alhuffaz-form-label"><?php _e('Amount', 'al-huffaz-portal'); ?> <span class="required">*</span></label><input type="number" name="amount" class="alhuffaz-form-input" required value="<?php echo esc_attr($selected_amount); ?>"></div>
+            <div class="alhuffaz-form-group"><label class="alhuffaz-form-label"><?php _e('Sponsorship Type', 'al-huffaz-portal'); ?></label><select name="sponsorship_type" class="alhuffaz-form-select"><option value="monthly" <?php selected($selected_plan, 'monthly'); ?>><?php _e('Monthly', 'al-huffaz-portal'); ?></option><option value="quarterly" <?php selected($selected_plan, 'quarterly'); ?>><?php _e('Quarterly', 'al-huffaz-portal'); ?></option><option value="yearly" <?php selected($selected_plan, 'yearly'); ?>><?php _e('Yearly', 'al-huffaz-portal'); ?></option></select></div>
         </div>
         <div class="alhuffaz-form-group"><label class="alhuffaz-form-label"><?php _e('Payment Method', 'al-huffaz-portal'); ?></label><select name="payment_method" class="alhuffaz-form-select"><?php foreach ($payment_methods as $key => $label): ?><option value="<?php echo esc_attr($key); ?>"><?php echo esc_html($label); ?></option><?php endforeach; ?></select></div>
         <div class="alhuffaz-form-group"><label class="alhuffaz-form-label"><?php _e('Transaction ID (if paid)', 'al-huffaz-portal'); ?></label><input type="text" name="transaction_id" class="alhuffaz-form-input"></div>
