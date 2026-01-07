@@ -63,6 +63,16 @@ $donation_eligible_count = count(get_posts(array(
     'fields' => 'ids'
 )));
 
+// Role-based access control
+$is_admin = \AlHuffaz\Core\Roles::is_school_admin() || current_user_can('manage_options');
+$is_staff = \AlHuffaz\Core\Roles::is_staff();
+$can_manage_sponsors = \AlHuffaz\Core\Roles::can_manage_sponsors();
+$can_manage_payments = \AlHuffaz\Core\Roles::can_manage_payments();
+$can_manage_staff = \AlHuffaz\Core\Roles::can_manage_staff();
+
+// Get staff count for admin badge
+$staff_count = $can_manage_staff ? count(\AlHuffaz\Core\Roles::get_staff_users()) : 0;
+
 // Get recent students
 $recent_students = get_posts(array(
     'post_type' => 'student',
@@ -238,6 +248,7 @@ $nonce = wp_create_nonce('alhuffaz_student_nonce');
 }
 .ahp-nav-badge.warning { background: var(--ahp-warning); }
 .ahp-nav-badge.success { background: var(--ahp-success); }
+.ahp-nav-badge.info { background: #3b82f6; }
 .ahp-sidebar-footer {
     position: absolute;
     bottom: 0;
@@ -711,6 +722,7 @@ textarea.ahp-input { resize: vertical; min-height: 80px; }
                     <i class="fas fa-user-plus"></i>
                     <span><?php _e('Add Student', 'al-huffaz-portal'); ?></span>
                 </a>
+                <?php if ($can_manage_sponsors): ?>
                 <a class="ahp-nav-item" data-panel="sponsors">
                     <i class="fas fa-hand-holding-heart"></i>
                     <span><?php _e('Sponsors', 'al-huffaz-portal'); ?></span>
@@ -718,6 +730,8 @@ textarea.ahp-input { resize: vertical; min-height: 80px; }
                     <span class="ahp-nav-badge"><?php echo $pending_sponsors_count; ?></span>
                     <?php endif; ?>
                 </a>
+                <?php endif; ?>
+                <?php if ($can_manage_payments): ?>
                 <a class="ahp-nav-item" data-panel="payments">
                     <i class="fas fa-credit-card"></i>
                     <span><?php _e('Payments', 'al-huffaz-portal'); ?></span>
@@ -725,10 +739,22 @@ textarea.ahp-input { resize: vertical; min-height: 80px; }
                     <span class="ahp-nav-badge warning"><?php echo $pending_payments_count; ?></span>
                     <?php endif; ?>
                 </a>
+                <?php endif; ?>
+                <?php if ($can_manage_staff): ?>
+                <a class="ahp-nav-item" data-panel="staff">
+                    <i class="fas fa-user-shield"></i>
+                    <span><?php _e('Staff Management', 'al-huffaz-portal'); ?></span>
+                    <?php if ($staff_count > 0): ?>
+                    <span class="ahp-nav-badge info"><?php echo $staff_count; ?></span>
+                    <?php endif; ?>
+                </a>
+                <?php endif; ?>
+                <?php if ($is_admin): ?>
                 <a class="ahp-nav-item" href="<?php echo admin_url(); ?>" target="_blank">
                     <i class="fas fa-cog"></i>
                     <span><?php _e('WP Admin', 'al-huffaz-portal'); ?></span>
                 </a>
+                <?php endif; ?>
                 <a class="ahp-nav-item" href="<?php echo wp_logout_url(home_url()); ?>">
                     <i class="fas fa-sign-out-alt"></i>
                     <span><?php _e('Logout', 'al-huffaz-portal'); ?></span>
@@ -1425,6 +1451,7 @@ textarea.ahp-input { resize: vertical; min-height: 80px; }
             </div>
 
             <!-- ==================== SPONSORS PANEL ==================== -->
+            <?php if ($can_manage_sponsors): ?>
             <div class="ahp-panel" id="panel-sponsors">
                 <div class="ahp-header">
                     <h1 class="ahp-title"><?php _e('Sponsor Management', 'al-huffaz-portal'); ?></h1>
@@ -1488,8 +1515,10 @@ textarea.ahp-input { resize: vertical; min-height: 80px; }
                     </div>
                 </div>
             </div>
+            <?php endif; ?>
 
             <!-- ==================== PAYMENTS PANEL ==================== -->
+            <?php if ($can_manage_payments): ?>
             <div class="ahp-panel" id="panel-payments">
                 <div class="ahp-header">
                     <h1 class="ahp-title"><?php _e('Payment Verification', 'al-huffaz-portal'); ?></h1>
@@ -1554,11 +1583,105 @@ textarea.ahp-input { resize: vertical; min-height: 80px; }
                     </div>
                 </div>
             </div>
+            <?php endif; ?>
+
+            <!-- ==================== STAFF MANAGEMENT PANEL ==================== -->
+            <?php if ($can_manage_staff): ?>
+            <div class="ahp-panel" id="panel-staff">
+                <div class="ahp-header">
+                    <h1 class="ahp-title"><?php _e('Staff Management', 'al-huffaz-portal'); ?></h1>
+                    <div class="ahp-actions">
+                        <button class="ahp-btn ahp-btn-primary" onclick="showAddStaffModal()">
+                            <i class="fas fa-user-plus"></i> <?php _e('Add Staff', 'al-huffaz-portal'); ?>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="ahp-stats">
+                    <div class="ahp-stat">
+                        <div class="ahp-stat-icon blue"><i class="fas fa-user-shield"></i></div>
+                        <div>
+                            <div class="ahp-stat-label"><?php _e('Total Staff', 'al-huffaz-portal'); ?></div>
+                            <div class="ahp-stat-value" id="totalStaffCount"><?php echo $staff_count; ?></div>
+                        </div>
+                    </div>
+                    <div class="ahp-stat">
+                        <div class="ahp-stat-icon green"><i class="fas fa-user-check"></i></div>
+                        <div>
+                            <div class="ahp-stat-label"><?php _e('Admins', 'al-huffaz-portal'); ?></div>
+                            <div class="ahp-stat-value"><?php echo count(get_users(array('role' => 'alhuffaz_admin'))); ?></div>
+                        </div>
+                    </div>
+                    <div class="ahp-stat">
+                        <div class="ahp-stat-icon orange"><i class="fas fa-users"></i></div>
+                        <div>
+                            <div class="ahp-stat-label"><?php _e('Eligible Users', 'al-huffaz-portal'); ?></div>
+                            <div class="ahp-stat-value" id="eligibleUsersCount">-</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="ahp-card">
+                    <div class="ahp-card-header">
+                        <h3 class="ahp-card-title"><i class="fas fa-user-shield"></i> <?php _e('Current Staff Members', 'al-huffaz-portal'); ?></h3>
+                        <p style="color:var(--ahp-text-muted);margin:0;font-size:14px;"><?php _e('Staff can add and edit students only. They cannot manage sponsors, payments, or other staff.', 'al-huffaz-portal'); ?></p>
+                    </div>
+                    <div class="ahp-card-body" style="padding:0;">
+                        <div class="ahp-table-wrap">
+                            <table class="ahp-table">
+                                <thead>
+                                    <tr>
+                                        <th><?php _e('User', 'al-huffaz-portal'); ?></th>
+                                        <th><?php _e('Email', 'al-huffaz-portal'); ?></th>
+                                        <th><?php _e('Registered', 'al-huffaz-portal'); ?></th>
+                                        <th><?php _e('Actions', 'al-huffaz-portal'); ?></th>
+                                    </tr>
+                                </thead>
+                                <tbody id="staffTableBody">
+                                    <tr><td colspan="4" class="ahp-loading"><div class="ahp-spinner"></div></td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <?php endif; ?>
 
         </main>
     </div>
     <div class="ahp-toast" id="toast"></div>
 </div>
+
+<!-- Modal for Adding Staff -->
+<?php if ($can_manage_staff): ?>
+<div id="addStaffModal" class="ahp-modal" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);z-index:1000;align-items:center;justify-content:center;">
+    <div style="background:#fff;border-radius:12px;max-width:500px;width:90%;max-height:80vh;overflow:auto;box-shadow:0 20px 50px rgba(0,0,0,0.2);">
+        <div style="padding:20px;border-bottom:1px solid var(--ahp-border);display:flex;justify-content:space-between;align-items:center;">
+            <h3 style="margin:0;"><?php _e('Grant Staff Access', 'al-huffaz-portal'); ?></h3>
+            <button onclick="closeAddStaffModal()" style="background:none;border:none;font-size:20px;cursor:pointer;">&times;</button>
+        </div>
+        <div style="padding:20px;">
+            <p style="color:var(--ahp-text-muted);margin-top:0;"><?php _e('Select a user to grant staff access. Staff members can add and edit students.', 'al-huffaz-portal'); ?></p>
+            <div class="ahp-form-group">
+                <label class="ahp-form-label"><?php _e('Select User', 'al-huffaz-portal'); ?></label>
+                <select id="eligibleUserSelect" class="ahp-form-select" style="width:100%;">
+                    <option value=""><?php _e('Loading users...', 'al-huffaz-portal'); ?></option>
+                </select>
+            </div>
+            <div id="selectedUserInfo" style="display:none;background:var(--ahp-bg);padding:15px;border-radius:8px;margin-top:15px;">
+                <strong id="selectedUserName"></strong>
+                <p id="selectedUserEmail" style="margin:5px 0 0;color:var(--ahp-text-muted);font-size:14px;"></p>
+            </div>
+        </div>
+        <div style="padding:20px;border-top:1px solid var(--ahp-border);display:flex;gap:10px;justify-content:flex-end;">
+            <button onclick="closeAddStaffModal()" class="ahp-btn"><?php _e('Cancel', 'al-huffaz-portal'); ?></button>
+            <button id="grantStaffBtn" onclick="grantStaffAccess()" class="ahp-btn ahp-btn-primary" disabled>
+                <i class="fas fa-user-plus"></i> <?php _e('Grant Access', 'al-huffaz-portal'); ?>
+            </button>
+        </div>
+    </div>
+</div>
+<?php endif; ?>
 
 <!-- Modal for Sponsor Details -->
 <div id="sponsorModal" class="ahp-modal" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);z-index:1000;align-items:center;justify-content:center;">
@@ -1595,6 +1718,7 @@ document.addEventListener('DOMContentLoaded', function() {
         if (panel === 'add-student' && !document.getElementById('studentId').value) resetForm();
         if (panel === 'sponsors') loadSponsors();
         if (panel === 'payments') loadPayments();
+        if (panel === 'staff') loadStaff();
     };
 
     document.querySelectorAll('.ahp-nav-item[data-panel]').forEach(item => {
@@ -2084,6 +2208,156 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         });
     };
+
+    // ==================== STAFF MANAGEMENT FUNCTIONS ====================
+    <?php if ($can_manage_staff): ?>
+    let eligibleUsers = [];
+
+    window.loadStaff = function() {
+        document.getElementById('staffTableBody').innerHTML = '<tr><td colspan="4" class="ahp-loading"><div class="ahp-spinner"></div></td></tr>';
+
+        fetch(ajaxUrl, {
+            method: 'POST',
+            headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+            body: new URLSearchParams({action: 'alhuffaz_get_staff_users', nonce})
+        })
+        .then(r => r.json())
+        .then(data => {
+            if (data.success) {
+                document.getElementById('totalStaffCount').textContent = data.data.count;
+                renderStaff(data.data.staff);
+            } else {
+                showToast(data.data?.message || '<?php _e('Error loading staff', 'al-huffaz-portal'); ?>', 'error');
+            }
+        });
+    };
+
+    function renderStaff(staff) {
+        const tbody = document.getElementById('staffTableBody');
+        if (!staff || staff.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;padding:40px;color:var(--ahp-text-muted);"><i class="fas fa-user-shield" style="font-size:48px;opacity:0.3;display:block;margin-bottom:10px;"></i><?php _e('No staff members yet. Click "Add Staff" to grant access to a user.', 'al-huffaz-portal'); ?></td></tr>';
+            return;
+        }
+
+        tbody.innerHTML = staff.map(s => `
+            <tr>
+                <td>
+                    <div style="display:flex;align-items:center;gap:10px;">
+                        <img src="${s.avatar}" alt="" style="width:40px;height:40px;border-radius:50%;">
+                        <strong>${s.display_name}</strong>
+                    </div>
+                </td>
+                <td>${s.email}</td>
+                <td>${s.registered}</td>
+                <td>
+                    <button class="ahp-btn ahp-btn-danger ahp-btn-icon" onclick="revokeStaffAccess(${s.id}, '${s.display_name}')" title="<?php _e('Revoke Access', 'al-huffaz-portal'); ?>">
+                        <i class="fas fa-user-slash"></i>
+                    </button>
+                </td>
+            </tr>
+        `).join('');
+    }
+
+    window.loadEligibleUsers = function() {
+        fetch(ajaxUrl, {
+            method: 'POST',
+            headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+            body: new URLSearchParams({action: 'alhuffaz_get_eligible_users', nonce})
+        })
+        .then(r => r.json())
+        .then(data => {
+            if (data.success) {
+                eligibleUsers = data.data.users;
+                document.getElementById('eligibleUsersCount').textContent = data.data.count;
+                updateEligibleUserSelect();
+            }
+        });
+    };
+
+    function updateEligibleUserSelect() {
+        const select = document.getElementById('eligibleUserSelect');
+        if (!eligibleUsers || eligibleUsers.length === 0) {
+            select.innerHTML = '<option value=""><?php _e('No eligible users found', 'al-huffaz-portal'); ?></option>';
+            return;
+        }
+
+        select.innerHTML = '<option value=""><?php _e('-- Select a user --', 'al-huffaz-portal'); ?></option>' +
+            eligibleUsers.map(u => `<option value="${u.id}" data-name="${u.display_name}" data-email="${u.email}">${u.display_name} (${u.email})</option>`).join('');
+    }
+
+    window.showAddStaffModal = function() {
+        document.getElementById('addStaffModal').style.display = 'flex';
+        loadEligibleUsers();
+
+        // Setup select change handler
+        document.getElementById('eligibleUserSelect').onchange = function() {
+            const selected = this.options[this.selectedIndex];
+            const btn = document.getElementById('grantStaffBtn');
+            const info = document.getElementById('selectedUserInfo');
+
+            if (this.value) {
+                document.getElementById('selectedUserName').textContent = selected.dataset.name;
+                document.getElementById('selectedUserEmail').textContent = selected.dataset.email;
+                info.style.display = 'block';
+                btn.disabled = false;
+            } else {
+                info.style.display = 'none';
+                btn.disabled = true;
+            }
+        };
+    };
+
+    window.closeAddStaffModal = function() {
+        document.getElementById('addStaffModal').style.display = 'none';
+        document.getElementById('eligibleUserSelect').value = '';
+        document.getElementById('selectedUserInfo').style.display = 'none';
+        document.getElementById('grantStaffBtn').disabled = true;
+    };
+
+    window.grantStaffAccess = function() {
+        const userId = document.getElementById('eligibleUserSelect').value;
+        if (!userId) return;
+
+        const userName = document.getElementById('eligibleUserSelect').options[document.getElementById('eligibleUserSelect').selectedIndex].dataset.name;
+
+        fetch(ajaxUrl, {
+            method: 'POST',
+            headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+            body: new URLSearchParams({action: 'alhuffaz_grant_staff_role', nonce, user_id: userId})
+        })
+        .then(r => r.json())
+        .then(data => {
+            if (data.success) {
+                showToast(data.data.message, 'success');
+                closeAddStaffModal();
+                loadStaff();
+                loadEligibleUsers();
+            } else {
+                showToast(data.data?.message || '<?php _e('Error granting access', 'al-huffaz-portal'); ?>', 'error');
+            }
+        });
+    };
+
+    window.revokeStaffAccess = function(userId, userName) {
+        if (!confirm('<?php _e('Are you sure you want to revoke staff access for', 'al-huffaz-portal'); ?> ' + userName + '?')) return;
+
+        fetch(ajaxUrl, {
+            method: 'POST',
+            headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+            body: new URLSearchParams({action: 'alhuffaz_revoke_staff_role', nonce, user_id: userId})
+        })
+        .then(r => r.json())
+        .then(data => {
+            if (data.success) {
+                showToast(data.data.message, 'success');
+                loadStaff();
+                loadEligibleUsers();
+            } else {
+                showToast(data.data?.message || '<?php _e('Error revoking access', 'al-huffaz-portal'); ?>', 'error');
+            }
+        });
+    };
+    <?php endif; ?>
 
     // Auto-show panel based on URL
     <?php if ($is_edit): ?>
