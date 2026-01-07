@@ -767,7 +767,7 @@ class Ajax_Handler {
     public function verify_payment() {
         $this->verify_admin_nonce();
 
-        if (!current_user_can('alhuffaz_manage_payments')) {
+        if (!current_user_can('alhuffaz_manage_payments') && !current_user_can('edit_posts') && !current_user_can('manage_options')) {
             wp_send_json_error(array('message' => __('Permission denied.', 'al-huffaz-portal')));
         }
 

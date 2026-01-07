@@ -28,6 +28,7 @@ class Shortcodes {
         add_shortcode('alhuffaz_sponsorship_form', array($this, 'sponsorship_form'));
         add_shortcode('alhuffaz_payment_form', array($this, 'payment_form'));
         add_shortcode('alhuffaz_student_card', array($this, 'student_card'));
+        add_shortcode('alhuffaz_available_students', array($this, 'available_students'));
 
         // Front-end Admin Portal - Single shortcode for complete admin interface
         add_shortcode('alhuffaz_admin_portal', array($this, 'frontend_admin_portal'));
@@ -117,6 +118,16 @@ class Shortcodes {
 
         ob_start();
         include ALHUFFAZ_TEMPLATES_DIR . 'public/student-card.php';
+        return ob_get_clean();
+    }
+
+    /**
+     * Available students for sponsorship shortcode
+     * Shows only donation-eligible, unsponsored students with fee calculations
+     */
+    public function available_students($atts) {
+        ob_start();
+        include ALHUFFAZ_TEMPLATES_DIR . 'public/available-students.php';
         return ob_get_clean();
     }
 
