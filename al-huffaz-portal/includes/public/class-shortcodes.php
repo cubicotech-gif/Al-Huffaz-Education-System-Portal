@@ -29,10 +29,7 @@ class Shortcodes {
         add_shortcode('alhuffaz_payment_form', array($this, 'payment_form'));
         add_shortcode('alhuffaz_student_card', array($this, 'student_card'));
 
-        // Front-end Admin shortcodes (for staff to manage without WP admin)
-        add_shortcode('alhuffaz_admin_dashboard', array($this, 'frontend_admin_dashboard'));
-        add_shortcode('alhuffaz_admin_students', array($this, 'frontend_admin_students'));
-        add_shortcode('alhuffaz_admin_student_form', array($this, 'frontend_admin_student_form'));
+        // Front-end Admin Portal - Single shortcode for complete admin interface
         add_shortcode('alhuffaz_admin_portal', array($this, 'frontend_admin_portal'));
     }
 
@@ -192,7 +189,8 @@ class Shortcodes {
     }
 
     /**
-     * Front-end Admin Portal (Full admin interface)
+     * Front-end Admin Portal - Complete admin interface like WP Admin
+     * Usage: [alhuffaz_admin_portal]
      */
     public function frontend_admin_portal($atts) {
         if (!$this->can_access_admin()) {
@@ -201,49 +199,6 @@ class Shortcodes {
 
         ob_start();
         include ALHUFFAZ_TEMPLATES_DIR . 'frontend-admin/portal.php';
-        return ob_get_clean();
-    }
-
-    /**
-     * Front-end Admin Dashboard shortcode
-     */
-    public function frontend_admin_dashboard($atts) {
-        if (!$this->can_access_admin()) {
-            return $this->admin_login_form();
-        }
-
-        ob_start();
-        include ALHUFFAZ_TEMPLATES_DIR . 'frontend-admin/dashboard.php';
-        return ob_get_clean();
-    }
-
-    /**
-     * Front-end Admin Students List shortcode
-     */
-    public function frontend_admin_students($atts) {
-        if (!$this->can_access_admin()) {
-            return $this->admin_login_form();
-        }
-
-        ob_start();
-        include ALHUFFAZ_TEMPLATES_DIR . 'frontend-admin/students-list.php';
-        return ob_get_clean();
-    }
-
-    /**
-     * Front-end Admin Student Form shortcode
-     */
-    public function frontend_admin_student_form($atts) {
-        if (!$this->can_access_admin()) {
-            return $this->admin_login_form();
-        }
-
-        $atts = shortcode_atts(array(
-            'id' => isset($_GET['id']) ? intval($_GET['id']) : 0,
-        ), $atts);
-
-        ob_start();
-        include ALHUFFAZ_TEMPLATES_DIR . 'frontend-admin/student-form.php';
         return ob_get_clean();
     }
 }
