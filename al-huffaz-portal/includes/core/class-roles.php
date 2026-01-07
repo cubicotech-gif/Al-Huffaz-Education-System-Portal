@@ -14,6 +14,11 @@ if (!defined('ABSPATH')) {
 
 /**
  * Class Roles
+ *
+ * Three main roles:
+ * - Admin: Full access to everything in portal (except WP admin)
+ * - Staff: Limited access to add/edit students only (granted by admin)
+ * - Sponsor: View sponsored students, make payments (created via UM registration)
  */
 class Roles {
 
@@ -28,41 +33,62 @@ class Roles {
      * Create custom roles
      */
     public static function create_roles() {
-        // Sponsor Role
+        // Remove old roles first to refresh capabilities
+        remove_role('alhuffaz_sponsor');
+        remove_role('alhuffaz_teacher');
+        remove_role('alhuffaz_admin');
+        remove_role('alhuffaz_staff');
+
+        // Sponsor Role - Created via Ultimate Member registration
+        // Can view their sponsored students and make payments
         add_role('alhuffaz_sponsor', __('Sponsor', 'al-huffaz-portal'), array(
-            'read'                      => true,
-            'alhuffaz_view_dashboard'   => true,
-            'alhuffaz_view_sponsorships'=> true,
-            'alhuffaz_make_payments'    => true,
-            'upload_files'              => true,
+            'read'                       => true,
+            'alhuffaz_view_dashboard'    => true,
+            'alhuffaz_view_sponsorships' => true,
+            'alhuffaz_make_payments'     => true,
+            'upload_files'               => true,
         ));
 
-        // Teacher Role
-        add_role('alhuffaz_teacher', __('Teacher', 'al-huffaz-portal'), array(
-            'read'                      => true,
-            'alhuffaz_view_dashboard'   => true,
-            'alhuffaz_view_students'    => true,
-            'alhuffaz_edit_academics'   => true,
-            'alhuffaz_add_assessments'  => true,
-            'upload_files'              => true,
+        // Staff Role - Limited access (granted by Admin via portal UI)
+        // Can only add and edit students
+        add_role('alhuffaz_staff', __('Staff', 'al-huffaz-portal'), array(
+            'read'                       => true,
+            'edit_posts'                 => true, // Required for portal access
+            'alhuffaz_view_dashboard'    => true,
+            'alhuffaz_view_students'     => true,
+            'alhuffaz_manage_students'   => true,
+            'upload_files'               => true,
         ));
 
-        // School Admin Role
+        // School Admin Role - Full portal access
+        // Can manage everything: students, sponsors, payments, staff, settings
         add_role('alhuffaz_admin', __('School Admin', 'al-huffaz-portal'), array(
-            'read'                      => true,
-            'alhuffaz_view_dashboard'   => true,
-            'alhuffaz_manage_students'  => true,
-            'alhuffaz_manage_sponsors'  => true,
-            'alhuffaz_manage_payments'  => true,
-            'alhuffaz_view_reports'     => true,
-            'alhuffaz_manage_settings'  => true,
-            'alhuffaz_bulk_import'      => true,
-            'upload_files'              => true,
+            'read'                       => true,
+            'edit_posts'                 => true, // Required for portal access
+            'alhuffaz_view_dashboard'    => true,
+            'alhuffaz_manage_students'   => true,
+            'alhuffaz_manage_sponsors'   => true,
+            'alhuffaz_manage_payments'   => true,
+            'alhuffaz_manage_staff'      => true,
+            'alhuffaz_view_reports'      => true,
+            'alhuffaz_manage_settings'   => true,
+            'alhuffaz_bulk_import'       => true,
+            'upload_files'               => true,
+        ));
+
+        // Keep Teacher role for backwards compatibility
+        add_role('alhuffaz_teacher', __('Teacher', 'al-huffaz-portal'), array(
+            'read'                       => true,
+            'alhuffaz_view_dashboard'    => true,
+            'alhuffaz_view_students'     => true,
+            'alhuffaz_edit_academics'    => true,
+            'alhuffaz_add_assessments'   => true,
+            'upload_files'               => true,
         ));
     }
 
     /**
-     * Add capabilities to admin role
+     * Add capabilities to WordPress administrator role
      */
     public function add_capabilities() {
         $admin = get_role('administrator');
@@ -73,6 +99,7 @@ class Roles {
                 'alhuffaz_manage_students',
                 'alhuffaz_manage_sponsors',
                 'alhuffaz_manage_payments',
+                'alhuffaz_manage_staff',
                 'alhuffaz_view_reports',
                 'alhuffaz_manage_settings',
                 'alhuffaz_bulk_import',
@@ -96,6 +123,125 @@ class Roles {
         remove_role('alhuffaz_sponsor');
         remove_role('alhuffaz_teacher');
         remove_role('alhuffaz_admin');
+        remove_role('alhuffaz_staff');
+    }
+
+    /**
+     * Check if current user is staff member
+     */
+    public static function is_staff($user_id = null) {
+        if (!$user_id) {
+            $user_id = get_current_user_id();
+        }
+
+        $user = get_user_by('id', $user_id);
+
+        if (!$user) {
+            return false;
+        }
+
+        return in_array('alhuffaz_staff', (array) $user->roles);
+    }
+
+    /**
+     * Check if user can manage staff (admin only)
+     */
+    public static function can_manage_staff($user_id = null) {
+        if (!$user_id) {
+            $user_id = get_current_user_id();
+        }
+
+        return user_can($user_id, 'alhuffaz_manage_staff') || user_can($user_id, 'manage_options');
+    }
+
+    /**
+     * Check if user can manage sponsors (admin only)
+     */
+    public static function can_manage_sponsors($user_id = null) {
+        if (!$user_id) {
+            $user_id = get_current_user_id();
+        }
+
+        return user_can($user_id, 'alhuffaz_manage_sponsors') || user_can($user_id, 'manage_options');
+    }
+
+    /**
+     * Check if user can manage payments (admin only)
+     */
+    public static function can_manage_payments($user_id = null) {
+        if (!$user_id) {
+            $user_id = get_current_user_id();
+        }
+
+        return user_can($user_id, 'alhuffaz_manage_payments') || user_can($user_id, 'manage_options');
+    }
+
+    /**
+     * Grant staff role to a user
+     */
+    public static function grant_staff_role($user_id) {
+        $user = get_user_by('id', $user_id);
+        if (!$user) {
+            return false;
+        }
+
+        // Remove subscriber role if present
+        $user->remove_role('subscriber');
+        $user->add_role('alhuffaz_staff');
+
+        // Log the action
+        if (class_exists('AlHuffaz\\Core\\Helpers')) {
+            Helpers::log_activity('grant_staff', 'user', $user_id, sprintf('Staff role granted by user %d', get_current_user_id()));
+        }
+
+        return true;
+    }
+
+    /**
+     * Revoke staff role from a user
+     */
+    public static function revoke_staff_role($user_id) {
+        $user = get_user_by('id', $user_id);
+        if (!$user) {
+            return false;
+        }
+
+        $user->remove_role('alhuffaz_staff');
+
+        // Add subscriber back if no other roles
+        if (empty($user->roles)) {
+            $user->add_role('subscriber');
+        }
+
+        // Log the action
+        if (class_exists('AlHuffaz\\Core\\Helpers')) {
+            Helpers::log_activity('revoke_staff', 'user', $user_id, sprintf('Staff role revoked by user %d', get_current_user_id()));
+        }
+
+        return true;
+    }
+
+    /**
+     * Get all staff users
+     */
+    public static function get_staff_users() {
+        return get_users(array(
+            'role' => 'alhuffaz_staff',
+            'orderby' => 'display_name',
+            'order' => 'ASC',
+        ));
+    }
+
+    /**
+     * Get users eligible to become staff (subscribers, etc.)
+     */
+    public static function get_eligible_staff_users() {
+        return get_users(array(
+            'role__in' => array('subscriber', 'contributor'),
+            'role__not_in' => array('alhuffaz_staff', 'alhuffaz_admin', 'alhuffaz_sponsor', 'administrator'),
+            'orderby' => 'display_name',
+            'order' => 'ASC',
+        ));
     }
 
     /**

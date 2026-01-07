@@ -55,6 +55,12 @@ class Ajax_Handler {
 
         add_action('wp_ajax_alhuffaz_get_available_students', array($this, 'get_available_students'));
         add_action('wp_ajax_nopriv_alhuffaz_get_available_students', array($this, 'get_available_students'));
+
+        // Staff management AJAX actions (admin only)
+        add_action('wp_ajax_alhuffaz_get_staff_users', array($this, 'get_staff_users'));
+        add_action('wp_ajax_alhuffaz_grant_staff_role', array($this, 'grant_staff_role'));
+        add_action('wp_ajax_alhuffaz_revoke_staff_role', array($this, 'revoke_staff_role'));
+        add_action('wp_ajax_alhuffaz_get_eligible_users', array($this, 'get_eligible_users'));
     }
 
     /**
@@ -642,6 +648,12 @@ class Ajax_Handler {
         // Log activity
         Helpers::log_activity('approve_sponsorship', 'sponsorship', $sponsorship_id, 'Sponsorship approved');
 
+        // Sync with Ultimate Member if sponsor has user account
+        $sponsor_user_id = get_post_meta($sponsorship_id, '_sponsor_user_id', true);
+        if ($sponsor_user_id) {
+            UM_Integration::approve_sponsor_in_um($sponsor_user_id);
+        }
+
         // Send notification email
         $sponsor_email = get_post_meta($sponsorship_id, '_sponsor_email', true);
         if ($sponsor_email) {
@@ -674,6 +686,12 @@ class Ajax_Handler {
 
         update_post_meta($sponsorship_id, '_status', 'rejected');
         update_post_meta($sponsorship_id, '_rejection_reason', $reason);
+
+        // Sync with Ultimate Member if sponsor has user account
+        $sponsor_user_id = get_post_meta($sponsorship_id, '_sponsor_user_id', true);
+        if ($sponsor_user_id) {
+            UM_Integration::reject_sponsor_in_um($sponsor_user_id);
+        }
 
         // Log activity
         Helpers::log_activity('reject_sponsorship', 'sponsorship', $sponsorship_id, 'Sponsorship rejected: ' . $reason);
@@ -1208,5 +1226,140 @@ class Ajax_Handler {
             'imported' => $imported,
             'errors'   => $errors,
         ));
+    }
+
+    /**
+     * Get staff users
+     */
+    public function get_staff_users() {
+        $this->verify_admin_nonce();
+
+        // Only admins can manage staff
+        if (!Roles::can_manage_staff()) {
+            wp_send_json_error(array('message' => __('Permission denied.', 'al-huffaz-portal')));
+        }
+
+        $staff_users = Roles::get_staff_users();
+        $users_data = array();
+
+        foreach ($staff_users as $user) {
+            $users_data[] = array(
+                'id'           => $user->ID,
+                'display_name' => $user->display_name,
+                'email'        => $user->user_email,
+                'registered'   => date_i18n(get_option('date_format'), strtotime($user->user_registered)),
+                'avatar'       => get_avatar_url($user->ID, array('size' => 40)),
+            );
+        }
+
+        wp_send_json_success(array(
+            'staff' => $users_data,
+            'count' => count($users_data),
+        ));
+    }
+
+    /**
+     * Get eligible users for staff role
+     */
+    public function get_eligible_users() {
+        $this->verify_admin_nonce();
+
+        // Only admins can manage staff
+        if (!Roles::can_manage_staff()) {
+            wp_send_json_error(array('message' => __('Permission denied.', 'al-huffaz-portal')));
+        }
+
+        $eligible_users = Roles::get_eligible_staff_users();
+        $users_data = array();
+
+        foreach ($eligible_users as $user) {
+            $users_data[] = array(
+                'id'           => $user->ID,
+                'display_name' => $user->display_name,
+                'email'        => $user->user_email,
+                'registered'   => date_i18n(get_option('date_format'), strtotime($user->user_registered)),
+            );
+        }
+
+        wp_send_json_success(array(
+            'users' => $users_data,
+            'count' => count($users_data),
+        ));
+    }
+
+    /**
+     * Grant staff role to a user
+     */
+    public function grant_staff_role() {
+        $this->verify_admin_nonce();
+
+        // Only admins can manage staff
+        if (!Roles::can_manage_staff()) {
+            wp_send_json_error(array('message' => __('Permission denied.', 'al-huffaz-portal')));
+        }
+
+        $user_id = isset($_POST['user_id']) ? intval($_POST['user_id']) : 0;
+
+        if (!$user_id) {
+            wp_send_json_error(array('message' => __('Invalid user ID.', 'al-huffaz-portal')));
+        }
+
+        $user = get_user_by('id', $user_id);
+        if (!$user) {
+            wp_send_json_error(array('message' => __('User not found.', 'al-huffaz-portal')));
+        }
+
+        // Don't allow promoting admins
+        if (user_can($user_id, 'manage_options')) {
+            wp_send_json_error(array('message' => __('Cannot modify administrator accounts.', 'al-huffaz-portal')));
+        }
+
+        $result = Roles::grant_staff_role($user_id);
+
+        if ($result) {
+            wp_send_json_success(array(
+                'message' => sprintf(__('%s has been granted staff access.', 'al-huffaz-portal'), $user->display_name),
+            ));
+        } else {
+            wp_send_json_error(array('message' => __('Failed to grant staff role.', 'al-huffaz-portal')));
+        }
+    }
+
+    /**
+     * Revoke staff role from a user
+     */
+    public function revoke_staff_role() {
+        $this->verify_admin_nonce();
+
+        // Only admins can manage staff
+        if (!Roles::can_manage_staff()) {
+            wp_send_json_error(array('message' => __('Permission denied.', 'al-huffaz-portal')));
+        }
+
+        $user_id = isset($_POST['user_id']) ? intval($_POST['user_id']) : 0;
+
+        if (!$user_id) {
+            wp_send_json_error(array('message' => __('Invalid user ID.', 'al-huffaz-portal')));
+        }
+
+        $user = get_user_by('id', $user_id);
+        if (!$user) {
+            wp_send_json_error(array('message' => __('User not found.', 'al-huffaz-portal')));
+        }
+
+        // Don't allow demoting self
+        if ($user_id === get_current_user_id()) {
+            wp_send_json_error(array('message' => __('Cannot remove your own staff access.', 'al-huffaz-portal')));
+        }
+
+        $result = Roles::revoke_staff_role($user_id);
+
+        if ($result) {
+            wp_send_json_success(array(
+                'message' => sprintf(__('%s staff access has been revoked.', 'al-huffaz-portal'), $user->display_name),
+            ));
+        } else {
+            wp_send_json_error(array('message' => __('Failed to revoke staff role.', 'al-huffaz-portal')));
+        }
     }
 }
