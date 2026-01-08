@@ -9,80 +9,116 @@
 
 defined('ABSPATH') || exit;
 
-$current_user = wp_get_current_user();
-
-// Get stats
-$total_students = wp_count_posts('student')->publish;
-$total_sponsors = wp_count_posts('alhuffaz_sponsor')->publish;
-
-// Get category counts
-$hifz_count = count(get_posts(array(
-    'post_type' => 'student',
-    'post_status' => 'publish',
-    'posts_per_page' => -1,
-    'meta_query' => array(array('key' => 'islamic_studies_category', 'value' => 'hifz')),
-    'fields' => 'ids'
-)));
-
-$nazra_count = count(get_posts(array(
-    'post_type' => 'student',
-    'post_status' => 'publish',
-    'posts_per_page' => -1,
-    'meta_query' => array(array('key' => 'islamic_studies_category', 'value' => 'nazra')),
-    'fields' => 'ids'
-)));
-
-// Get pending sponsors count
-$pending_sponsors_count = count(get_posts(array(
-    'post_type' => 'alhuffaz_sponsor',
-    'post_status' => 'publish',
-    'posts_per_page' => -1,
-    'meta_query' => array(array('key' => '_status', 'value' => 'pending')),
-    'fields' => 'ids'
-)));
-
-// Get pending payments count
-global $wpdb;
-$payments_table = $wpdb->prefix . 'alhuffaz_payments';
-$pending_payments_count = 0;
-
-// Check if payments table exists before querying
-$table_exists = $wpdb->get_var($wpdb->prepare(
-    "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = %s AND table_name = %s",
-    DB_NAME,
-    $payments_table
-));
-
-if ($table_exists) {
-    $pending_payments_count = (int) $wpdb->get_var("SELECT COUNT(*) FROM $payments_table WHERE status = 'pending'");
+// Debug logging
+if (class_exists('\AlHuffaz\Core\Debug')) {
+    \AlHuffaz\Core\Debug::log('Admin portal template loaded', 'info');
 }
 
-// Get donation eligible students count (not sponsored)
-$donation_eligible_count = count(get_posts(array(
-    'post_type' => 'student',
-    'post_status' => 'publish',
-    'posts_per_page' => -1,
-    'meta_query' => array(
-        'relation' => 'AND',
-        array('key' => 'donation_eligible', 'value' => 'yes'),
-        array(
-            'relation' => 'OR',
-            array('key' => '_is_sponsored', 'value' => 'no'),
-            array('key' => '_is_sponsored', 'compare' => 'NOT EXISTS'),
+try {
+    $current_user = wp_get_current_user();
+
+    // Get stats with error handling
+    $student_counts = wp_count_posts('student');
+    $total_students = isset($student_counts->publish) ? $student_counts->publish : 0;
+
+    $sponsor_counts = wp_count_posts('alhuffaz_sponsor');
+    $total_sponsors = isset($sponsor_counts->publish) ? $sponsor_counts->publish : 0;
+
+    // Get category counts
+    $hifz_count = count(get_posts(array(
+        'post_type' => 'student',
+        'post_status' => 'publish',
+        'posts_per_page' => -1,
+        'meta_query' => array(array('key' => 'islamic_studies_category', 'value' => 'hifz')),
+        'fields' => 'ids'
+    )));
+
+    $nazra_count = count(get_posts(array(
+        'post_type' => 'student',
+        'post_status' => 'publish',
+        'posts_per_page' => -1,
+        'meta_query' => array(array('key' => 'islamic_studies_category', 'value' => 'nazra')),
+        'fields' => 'ids'
+    )));
+
+    // Get pending sponsors count
+    $pending_sponsors_count = count(get_posts(array(
+        'post_type' => 'alhuffaz_sponsor',
+        'post_status' => 'publish',
+        'posts_per_page' => -1,
+        'meta_query' => array(array('key' => '_status', 'value' => 'pending')),
+        'fields' => 'ids'
+    )));
+
+    // Get pending payments count
+    global $wpdb;
+    $payments_table = $wpdb->prefix . 'alhuffaz_payments';
+    $pending_payments_count = 0;
+
+    // Check if payments table exists before querying
+    $table_exists = $wpdb->get_var($wpdb->prepare(
+        "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = %s AND table_name = %s",
+        DB_NAME,
+        $payments_table
+    ));
+
+    if ($table_exists) {
+        $pending_payments_count = (int) $wpdb->get_var("SELECT COUNT(*) FROM $payments_table WHERE status = 'pending'");
+    }
+
+    // Get donation eligible students count (not sponsored)
+    $donation_eligible_count = count(get_posts(array(
+        'post_type' => 'student',
+        'post_status' => 'publish',
+        'posts_per_page' => -1,
+        'meta_query' => array(
+            'relation' => 'AND',
+            array('key' => 'donation_eligible', 'value' => 'yes'),
+            array(
+                'relation' => 'OR',
+                array('key' => '_is_sponsored', 'value' => 'no'),
+                array('key' => '_is_sponsored', 'compare' => 'NOT EXISTS'),
+            ),
         ),
-    ),
-    'fields' => 'ids'
-)));
+        'fields' => 'ids'
+    )));
 
-// Role-based access control
-$is_admin = \AlHuffaz\Core\Roles::is_school_admin() || current_user_can('manage_options');
-$is_staff = \AlHuffaz\Core\Roles::is_staff();
-$can_manage_sponsors = \AlHuffaz\Core\Roles::can_manage_sponsors();
-$can_manage_payments = \AlHuffaz\Core\Roles::can_manage_payments();
-$can_manage_staff = \AlHuffaz\Core\Roles::can_manage_staff();
+    // Role-based access control - with fallback if Roles class not available
+    $is_admin = false;
+    $is_staff = false;
+    $can_manage_sponsors = false;
+    $can_manage_payments = false;
+    $can_manage_staff = false;
+    $staff_count = 0;
 
-// Get staff count for admin badge
-$staff_count = $can_manage_staff ? count(\AlHuffaz\Core\Roles::get_staff_users()) : 0;
+    if (class_exists('\AlHuffaz\Core\Roles')) {
+        $is_admin = \AlHuffaz\Core\Roles::is_school_admin() || current_user_can('manage_options');
+        $is_staff = \AlHuffaz\Core\Roles::is_staff();
+        $can_manage_sponsors = \AlHuffaz\Core\Roles::can_manage_sponsors();
+        $can_manage_payments = \AlHuffaz\Core\Roles::can_manage_payments();
+        $can_manage_staff = \AlHuffaz\Core\Roles::can_manage_staff();
+        $staff_count = $can_manage_staff ? count(\AlHuffaz\Core\Roles::get_staff_users()) : 0;
+
+        // Debug log role checks
+        if (class_exists('\AlHuffaz\Core\Debug')) {
+            \AlHuffaz\Core\Debug::log('Role checks completed', 'debug', array(
+                'is_admin' => $is_admin,
+                'is_staff' => $is_staff,
+                'can_manage_sponsors' => $can_manage_sponsors,
+                'user_roles' => $current_user->roles,
+            ));
+        }
+    } else {
+        // Fallback: allow WP admins
+        $is_admin = current_user_can('manage_options');
+        $can_manage_sponsors = current_user_can('manage_options');
+        $can_manage_payments = current_user_can('manage_options');
+        $can_manage_staff = current_user_can('manage_options');
+
+        if (class_exists('\AlHuffaz\Core\Debug')) {
+            \AlHuffaz\Core\Debug::error('Roles class not found, using fallback');
+        }
+    }
 
 // Get recent students
 $recent_students = get_posts(array(
@@ -167,6 +203,46 @@ function ahp_fe_checked($field, $data) {
 
 $portal_url = get_permalink();
 $nonce = wp_create_nonce('alhuffaz_student_nonce');
+
+} catch (Exception $e) {
+    // Log the error
+    if (class_exists('\AlHuffaz\Core\Debug')) {
+        \AlHuffaz\Core\Debug::error('Portal initialization error: ' . $e->getMessage(), array(
+            'file' => $e->getFile(),
+            'line' => $e->getLine(),
+            'trace' => $e->getTraceAsString(),
+        ));
+    }
+
+    // Display error message
+    echo '<div style="padding: 20px; margin: 20px; background: #f8d7da; border: 1px solid #f5c6cb; border-radius: 5px; color: #721c24;">';
+    echo '<h3>Portal Error</h3>';
+    echo '<p>An error occurred while loading the portal. Please check the debug log at <code>wp-content/alhuffaz-debug.log</code></p>';
+    if (current_user_can('manage_options')) {
+        echo '<p><strong>Error:</strong> ' . esc_html($e->getMessage()) . '</p>';
+    }
+    echo '</div>';
+    return;
+} catch (Error $e) {
+    // Catch PHP 7+ errors
+    if (class_exists('\AlHuffaz\Core\Debug')) {
+        \AlHuffaz\Core\Debug::error('Portal PHP error: ' . $e->getMessage(), array(
+            'file' => $e->getFile(),
+            'line' => $e->getLine(),
+            'trace' => $e->getTraceAsString(),
+        ));
+    }
+
+    echo '<div style="padding: 20px; margin: 20px; background: #f8d7da; border: 1px solid #f5c6cb; border-radius: 5px; color: #721c24;">';
+    echo '<h3>Portal Error</h3>';
+    echo '<p>A critical error occurred. Please check the debug log at <code>wp-content/alhuffaz-debug.log</code></p>';
+    if (current_user_can('manage_options')) {
+        echo '<p><strong>Error:</strong> ' . esc_html($e->getMessage()) . '</p>';
+        echo '<p><strong>File:</strong> ' . esc_html($e->getFile()) . ':' . $e->getLine() . '</p>';
+    }
+    echo '</div>';
+    return;
+}
 ?>
 
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
