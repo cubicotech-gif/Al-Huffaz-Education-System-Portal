@@ -97,7 +97,18 @@ $sponsor_post = get_posts(array(
     'meta_query' => array(array('key' => '_sponsor_user_id', 'value' => $user_id)),
 ));
 $sponsor_id = !empty($sponsor_post) ? $sponsor_post[0]->ID : 0;
-$sponsor_status = $sponsor_id ? get_post_meta($sponsor_id, '_status', true) : 'pending';
+
+// User approval status - if user can log in, they're approved at WP/UM level
+// The sponsor role or ability to login means they're an approved user
+$is_user_approved = true; // If they're logged in, they've been approved by WP/UM
+
+// Check Ultimate Member approval status if UM is active
+if (function_exists('um_user') && function_exists('um_is_user_approved')) {
+    $is_user_approved = um_is_user_approved($user_id);
+}
+
+// User is approved if: they're logged in AND (UM says approved OR UM not installed)
+$sponsor_status = $is_user_approved ? 'approved' : 'pending';
 $sponsor_phone = $sponsor_id ? get_post_meta($sponsor_id, '_sponsor_phone', true) : get_user_meta($user_id, 'phone', true);
 $sponsor_country = $sponsor_id ? get_post_meta($sponsor_id, '_sponsor_country', true) : get_user_meta($user_id, 'country', true);
 $sponsor_whatsapp = $sponsor_id ? get_post_meta($sponsor_id, '_sponsor_whatsapp', true) : '';
@@ -424,6 +435,184 @@ $nonce = wp_create_nonce('alhuffaz_public_nonce');
 .sp-btn:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.15); }
 .sp-btn-block { width: 100%; }
 .sp-btn-sm { padding: 8px 16px; font-size: 13px; }
+
+/* Payment Plan Buttons */
+.sp-plan-title {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--sp-text);
+    margin: 0 0 12px 0;
+    text-align: center;
+}
+.sp-plan-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 10px;
+}
+.sp-plan-btn {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 16px 12px;
+    background: var(--sp-bg);
+    border: 2px solid var(--sp-border);
+    border-radius: 12px;
+    cursor: pointer;
+    transition: all 0.3s;
+    font-family: 'Poppins', sans-serif;
+    position: relative;
+}
+.sp-plan-btn:hover {
+    border-color: var(--sp-primary);
+    background: #f0f7ff;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 128, 255, 0.15);
+}
+.sp-plan-btn.sp-plan-featured {
+    background: linear-gradient(135deg, #e0f2ff, #cce6ff);
+    border-color: var(--sp-primary);
+}
+.sp-plan-badge {
+    position: absolute;
+    top: -10px;
+    right: -10px;
+    background: var(--sp-success);
+    color: white;
+    font-size: 10px;
+    font-weight: 700;
+    padding: 4px 8px;
+    border-radius: 20px;
+}
+.sp-plan-duration {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--sp-text);
+    margin-bottom: 4px;
+}
+.sp-plan-amount {
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--sp-primary);
+}
+.sp-plan-note {
+    font-size: 10px;
+    color: var(--sp-text-muted);
+    margin-top: 4px;
+}
+
+/* Payment Proof Summary */
+.sp-proof-summary {
+    display: grid;
+    gap: 12px;
+}
+.sp-proof-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 16px;
+    background: var(--sp-bg);
+    border-radius: 10px;
+}
+.sp-proof-label {
+    font-size: 14px;
+    color: var(--sp-text-muted);
+}
+.sp-proof-value {
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--sp-text);
+}
+.sp-proof-total {
+    background: linear-gradient(135deg, #e0f2ff, #cce6ff);
+    border: 2px solid var(--sp-primary);
+}
+.sp-proof-total .sp-proof-value {
+    font-size: 20px;
+    color: var(--sp-primary);
+}
+.sp-form-hint {
+    display: block;
+    font-size: 12px;
+    color: var(--sp-text-muted);
+    margin-top: 6px;
+}
+
+/* Student Profile View */
+.sp-profile-view { padding: 0; }
+.sp-profile-header {
+    display: flex;
+    align-items: center;
+    gap: 24px;
+    padding: 24px;
+    background: linear-gradient(135deg, var(--sp-primary), var(--sp-primary-dark));
+    border-radius: 16px;
+    color: white;
+}
+.sp-profile-photo img, .sp-profile-placeholder {
+    width: 100px;
+    height: 100px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 4px solid rgba(255,255,255,0.3);
+}
+.sp-profile-placeholder {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(255,255,255,0.2);
+    font-size: 40px;
+    font-weight: 700;
+}
+.sp-profile-info h2 {
+    margin: 0 0 12px 0;
+    font-size: 24px;
+    font-weight: 700;
+}
+.sp-profile-badges { display: flex; gap: 8px; }
+.sp-profile-badges .sp-badge { background: rgba(255,255,255,0.2); color: white; }
+.sp-subjects-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 12px;
+}
+.sp-subject-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 14px 16px;
+    background: var(--sp-bg);
+    border-radius: 10px;
+    border-left: 4px solid var(--sp-primary);
+}
+.sp-subject-name { font-weight: 600; color: var(--sp-text); }
+.sp-subject-score { display: flex; align-items: center; gap: 8px; }
+.sp-subject-percentage { font-weight: 700; color: var(--sp-text); }
+.sp-subject-grade {
+    padding: 4px 8px;
+    border-radius: 6px;
+    font-size: 12px;
+    font-weight: 700;
+}
+.grade-a { background: #d1fae5; color: #065f46; }
+.grade-b { background: #dbeafe; color: #1e40af; }
+.grade-c { background: #fef3c7; color: #92400e; }
+.grade-d { background: #fed7aa; color: #c2410c; }
+.grade-f { background: #fee2e2; color: #b91c1c; }
+.sp-goals-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+.sp-goals-list li {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 0;
+    border-bottom: 1px solid var(--sp-border);
+    color: var(--sp-text);
+}
+.sp-goals-list li:last-child { border-bottom: none; }
+.sp-goals-list li i { color: var(--sp-success); }
 
 /* Profile */
 .sp-profile-grid {
@@ -872,9 +1061,9 @@ $nonce = wp_create_nonce('alhuffaz_public_nonce');
                             </div>
                         </div>
                         <div class="sp-student-footer" style="display:flex;gap:10px;">
-                            <a href="<?php echo get_permalink($s['student_id']); ?>" class="sp-btn sp-btn-secondary sp-btn-sm" style="flex:1;">
-                                <i class="fas fa-eye"></i> <?php _e('View', 'al-huffaz-portal'); ?>
-                            </a>
+                            <button class="sp-btn sp-btn-secondary sp-btn-sm" style="flex:1;" onclick="viewStudentProfile(<?php echo $s['student_id']; ?>)">
+                                <i class="fas fa-eye"></i> <?php _e('View Profile', 'al-huffaz-portal'); ?>
+                            </button>
                             <button class="sp-btn sp-btn-primary sp-btn-sm" style="flex:1;" onclick="openPaymentModal(<?php echo $s['student_id']; ?>, '<?php echo esc_js($s['student_name']); ?>', <?php echo floatval($s['amount']); ?>)">
                                 <i class="fas fa-credit-card"></i> <?php _e('Pay', 'al-huffaz-portal'); ?>
                             </button>
@@ -883,6 +1072,23 @@ $nonce = wp_create_nonce('alhuffaz_public_nonce');
                     <?php endforeach; ?>
                 </div>
                 <?php endif; ?>
+            </div>
+
+            <!-- ==================== STUDENT PROFILE PANEL ==================== -->
+            <div class="sp-panel" id="panel-student-profile">
+                <div class="sp-header">
+                    <button class="sp-btn sp-btn-secondary sp-btn-sm" onclick="showPanel('my-students')" style="margin-right:16px;">
+                        <i class="fas fa-arrow-left"></i> <?php _e('Back', 'al-huffaz-portal'); ?>
+                    </button>
+                    <h1 class="sp-title"><?php _e('Student Profile', 'al-huffaz-portal'); ?></h1>
+                </div>
+
+                <div id="studentProfileContent">
+                    <div class="sp-loading" style="text-align:center;padding:60px;">
+                        <i class="fas fa-spinner fa-spin fa-2x"></i>
+                        <p style="margin-top:16px;"><?php _e('Loading student profile...', 'al-huffaz-portal'); ?></p>
+                    </div>
+                </div>
             </div>
 
             <!-- ==================== AVAILABLE STUDENTS PANEL ==================== -->
@@ -923,9 +1129,11 @@ $nonce = wp_create_nonce('alhuffaz_public_nonce');
                         $admission_fee = floatval(get_post_meta($student_id, 'admission_fee', true));
                         $one_time_total = $course_fee + $uniform_fee + $annual_fee + $admission_fee;
 
-                        $monthly_amount = $monthly_fee;
-                        $quarterly_amount = $monthly_fee * 3;
-                        $yearly_amount = ($monthly_fee * 12) + $one_time_total;
+                        // Payment plans: 1, 3, 6, 12 months
+                        $plan_1_month = $monthly_fee;
+                        $plan_3_months = $monthly_fee * 3;
+                        $plan_6_months = $monthly_fee * 6;
+                        $plan_12_months = ($monthly_fee * 12) + $one_time_total;
                     ?>
                     <div class="sp-student-card">
                         <div class="sp-student-header">
@@ -943,30 +1151,122 @@ $nonce = wp_create_nonce('alhuffaz_public_nonce');
                             </div>
                         </div>
                         <div class="sp-student-body">
-                            <div class="sp-fee-grid">
-                                <div class="sp-fee-item">
-                                    <div class="sp-fee-label"><?php _e('Monthly', 'al-huffaz-portal'); ?></div>
-                                    <div class="sp-fee-value"><?php echo Helpers::format_currency($monthly_amount); ?></div>
-                                </div>
-                                <div class="sp-fee-item">
-                                    <div class="sp-fee-label"><?php _e('Quarterly', 'al-huffaz-portal'); ?></div>
-                                    <div class="sp-fee-value"><?php echo Helpers::format_currency($quarterly_amount); ?></div>
-                                </div>
-                                <div class="sp-fee-item">
-                                    <div class="sp-fee-label"><?php _e('Yearly', 'al-huffaz-portal'); ?></div>
-                                    <div class="sp-fee-value"><?php echo Helpers::format_currency($yearly_amount); ?></div>
-                                </div>
+                            <p class="sp-plan-title"><?php _e('Select a Sponsorship Plan:', 'al-huffaz-portal'); ?></p>
+                            <div class="sp-plan-grid">
+                                <button class="sp-plan-btn" onclick="goToPaymentPage(<?php echo $student_id; ?>, '<?php echo esc_js($student->post_title); ?>', 1, <?php echo $plan_1_month; ?>)">
+                                    <span class="sp-plan-duration">1 <?php _e('Month', 'al-huffaz-portal'); ?></span>
+                                    <span class="sp-plan-amount"><?php echo Helpers::format_currency($plan_1_month); ?></span>
+                                </button>
+                                <button class="sp-plan-btn" onclick="goToPaymentPage(<?php echo $student_id; ?>, '<?php echo esc_js($student->post_title); ?>', 3, <?php echo $plan_3_months; ?>)">
+                                    <span class="sp-plan-duration">3 <?php _e('Months', 'al-huffaz-portal'); ?></span>
+                                    <span class="sp-plan-amount"><?php echo Helpers::format_currency($plan_3_months); ?></span>
+                                </button>
+                                <button class="sp-plan-btn" onclick="goToPaymentPage(<?php echo $student_id; ?>, '<?php echo esc_js($student->post_title); ?>', 6, <?php echo $plan_6_months; ?>)">
+                                    <span class="sp-plan-duration">6 <?php _e('Months', 'al-huffaz-portal'); ?></span>
+                                    <span class="sp-plan-amount"><?php echo Helpers::format_currency($plan_6_months); ?></span>
+                                </button>
+                                <button class="sp-plan-btn sp-plan-featured" onclick="goToPaymentPage(<?php echo $student_id; ?>, '<?php echo esc_js($student->post_title); ?>', 12, <?php echo $plan_12_months; ?>)">
+                                    <span class="sp-plan-badge"><?php _e('Best Value', 'al-huffaz-portal'); ?></span>
+                                    <span class="sp-plan-duration">12 <?php _e('Months', 'al-huffaz-portal'); ?></span>
+                                    <span class="sp-plan-amount"><?php echo Helpers::format_currency($plan_12_months); ?></span>
+                                    <span class="sp-plan-note"><?php _e('Includes one-time fees', 'al-huffaz-portal'); ?></span>
+                                </button>
                             </div>
-                        </div>
-                        <div class="sp-student-footer">
-                            <button class="sp-btn sp-btn-primary sp-btn-block" onclick="openSponsorModal(<?php echo $student_id; ?>, '<?php echo esc_js($student->post_title); ?>', <?php echo $monthly_amount; ?>, <?php echo $quarterly_amount; ?>, <?php echo $yearly_amount; ?>)">
-                                <i class="fas fa-hand-holding-heart"></i> <?php _e('Sponsor This Student', 'al-huffaz-portal'); ?>
-                            </button>
                         </div>
                     </div>
                     <?php endforeach; ?>
                 </div>
                 <?php endif; ?>
+            </div>
+
+            <!-- ==================== PAYMENT PROOF PANEL ==================== -->
+            <div class="sp-panel" id="panel-payment-proof">
+                <div class="sp-header">
+                    <button class="sp-btn sp-btn-secondary sp-btn-sm" onclick="showPanel('available-students')" style="margin-right:16px;">
+                        <i class="fas fa-arrow-left"></i> <?php _e('Back', 'al-huffaz-portal'); ?>
+                    </button>
+                    <h1 class="sp-title"><?php _e('Submit Payment Proof', 'al-huffaz-portal'); ?></h1>
+                </div>
+
+                <div class="sp-card">
+                    <div class="sp-card-header" style="background: linear-gradient(135deg, var(--sp-primary), var(--sp-primary-dark)); color: white;">
+                        <h3 class="sp-card-title" style="color: white;"><i class="fas fa-hand-holding-heart"></i> <?php _e('Sponsorship Details', 'al-huffaz-portal'); ?></h3>
+                    </div>
+                    <div class="sp-card-body">
+                        <div class="sp-proof-summary">
+                            <div class="sp-proof-item">
+                                <span class="sp-proof-label"><?php _e('Student:', 'al-huffaz-portal'); ?></span>
+                                <span class="sp-proof-value" id="proofStudentName">-</span>
+                            </div>
+                            <div class="sp-proof-item">
+                                <span class="sp-proof-label"><?php _e('Duration:', 'al-huffaz-portal'); ?></span>
+                                <span class="sp-proof-value" id="proofPlanMonths">-</span>
+                            </div>
+                            <div class="sp-proof-item sp-proof-total">
+                                <span class="sp-proof-label"><?php _e('Total Amount:', 'al-huffaz-portal'); ?></span>
+                                <span class="sp-proof-value" id="proofAmountDisplay">-</span>
+                            </div>
+                        </div>
+
+                        <hr style="margin: 24px 0; border: none; border-top: 2px solid var(--sp-border);">
+
+                        <h4 style="margin: 0 0 20px 0; color: var(--sp-text);"><i class="fas fa-file-invoice"></i> <?php _e('Payment Information', 'al-huffaz-portal'); ?></h4>
+
+                        <form id="paymentProofForm" enctype="multipart/form-data">
+                            <input type="hidden" name="student_id" id="proofStudentId" value="">
+                            <input type="hidden" name="amount" id="proofAmount" value="">
+                            <input type="hidden" name="sponsorship_type" id="proofPlanType" value="">
+                            <input type="hidden" name="action" value="alhuffaz_submit_payment_proof">
+                            <input type="hidden" name="nonce" value="<?php echo $nonce; ?>">
+
+                            <div class="sp-form-group">
+                                <label class="sp-form-label"><?php _e('Payment Method', 'al-huffaz-portal'); ?> *</label>
+                                <select name="payment_method" id="proofPaymentMethod" class="sp-form-select" required>
+                                    <option value=""><?php _e('-- Select Payment Method --', 'al-huffaz-portal'); ?></option>
+                                    <option value="bank_transfer"><?php _e('Bank Transfer', 'al-huffaz-portal'); ?></option>
+                                    <option value="easypaisa"><?php _e('EasyPaisa', 'al-huffaz-portal'); ?></option>
+                                    <option value="jazzcash"><?php _e('JazzCash', 'al-huffaz-portal'); ?></option>
+                                    <option value="sadapay"><?php _e('SadaPay', 'al-huffaz-portal'); ?></option>
+                                    <option value="nayapay"><?php _e('NayaPay', 'al-huffaz-portal'); ?></option>
+                                    <option value="cash"><?php _e('Cash Deposit', 'al-huffaz-portal'); ?></option>
+                                </select>
+                            </div>
+
+                            <div class="sp-form-group">
+                                <label class="sp-form-label"><?php _e('Transaction ID / Reference Number', 'al-huffaz-portal'); ?> *</label>
+                                <input type="text" name="transaction_id" id="proofTransactionId" class="sp-form-input" required placeholder="<?php _e('Enter your transaction reference number', 'al-huffaz-portal'); ?>">
+                            </div>
+
+                            <div class="sp-form-group">
+                                <label class="sp-form-label"><?php _e('Payment Date', 'al-huffaz-portal'); ?> *</label>
+                                <input type="date" name="payment_date" id="proofPaymentDate" class="sp-form-input" required value="<?php echo date('Y-m-d'); ?>">
+                            </div>
+
+                            <div class="sp-form-group">
+                                <label class="sp-form-label"><?php _e('Payment Receipt / Screenshot', 'al-huffaz-portal'); ?> *</label>
+                                <input type="file" name="payment_screenshot" id="proofScreenshot" class="sp-form-input" accept="image/*" required>
+                                <small class="sp-form-hint"><?php _e('Upload a clear screenshot or photo of your payment receipt', 'al-huffaz-portal'); ?></small>
+                            </div>
+
+                            <div class="sp-form-group">
+                                <label class="sp-form-label"><?php _e('Additional Notes (Optional)', 'al-huffaz-portal'); ?></label>
+                                <textarea name="notes" id="proofNotes" class="sp-form-input" rows="3" placeholder="<?php _e('Any additional information about your payment...', 'al-huffaz-portal'); ?>"></textarea>
+                            </div>
+
+                            <div class="sp-alert sp-alert-info" style="margin-bottom:24px;">
+                                <i class="fas fa-info-circle"></i>
+                                <div>
+                                    <strong><?php _e('What happens next?', 'al-huffaz-portal'); ?></strong>
+                                    <p style="margin:8px 0 0;"><?php _e('After submitting, the school will verify your payment. Once approved, the student will be linked to your profile and you can track their progress.', 'al-huffaz-portal'); ?></p>
+                                </div>
+                            </div>
+
+                            <button type="submit" class="sp-btn sp-btn-primary sp-btn-block" id="submitProofBtn">
+                                <i class="fas fa-paper-plane"></i> <?php _e('Submit Payment Proof', 'al-huffaz-portal'); ?>
+                            </button>
+                        </form>
+                    </div>
+                </div>
             </div>
 
             <!-- ==================== PAYMENTS PANEL ==================== -->
@@ -1232,6 +1532,144 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     };
 
+    // View student profile
+    window.viewStudentProfile = function(studentId) {
+        showPanel('student-profile');
+
+        const content = document.getElementById('studentProfileContent');
+        content.innerHTML = '<div class="sp-loading" style="text-align:center;padding:60px;"><i class="fas fa-spinner fa-spin fa-2x"></i><p style="margin-top:16px;"><?php _e('Loading student profile...', 'al-huffaz-portal'); ?></p></div>';
+
+        fetch(ajaxUrl, {
+            method: 'POST',
+            headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+            body: new URLSearchParams({
+                action: 'alhuffaz_get_student_profile',
+                nonce: nonce,
+                student_id: studentId
+            })
+        })
+        .then(r => r.json())
+        .then(data => {
+            if (data.success) {
+                renderStudentProfile(data.data);
+            } else {
+                content.innerHTML = '<div class="sp-alert sp-alert-danger"><i class="fas fa-exclamation-circle"></i> ' + (data.data?.message || '<?php _e('Error loading profile', 'al-huffaz-portal'); ?>') + '</div>';
+            }
+        })
+        .catch(() => {
+            content.innerHTML = '<div class="sp-alert sp-alert-danger"><i class="fas fa-exclamation-circle"></i> <?php _e('Network error. Please try again.', 'al-huffaz-portal'); ?></div>';
+        });
+    };
+
+    function renderStudentProfile(student) {
+        const content = document.getElementById('studentProfileContent');
+
+        let subjectsHtml = '';
+        if (student.subjects && student.subjects.length > 0) {
+            subjectsHtml = '<div class="sp-card" style="margin-top:20px;"><div class="sp-card-header"><h3 class="sp-card-title"><i class="fas fa-book"></i> <?php _e('Academic Progress', 'al-huffaz-portal'); ?></h3></div><div class="sp-card-body"><div class="sp-subjects-grid">';
+            student.subjects.forEach(subject => {
+                const grade = getGradeFromPercentage(subject.overall || 0);
+                subjectsHtml += `
+                    <div class="sp-subject-item">
+                        <div class="sp-subject-name">${subject.name || 'Subject'}</div>
+                        <div class="sp-subject-score">
+                            <span class="sp-subject-percentage">${subject.overall || 0}%</span>
+                            <span class="sp-subject-grade ${grade.class}">${grade.letter}</span>
+                        </div>
+                    </div>`;
+            });
+            subjectsHtml += '</div></div></div>';
+        }
+
+        let goalsHtml = '';
+        const goals = student.goals?.filter(g => g) || [];
+        if (goals.length > 0) {
+            goalsHtml = '<div class="sp-card" style="margin-top:20px;"><div class="sp-card-header"><h3 class="sp-card-title"><i class="fas fa-bullseye"></i> <?php _e('Learning Goals', 'al-huffaz-portal'); ?></h3></div><div class="sp-card-body"><ul class="sp-goals-list">';
+            goals.forEach(goal => {
+                goalsHtml += `<li><i class="fas fa-check-circle"></i> ${goal}</li>`;
+            });
+            goalsHtml += '</ul></div></div>';
+        }
+
+        content.innerHTML = `
+            <div class="sp-profile-view">
+                <div class="sp-profile-header">
+                    <div class="sp-profile-photo">
+                        ${student.photo ? `<img src="${student.photo}" alt="">` : `<div class="sp-profile-placeholder">${student.name?.charAt(0) || 'S'}</div>`}
+                    </div>
+                    <div class="sp-profile-info">
+                        <h2>${student.name}</h2>
+                        <div class="sp-profile-badges">
+                            ${student.grade ? `<span class="sp-badge sp-badge-grade">${student.grade}</span>` : ''}
+                            ${student.category ? `<span class="sp-badge sp-badge-category">${student.category}</span>` : ''}
+                        </div>
+                    </div>
+                </div>
+
+                <div class="sp-stats" style="margin-top:20px;">
+                    <div class="sp-stat">
+                        <div class="sp-stat-icon blue"><i class="fas fa-chart-line"></i></div>
+                        <div>
+                            <div class="sp-stat-label"><?php _e('Overall Progress', 'al-huffaz-portal'); ?></div>
+                            <div class="sp-stat-value">${student.overall_percentage || 0}%</div>
+                        </div>
+                    </div>
+                    <div class="sp-stat">
+                        <div class="sp-stat-icon green"><i class="fas fa-calendar-check"></i></div>
+                        <div>
+                            <div class="sp-stat-label"><?php _e('Attendance', 'al-huffaz-portal'); ?></div>
+                            <div class="sp-stat-value">${student.attendance?.percentage || 0}%</div>
+                        </div>
+                    </div>
+                    <div class="sp-stat">
+                        <div class="sp-stat-icon orange"><i class="fas fa-award"></i></div>
+                        <div>
+                            <div class="sp-stat-label"><?php _e('Overall Grade', 'al-huffaz-portal'); ?></div>
+                            <div class="sp-stat-value">${student.overall_grade || 'N/A'}</div>
+                        </div>
+                    </div>
+                </div>
+
+                ${student.teacher_comments ? `
+                <div class="sp-card" style="margin-top:20px;">
+                    <div class="sp-card-header" style="background:linear-gradient(135deg, var(--sp-success), #059669);color:white;">
+                        <h3 class="sp-card-title" style="color:white;"><i class="fas fa-comment-alt"></i> <?php _e('Teacher Comments', 'al-huffaz-portal'); ?></h3>
+                    </div>
+                    <div class="sp-card-body">
+                        <p style="font-style:italic;color:var(--sp-text);line-height:1.7;">"${student.teacher_comments}"</p>
+                    </div>
+                </div>
+                ` : ''}
+
+                ${subjectsHtml}
+                ${goalsHtml}
+            </div>
+        `;
+    }
+
+    function getGradeFromPercentage(percentage) {
+        if (percentage >= 90) return { letter: 'A+', class: 'grade-a' };
+        if (percentage >= 80) return { letter: 'A', class: 'grade-a' };
+        if (percentage >= 70) return { letter: 'B', class: 'grade-b' };
+        if (percentage >= 60) return { letter: 'C', class: 'grade-c' };
+        if (percentage >= 50) return { letter: 'D', class: 'grade-d' };
+        return { letter: 'F', class: 'grade-f' };
+    }
+
+    // Go to payment proof page with selected plan
+    window.goToPaymentPage = function(studentId, studentName, months, amount) {
+        // Store the selected plan data
+        document.getElementById('proofStudentId').value = studentId;
+        document.getElementById('proofStudentName').textContent = studentName;
+        document.getElementById('proofPlanMonths').textContent = months + ' <?php _e('Month(s)', 'al-huffaz-portal'); ?>';
+        document.getElementById('proofAmount').value = amount;
+        document.getElementById('proofAmountDisplay').textContent = formatCurrency(amount);
+        document.getElementById('proofPlanType').value = months === 1 ? 'monthly' : (months === 3 ? 'quarterly' : (months === 6 ? 'semi-annual' : 'yearly'));
+
+        // Switch to payment proof panel
+        showPanel('payment-proof');
+    };
+
     // Sponsor modal
     let currentSponsorData = {};
 
@@ -1306,6 +1744,42 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         });
     };
+
+    // Payment proof form submission
+    document.getElementById('paymentProofForm')?.addEventListener('submit', function(e) {
+        e.preventDefault();
+
+        const submitBtn = document.getElementById('submitProofBtn');
+        const originalText = submitBtn.innerHTML;
+        submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> <?php _e('Submitting...', 'al-huffaz-portal'); ?>';
+        submitBtn.disabled = true;
+
+        const formData = new FormData(this);
+
+        fetch(ajaxUrl, { method: 'POST', body: formData })
+        .then(r => r.json())
+        .then(data => {
+            submitBtn.innerHTML = originalText;
+            submitBtn.disabled = false;
+
+            if (data.success) {
+                showToast('<?php _e('Payment proof submitted successfully! School will verify and notify you.', 'al-huffaz-portal'); ?>', 'success');
+                this.reset();
+                // Redirect to dashboard after 2 seconds
+                setTimeout(() => {
+                    showPanel('dashboard');
+                    showToast('<?php _e('Your sponsorship request is pending verification.', 'al-huffaz-portal'); ?>', 'info');
+                }, 2000);
+            } else {
+                showToast(data.data?.message || '<?php _e('Error submitting payment proof', 'al-huffaz-portal'); ?>', 'error');
+            }
+        })
+        .catch(error => {
+            submitBtn.innerHTML = originalText;
+            submitBtn.disabled = false;
+            showToast('<?php _e('Network error. Please try again.', 'al-huffaz-portal'); ?>', 'error');
+        });
+    });
 
     // Main payment form
     document.getElementById('paymentForm')?.addEventListener('submit', function(e) {
