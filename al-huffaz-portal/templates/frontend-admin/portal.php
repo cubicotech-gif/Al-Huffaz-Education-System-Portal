@@ -3,131 +3,92 @@
  * Front-end Admin Portal Template
  * Al-Huffaz Education System Portal
  *
- * Complete admin interface - mirrors WP Admin functionality exactly
- * Includes: Dashboard, Students List, 5-Step Student Form with Subjects/Marks
+ * SIMPLIFIED VERSION - No complex role dependencies
  */
 
 defined('ABSPATH') || exit;
 
-// Debug logging
-if (class_exists('\AlHuffaz\Core\Debug')) {
-    \AlHuffaz\Core\Debug::log('Admin portal template loaded', 'info');
+// Simple check - just use WordPress capabilities
+$current_user = wp_get_current_user();
+
+// Everyone with edit_posts can access (admins, editors, staff)
+$is_admin = current_user_can('manage_options');
+$can_manage_sponsors = current_user_can('manage_options');
+$can_manage_payments = current_user_can('manage_options');
+$can_manage_staff = current_user_can('manage_options');
+$is_staff = current_user_can('edit_posts') && !current_user_can('manage_options');
+$staff_count = 0;
+
+// Get stats - with null checks
+$student_counts = wp_count_posts('student');
+$total_students = isset($student_counts->publish) ? (int)$student_counts->publish : 0;
+
+$sponsor_counts = wp_count_posts('alhuffaz_sponsor');
+$total_sponsors = isset($sponsor_counts->publish) ? (int)$sponsor_counts->publish : 0;
+
+// Category counts
+$hifz_count = 0;
+$nazra_count = 0;
+$pending_sponsors_count = 0;
+$pending_payments_count = 0;
+$donation_eligible_count = 0;
+
+// Only query if post type exists
+if (post_type_exists('student')) {
+    $hifz_posts = get_posts(array(
+        'post_type' => 'student',
+        'post_status' => 'publish',
+        'posts_per_page' => -1,
+        'meta_key' => 'islamic_studies_category',
+        'meta_value' => 'hifz',
+        'fields' => 'ids'
+    ));
+    $hifz_count = count($hifz_posts);
+
+    $nazra_posts = get_posts(array(
+        'post_type' => 'student',
+        'post_status' => 'publish',
+        'posts_per_page' => -1,
+        'meta_key' => 'islamic_studies_category',
+        'meta_value' => 'nazra',
+        'fields' => 'ids'
+    ));
+    $nazra_count = count($nazra_posts);
+
+    $eligible_posts = get_posts(array(
+        'post_type' => 'student',
+        'post_status' => 'publish',
+        'posts_per_page' => -1,
+        'meta_key' => 'donation_eligible',
+        'meta_value' => 'yes',
+        'fields' => 'ids'
+    ));
+    $donation_eligible_count = count($eligible_posts);
 }
 
-try {
-    $current_user = wp_get_current_user();
-
-    // Get stats with error handling
-    $student_counts = wp_count_posts('student');
-    $total_students = isset($student_counts->publish) ? $student_counts->publish : 0;
-
-    $sponsor_counts = wp_count_posts('alhuffaz_sponsor');
-    $total_sponsors = isset($sponsor_counts->publish) ? $sponsor_counts->publish : 0;
-
-    // Get category counts
-    $hifz_count = count(get_posts(array(
-        'post_type' => 'student',
-        'post_status' => 'publish',
-        'posts_per_page' => -1,
-        'meta_query' => array(array('key' => 'islamic_studies_category', 'value' => 'hifz')),
-        'fields' => 'ids'
-    )));
-
-    $nazra_count = count(get_posts(array(
-        'post_type' => 'student',
-        'post_status' => 'publish',
-        'posts_per_page' => -1,
-        'meta_query' => array(array('key' => 'islamic_studies_category', 'value' => 'nazra')),
-        'fields' => 'ids'
-    )));
-
-    // Get pending sponsors count
-    $pending_sponsors_count = count(get_posts(array(
+if (post_type_exists('alhuffaz_sponsor')) {
+    $pending_posts = get_posts(array(
         'post_type' => 'alhuffaz_sponsor',
         'post_status' => 'publish',
         'posts_per_page' => -1,
-        'meta_query' => array(array('key' => '_status', 'value' => 'pending')),
+        'meta_key' => '_status',
+        'meta_value' => 'pending',
         'fields' => 'ids'
-    )));
-
-    // Get pending payments count
-    global $wpdb;
-    $payments_table = $wpdb->prefix . 'alhuffaz_payments';
-    $pending_payments_count = 0;
-
-    // Check if payments table exists before querying
-    $table_exists = $wpdb->get_var($wpdb->prepare(
-        "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = %s AND table_name = %s",
-        DB_NAME,
-        $payments_table
     ));
-
-    if ($table_exists) {
-        $pending_payments_count = (int) $wpdb->get_var("SELECT COUNT(*) FROM $payments_table WHERE status = 'pending'");
-    }
-
-    // Get donation eligible students count (not sponsored)
-    $donation_eligible_count = count(get_posts(array(
-        'post_type' => 'student',
-        'post_status' => 'publish',
-        'posts_per_page' => -1,
-        'meta_query' => array(
-            'relation' => 'AND',
-            array('key' => 'donation_eligible', 'value' => 'yes'),
-            array(
-                'relation' => 'OR',
-                array('key' => '_is_sponsored', 'value' => 'no'),
-                array('key' => '_is_sponsored', 'compare' => 'NOT EXISTS'),
-            ),
-        ),
-        'fields' => 'ids'
-    )));
-
-    // Role-based access control - with fallback if Roles class not available
-    $is_admin = false;
-    $is_staff = false;
-    $can_manage_sponsors = false;
-    $can_manage_payments = false;
-    $can_manage_staff = false;
-    $staff_count = 0;
-
-    if (class_exists('\AlHuffaz\Core\Roles')) {
-        $is_admin = \AlHuffaz\Core\Roles::is_school_admin() || current_user_can('manage_options');
-        $is_staff = \AlHuffaz\Core\Roles::is_staff();
-        $can_manage_sponsors = \AlHuffaz\Core\Roles::can_manage_sponsors();
-        $can_manage_payments = \AlHuffaz\Core\Roles::can_manage_payments();
-        $can_manage_staff = \AlHuffaz\Core\Roles::can_manage_staff();
-        $staff_count = $can_manage_staff ? count(\AlHuffaz\Core\Roles::get_staff_users()) : 0;
-
-        // Debug log role checks
-        if (class_exists('\AlHuffaz\Core\Debug')) {
-            \AlHuffaz\Core\Debug::log('Role checks completed', 'debug', array(
-                'is_admin' => $is_admin,
-                'is_staff' => $is_staff,
-                'can_manage_sponsors' => $can_manage_sponsors,
-                'user_roles' => $current_user->roles,
-            ));
-        }
-    } else {
-        // Fallback: allow WP admins
-        $is_admin = current_user_can('manage_options');
-        $can_manage_sponsors = current_user_can('manage_options');
-        $can_manage_payments = current_user_can('manage_options');
-        $can_manage_staff = current_user_can('manage_options');
-
-        if (class_exists('\AlHuffaz\Core\Debug')) {
-            \AlHuffaz\Core\Debug::error('Roles class not found, using fallback');
-        }
-    }
+    $pending_sponsors_count = count($pending_posts);
+}
 
 // Get recent students
-$recent_students = get_posts(array(
-    'post_type' => 'student',
-    'post_status' => 'publish',
-    'posts_per_page' => 5,
-    'orderby' => 'date',
-    'order' => 'DESC'
-));
+$recent_students = array();
+if (post_type_exists('student')) {
+    $recent_students = get_posts(array(
+        'post_type' => 'student',
+        'post_status' => 'publish',
+        'posts_per_page' => 5,
+        'orderby' => 'date',
+        'order' => 'DESC'
+    ));
+}
 
 // Check for edit mode
 $edit_id = isset($_GET['edit']) ? intval($_GET['edit']) : 0;
@@ -193,56 +154,20 @@ if ($is_edit) {
     $photo_url = $photo_id ? wp_get_attachment_image_url($photo_id, 'medium') : '';
 }
 
-// Helper functions
-function ahp_fe_selected($field, $value, $data) {
-    return (isset($data[$field]) && $data[$field] === $value) ? 'selected' : '';
+// Helper functions - only define if not already defined
+if (!function_exists('ahp_fe_selected')) {
+    function ahp_fe_selected($field, $value, $data) {
+        return (isset($data[$field]) && $data[$field] === $value) ? 'selected' : '';
+    }
 }
-function ahp_fe_checked($field, $data) {
-    return (!empty($data[$field]) && $data[$field] === 'yes') ? 'checked' : '';
+if (!function_exists('ahp_fe_checked')) {
+    function ahp_fe_checked($field, $data) {
+        return (!empty($data[$field]) && $data[$field] === 'yes') ? 'checked' : '';
+    }
 }
 
 $portal_url = get_permalink();
 $nonce = wp_create_nonce('alhuffaz_student_nonce');
-
-} catch (Exception $e) {
-    // Log the error
-    if (class_exists('\AlHuffaz\Core\Debug')) {
-        \AlHuffaz\Core\Debug::error('Portal initialization error: ' . $e->getMessage(), array(
-            'file' => $e->getFile(),
-            'line' => $e->getLine(),
-            'trace' => $e->getTraceAsString(),
-        ));
-    }
-
-    // Display error message
-    echo '<div style="padding: 20px; margin: 20px; background: #f8d7da; border: 1px solid #f5c6cb; border-radius: 5px; color: #721c24;">';
-    echo '<h3>Portal Error</h3>';
-    echo '<p>An error occurred while loading the portal. Please check the debug log at <code>wp-content/alhuffaz-debug.log</code></p>';
-    if (current_user_can('manage_options')) {
-        echo '<p><strong>Error:</strong> ' . esc_html($e->getMessage()) . '</p>';
-    }
-    echo '</div>';
-    return;
-} catch (Error $e) {
-    // Catch PHP 7+ errors
-    if (class_exists('\AlHuffaz\Core\Debug')) {
-        \AlHuffaz\Core\Debug::error('Portal PHP error: ' . $e->getMessage(), array(
-            'file' => $e->getFile(),
-            'line' => $e->getLine(),
-            'trace' => $e->getTraceAsString(),
-        ));
-    }
-
-    echo '<div style="padding: 20px; margin: 20px; background: #f8d7da; border: 1px solid #f5c6cb; border-radius: 5px; color: #721c24;">';
-    echo '<h3>Portal Error</h3>';
-    echo '<p>A critical error occurred. Please check the debug log at <code>wp-content/alhuffaz-debug.log</code></p>';
-    if (current_user_can('manage_options')) {
-        echo '<p><strong>Error:</strong> ' . esc_html($e->getMessage()) . '</p>';
-        echo '<p><strong>File:</strong> ' . esc_html($e->getFile()) . ':' . $e->getLine() . '</p>';
-    }
-    echo '</div>';
-    return;
-}
 ?>
 
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
