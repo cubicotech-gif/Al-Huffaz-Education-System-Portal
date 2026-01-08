@@ -149,7 +149,7 @@ $nonce = wp_create_nonce('alhuffaz_public_nonce');
 
 <style>
 /* ============================================
-   SPONSOR PORTAL - COMPLETE STYLES
+   SPONSOR PORTAL - CLEAN STABLE DESIGN
    ============================================ */
 :root {
     --sp-primary: #0080ff;
@@ -163,36 +163,84 @@ $nonce = wp_create_nonce('alhuffaz_public_nonce');
     --sp-bg: #f8fafc;
     --sp-sidebar: #0f172a;
     --sp-card: #ffffff;
+    --sp-sidebar-width: 260px;
 }
-* { box-sizing: border-box; }
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { height: 100%; overflow-x: hidden; }
 .sp-portal {
     font-family: 'Poppins', sans-serif;
     background: var(--sp-bg);
     min-height: 100vh;
     color: var(--sp-text);
+    line-height: 1.5;
 }
 
-/* Layout */
-.sp-wrapper { display: flex; min-height: 100vh; }
+/* Layout - Fixed Sidebar */
+.sp-wrapper {
+    display: flex;
+    min-height: 100vh;
+    width: 100%;
+}
 .sp-sidebar {
-    width: 280px;
+    width: var(--sp-sidebar-width);
+    min-width: var(--sp-sidebar-width);
+    max-width: var(--sp-sidebar-width);
     background: linear-gradient(180deg, var(--sp-sidebar) 0%, #1e293b 100%);
     color: #fff;
     position: fixed;
+    top: 0;
+    left: 0;
     height: 100vh;
     overflow-y: auto;
-    z-index: 100;
+    overflow-x: hidden;
+    z-index: 1000;
+    transition: transform 0.3s ease;
 }
+.sp-sidebar::-webkit-scrollbar { width: 6px; }
+.sp-sidebar::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.2); border-radius: 3px; }
 .sp-main {
     flex: 1;
-    margin-left: 280px;
+    margin-left: var(--sp-sidebar-width);
     padding: 24px;
     min-height: 100vh;
+    width: calc(100% - var(--sp-sidebar-width));
+    max-width: calc(100% - var(--sp-sidebar-width));
+    overflow-x: hidden;
+}
+
+/* Mobile Menu Toggle */
+.sp-menu-toggle {
+    display: none;
+    position: fixed;
+    top: 16px;
+    left: 16px;
+    z-index: 1001;
+    width: 44px;
+    height: 44px;
+    border-radius: 12px;
+    background: var(--sp-sidebar);
+    color: white;
+    border: none;
+    font-size: 20px;
+    cursor: pointer;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+}
+.sp-overlay {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0,0,0,0.5);
+    z-index: 999;
 }
 
 /* Sidebar */
 .sp-sidebar-header {
-    padding: 24px;
+    padding: 20px 16px;
     border-bottom: 1px solid rgba(255,255,255,0.1);
     text-align: center;
 }
@@ -200,70 +248,73 @@ $nonce = wp_create_nonce('alhuffaz_public_nonce');
     display: flex;
     align-items: center;
     justify-content: center;
-    gap: 12px;
-    font-size: 20px;
+    gap: 10px;
+    font-size: 17px;
     font-weight: 700;
 }
-.sp-logo i { font-size: 28px; color: var(--sp-primary); }
+.sp-logo i { font-size: 24px; color: var(--sp-primary); }
 .sp-user-card {
-    padding: 20px;
-    margin: 16px;
+    padding: 16px 12px;
+    margin: 12px;
     background: rgba(255,255,255,0.05);
-    border-radius: 16px;
+    border-radius: 12px;
     text-align: center;
 }
 .sp-avatar {
-    width: 80px;
-    height: 80px;
+    width: 64px;
+    height: 64px;
     border-radius: 50%;
     background: linear-gradient(135deg, var(--sp-primary), var(--sp-primary-dark));
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 32px;
+    font-size: 26px;
     font-weight: 800;
-    margin: 0 auto 12px;
-    border: 4px solid rgba(255,255,255,0.2);
+    margin: 0 auto 10px;
+    border: 3px solid rgba(255,255,255,0.2);
 }
-.sp-user-name { font-size: 18px; font-weight: 700; margin-bottom: 4px; }
+.sp-user-name { font-size: 15px; font-weight: 600; margin-bottom: 6px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .sp-user-status {
     display: inline-flex;
     align-items: center;
-    gap: 6px;
-    padding: 4px 12px;
+    gap: 5px;
+    padding: 3px 10px;
     border-radius: 20px;
-    font-size: 12px;
+    font-size: 11px;
     font-weight: 600;
 }
 .sp-status-approved { background: rgba(16, 185, 129, 0.2); color: #34d399; }
 .sp-status-pending { background: rgba(245, 158, 11, 0.2); color: #fbbf24; }
-.sp-nav { padding: 16px 0; }
+.sp-nav { padding: 12px 0; }
 .sp-nav-item {
     display: flex;
     align-items: center;
-    gap: 14px;
-    padding: 14px 24px;
+    gap: 12px;
+    padding: 12px 20px;
     color: rgba(255,255,255,0.7);
     text-decoration: none;
     font-weight: 500;
-    transition: all 0.3s;
+    font-size: 14px;
+    transition: all 0.2s;
     cursor: pointer;
-    border-left: 4px solid transparent;
+    border-left: 3px solid transparent;
 }
 .sp-nav-item:hover, .sp-nav-item.active {
     background: rgba(0, 128, 255, 0.15);
     color: #fff;
     border-left-color: var(--sp-primary);
 }
-.sp-nav-item i { width: 20px; text-align: center; }
+.sp-nav-item i { width: 18px; text-align: center; font-size: 15px; }
 .sp-nav-badge {
     margin-left: auto;
     background: var(--sp-primary);
     color: white;
-    padding: 2px 10px;
+    padding: 2px 8px;
     border-radius: 20px;
-    font-size: 12px;
+    font-size: 11px;
     font-weight: 700;
+    min-width: 22px;
+    text-align: center;
 }
 .sp-nav-badge.warning { background: var(--sp-warning); }
 
@@ -274,137 +325,148 @@ $nonce = wp_create_nonce('alhuffaz_public_nonce');
     align-items: center;
     margin-bottom: 24px;
     flex-wrap: wrap;
-    gap: 16px;
+    gap: 12px;
+    padding-bottom: 16px;
+    border-bottom: 1px solid var(--sp-border);
 }
-.sp-title { font-size: 28px; font-weight: 700; margin: 0; color: var(--sp-text); }
-.sp-panel { display: none; }
+.sp-title { font-size: 24px; font-weight: 700; margin: 0; color: var(--sp-text); }
+.sp-panel { display: none; animation: fadeIn 0.3s ease; }
 .sp-panel.active { display: block; }
+@keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
 
 /* Stats */
 .sp-stats {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-    gap: 20px;
-    margin-bottom: 32px;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 16px;
+    margin-bottom: 24px;
 }
 .sp-stat {
     background: var(--sp-card);
-    border-radius: 16px;
-    padding: 24px;
+    border-radius: 12px;
+    padding: 20px;
     display: flex;
     align-items: center;
-    gap: 20px;
-    box-shadow: 0 4px 20px rgba(0,0,0,0.05);
+    gap: 16px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.04);
     border: 1px solid var(--sp-border);
+    transition: box-shadow 0.2s;
 }
+.sp-stat:hover { box-shadow: 0 4px 16px rgba(0,0,0,0.08); }
 .sp-stat-icon {
-    width: 64px;
-    height: 64px;
-    border-radius: 16px;
+    width: 52px;
+    height: 52px;
+    border-radius: 12px;
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 28px;
+    font-size: 22px;
+    flex-shrink: 0;
 }
 .sp-stat-icon.blue { background: #dbeafe; color: #1e40af; }
 .sp-stat-icon.green { background: #d1fae5; color: #065f46; }
 .sp-stat-icon.orange { background: #fef3c7; color: #92400e; }
 .sp-stat-icon.purple { background: #ede9fe; color: #5b21b6; }
-.sp-stat-label { font-size: 14px; color: var(--sp-text-muted); margin-bottom: 4px; }
-.sp-stat-value { font-size: 28px; font-weight: 800; color: var(--sp-text); }
+.sp-stat-label { font-size: 13px; color: var(--sp-text-muted); margin-bottom: 2px; }
+.sp-stat-value { font-size: 24px; font-weight: 700; color: var(--sp-text); }
 
 /* Cards */
 .sp-card {
     background: var(--sp-card);
-    border-radius: 16px;
-    box-shadow: 0 4px 20px rgba(0,0,0,0.05);
+    border-radius: 12px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.04);
     border: 1px solid var(--sp-border);
-    margin-bottom: 24px;
+    margin-bottom: 20px;
+    overflow: hidden;
 }
 .sp-card-header {
-    padding: 20px 24px;
+    padding: 16px 20px;
     border-bottom: 1px solid var(--sp-border);
     display: flex;
     justify-content: space-between;
     align-items: center;
+    background: var(--sp-bg);
 }
-.sp-card-title { font-size: 18px; font-weight: 700; margin: 0; display: flex; align-items: center; gap: 10px; }
-.sp-card-title i { color: var(--sp-primary); }
-.sp-card-body { padding: 24px; }
+.sp-card-title { font-size: 16px; font-weight: 600; margin: 0; display: flex; align-items: center; gap: 8px; }
+.sp-card-title i { color: var(--sp-primary); font-size: 16px; }
+.sp-card-body { padding: 20px; }
 
 /* Student Grid */
 .sp-students-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
-    gap: 24px;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 20px;
 }
 .sp-student-card {
     background: var(--sp-card);
-    border-radius: 16px;
+    border-radius: 12px;
     overflow: hidden;
-    box-shadow: 0 4px 20px rgba(0,0,0,0.05);
+    box-shadow: 0 2px 8px rgba(0,0,0,0.04);
     border: 1px solid var(--sp-border);
-    transition: transform 0.3s, box-shadow 0.3s;
+    transition: transform 0.2s, box-shadow 0.2s;
 }
 .sp-student-card:hover {
-    transform: translateY(-4px);
-    box-shadow: 0 12px 40px rgba(0,128,255,0.15);
+    transform: translateY(-2px);
+    box-shadow: 0 8px 24px rgba(0,128,255,0.12);
 }
 .sp-student-header {
-    padding: 20px;
-    background: linear-gradient(135deg, #f0f8ff, #fff);
+    padding: 16px;
+    background: linear-gradient(135deg, #f8fafc, #fff);
     display: flex;
     align-items: center;
-    gap: 16px;
+    gap: 14px;
     border-bottom: 1px solid var(--sp-border);
 }
 .sp-student-photo {
-    width: 70px;
-    height: 70px;
+    width: 56px;
+    height: 56px;
     border-radius: 50%;
     object-fit: cover;
-    border: 3px solid white;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    border: 2px solid white;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    flex-shrink: 0;
 }
 .sp-student-placeholder {
-    width: 70px;
-    height: 70px;
+    width: 56px;
+    height: 56px;
     border-radius: 50%;
     background: linear-gradient(135deg, var(--sp-primary), var(--sp-primary-dark));
     color: white;
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 28px;
-    font-weight: 800;
+    font-size: 22px;
+    font-weight: 700;
+    flex-shrink: 0;
 }
-.sp-student-info h3 { margin: 0 0 8px 0; font-size: 18px; font-weight: 700; }
-.sp-student-badges { display: flex; gap: 8px; flex-wrap: wrap; }
+.sp-student-info { min-width: 0; flex: 1; }
+.sp-student-info h3 { margin: 0 0 6px 0; font-size: 15px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.sp-student-badges { display: flex; gap: 6px; flex-wrap: wrap; }
 .sp-badge {
-    padding: 4px 12px;
+    padding: 3px 10px;
     border-radius: 20px;
-    font-size: 11px;
+    font-size: 10px;
     font-weight: 600;
 }
 .sp-badge-grade { background: var(--sp-primary); color: white; }
 .sp-badge-category { background: #d1fae5; color: #065f46; }
-.sp-student-body { padding: 20px; }
+.sp-student-body { padding: 16px; }
 .sp-fee-grid {
     display: grid;
     grid-template-columns: repeat(3, 1fr);
-    gap: 12px;
-    margin-bottom: 16px;
+    gap: 10px;
+    margin-bottom: 12px;
 }
 .sp-fee-item {
     text-align: center;
-    padding: 12px;
+    padding: 10px 8px;
     background: var(--sp-bg);
     border-radius: 10px;
 }
-.sp-fee-label { font-size: 11px; color: var(--sp-text-muted); margin-bottom: 4px; }
-.sp-fee-value { font-size: 16px; font-weight: 700; color: var(--sp-text); }
+.sp-fee-label { font-size: 10px; color: var(--sp-text-muted); margin-bottom: 2px; }
+.sp-fee-value { font-size: 14px; font-weight: 600; color: var(--sp-text); }
 .sp-student-footer {
-    padding: 16px 20px;
+    padding: 12px 16px;
     background: var(--sp-bg);
     border-top: 1px solid var(--sp-border);
 }
@@ -414,59 +476,63 @@ $nonce = wp_create_nonce('alhuffaz_public_nonce');
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    gap: 8px;
-    padding: 12px 24px;
-    border-radius: 10px;
+    gap: 6px;
+    padding: 10px 20px;
+    border-radius: 8px;
     font-weight: 600;
-    font-size: 14px;
+    font-size: 13px;
     text-decoration: none;
     cursor: pointer;
-    transition: all 0.3s;
+    transition: all 0.2s;
     border: none;
     font-family: 'Poppins', sans-serif;
+    white-space: nowrap;
 }
 .sp-btn-primary {
     background: linear-gradient(135deg, var(--sp-primary), var(--sp-primary-dark));
     color: white;
 }
+.sp-btn-primary:hover { background: linear-gradient(135deg, #0073e6, #003d80); }
 .sp-btn-success { background: var(--sp-success); color: white; }
-.sp-btn-secondary { background: var(--sp-bg); color: var(--sp-text); border: 1px solid var(--sp-border); }
+.sp-btn-success:hover { background: #0d9668; }
+.sp-btn-secondary { background: white; color: var(--sp-text); border: 1px solid var(--sp-border); }
+.sp-btn-secondary:hover { background: var(--sp-bg); border-color: #cbd5e1; }
 .sp-btn-outline { background: transparent; color: var(--sp-primary); border: 2px solid var(--sp-primary); }
-.sp-btn:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.15); }
+.sp-btn-outline:hover { background: rgba(0,128,255,0.1); }
+.sp-btn:hover { transform: translateY(-1px); box-shadow: 0 2px 8px rgba(0,0,0,0.12); }
 .sp-btn-block { width: 100%; }
-.sp-btn-sm { padding: 8px 16px; font-size: 13px; }
+.sp-btn-sm { padding: 8px 14px; font-size: 12px; }
 
 /* Payment Plan Buttons */
 .sp-plan-title {
-    font-size: 14px;
+    font-size: 13px;
     font-weight: 600;
     color: var(--sp-text);
-    margin: 0 0 12px 0;
+    margin: 0 0 10px 0;
     text-align: center;
 }
 .sp-plan-grid {
     display: grid;
     grid-template-columns: repeat(2, 1fr);
-    gap: 10px;
+    gap: 8px;
 }
 .sp-plan-btn {
     display: flex;
     flex-direction: column;
     align-items: center;
-    padding: 16px 12px;
+    padding: 12px 10px;
     background: var(--sp-bg);
     border: 2px solid var(--sp-border);
-    border-radius: 12px;
+    border-radius: 10px;
     cursor: pointer;
-    transition: all 0.3s;
+    transition: all 0.2s;
     font-family: 'Poppins', sans-serif;
     position: relative;
 }
 .sp-plan-btn:hover {
     border-color: var(--sp-primary);
     background: #f0f7ff;
-    transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(0, 128, 255, 0.15);
+    transform: translateY(-1px);
 }
 .sp-plan-btn.sp-plan-featured {
     background: linear-gradient(135deg, #e0f2ff, #cce6ff);
@@ -474,30 +540,30 @@ $nonce = wp_create_nonce('alhuffaz_public_nonce');
 }
 .sp-plan-badge {
     position: absolute;
-    top: -10px;
-    right: -10px;
+    top: -8px;
+    right: -8px;
     background: var(--sp-success);
     color: white;
-    font-size: 10px;
+    font-size: 9px;
     font-weight: 700;
-    padding: 4px 8px;
+    padding: 3px 6px;
     border-radius: 20px;
 }
 .sp-plan-duration {
-    font-size: 14px;
+    font-size: 12px;
     font-weight: 600;
     color: var(--sp-text);
-    margin-bottom: 4px;
+    margin-bottom: 2px;
 }
 .sp-plan-amount {
-    font-size: 18px;
+    font-size: 15px;
     font-weight: 700;
     color: var(--sp-primary);
 }
 .sp-plan-note {
-    font-size: 10px;
+    font-size: 9px;
     color: var(--sp-text-muted);
-    margin-top: 4px;
+    margin-top: 2px;
 }
 
 /* Payment Proof Summary */
@@ -663,19 +729,20 @@ $nonce = wp_create_nonce('alhuffaz_public_nonce');
 .sp-status-rejected { background: #fee2e2; color: #991b1b; }
 
 /* Payment Form */
-.sp-form-group { margin-bottom: 20px; }
-.sp-form-label { display: block; font-weight: 600; margin-bottom: 8px; font-size: 14px; }
+.sp-form-group { margin-bottom: 16px; }
+.sp-form-label { display: block; font-weight: 600; margin-bottom: 6px; font-size: 13px; color: var(--sp-text); }
 .sp-form-input, .sp-form-select {
     width: 100%;
-    padding: 14px 16px;
-    border: 2px solid var(--sp-border);
-    border-radius: 10px;
-    font-size: 15px;
+    padding: 12px 14px;
+    border: 1px solid var(--sp-border);
+    border-radius: 8px;
+    font-size: 14px;
     font-family: 'Poppins', sans-serif;
-    transition: border-color 0.3s;
+    transition: border-color 0.2s, box-shadow 0.2s;
+    background: white;
 }
-.sp-form-input:focus, .sp-form-select:focus { outline: none; border-color: var(--sp-primary); }
-.sp-form-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; }
+.sp-form-input:focus, .sp-form-select:focus { outline: none; border-color: var(--sp-primary); box-shadow: 0 0 0 3px rgba(0,128,255,0.1); }
+.sp-form-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 14px; }
 
 /* Empty State */
 .sp-empty {
@@ -726,48 +793,81 @@ $nonce = wp_create_nonce('alhuffaz_public_nonce');
     width: 100%;
     height: 100%;
     background: rgba(0,0,0,0.5);
-    z-index: 1000;
+    z-index: 2000;
     align-items: center;
     justify-content: center;
+    padding: 20px;
 }
 .sp-modal-content {
     background: white;
-    border-radius: 20px;
-    max-width: 500px;
-    width: 90%;
-    max-height: 90vh;
+    border-radius: 16px;
+    max-width: 480px;
+    width: 100%;
+    max-height: 85vh;
     overflow-y: auto;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.2);
 }
 .sp-modal-header {
-    padding: 20px 24px;
+    padding: 18px 20px;
     border-bottom: 1px solid var(--sp-border);
     display: flex;
     justify-content: space-between;
     align-items: center;
+    background: var(--sp-bg);
 }
-.sp-modal-header h3 { margin: 0; font-size: 20px; }
-.sp-modal-close { background: none; border: none; font-size: 24px; cursor: pointer; color: var(--sp-text-muted); }
-.sp-modal-body { padding: 24px; }
-.sp-modal-footer { padding: 16px 24px; border-top: 1px solid var(--sp-border); display: flex; gap: 12px; justify-content: flex-end; }
+.sp-modal-header h3 { margin: 0; font-size: 17px; font-weight: 600; display: flex; align-items: center; gap: 8px; }
+.sp-modal-header h3 i { color: var(--sp-primary); }
+.sp-modal-close { background: none; border: none; font-size: 22px; cursor: pointer; color: var(--sp-text-muted); line-height: 1; padding: 4px; transition: color 0.2s; }
+.sp-modal-close:hover { color: var(--sp-danger); }
+.sp-modal-body { padding: 20px; }
+.sp-modal-footer { padding: 14px 20px; border-top: 1px solid var(--sp-border); display: flex; gap: 10px; justify-content: flex-end; background: var(--sp-bg); }
 
 /* Responsive */
-@media (max-width: 992px) {
-    .sp-sidebar { width: 240px; }
-    .sp-main { margin-left: 240px; }
+@media (max-width: 1024px) {
+    :root { --sp-sidebar-width: 240px; }
 }
 @media (max-width: 768px) {
-    .sp-sidebar { position: relative; width: 100%; height: auto; }
-    .sp-main { margin-left: 0; }
-    .sp-wrapper { flex-direction: column; }
-    .sp-stats { grid-template-columns: 1fr; }
+    :root { --sp-sidebar-width: 260px; }
+    .sp-menu-toggle { display: flex; }
+    .sp-sidebar {
+        transform: translateX(-100%);
+    }
+    .sp-sidebar.open {
+        transform: translateX(0);
+    }
+    .sp-overlay.open {
+        display: block;
+    }
+    .sp-main {
+        margin-left: 0;
+        width: 100%;
+        max-width: 100%;
+        padding: 70px 16px 24px;
+    }
+    .sp-stats { grid-template-columns: 1fr 1fr; }
     .sp-students-grid { grid-template-columns: 1fr; }
+    .sp-header { flex-direction: column; align-items: flex-start; }
+    .sp-title { font-size: 22px; }
+    .sp-profile-grid { grid-template-columns: 1fr; }
+}
+@media (max-width: 480px) {
+    .sp-stats { grid-template-columns: 1fr; }
+    .sp-plan-grid { grid-template-columns: 1fr; }
+    .sp-fee-grid { grid-template-columns: 1fr; }
+    .sp-stat { flex-direction: column; text-align: center; gap: 12px; }
 }
 </style>
 
 <div class="sp-portal">
+    <!-- Mobile Menu Toggle -->
+    <button class="sp-menu-toggle" onclick="toggleMobileMenu()">
+        <i class="fas fa-bars"></i>
+    </button>
+    <div class="sp-overlay" onclick="toggleMobileMenu()"></div>
+
     <div class="sp-wrapper">
         <!-- Sidebar -->
-        <aside class="sp-sidebar">
+        <aside class="sp-sidebar" id="spSidebar">
             <div class="sp-sidebar-header">
                 <div class="sp-logo">
                     <i class="fas fa-graduation-cap"></i>
@@ -1494,6 +1594,14 @@ $nonce = wp_create_nonce('alhuffaz_public_nonce');
 </div>
 
 <script>
+// Mobile menu toggle - defined outside DOMContentLoaded for immediate availability
+window.toggleMobileMenu = function() {
+    const sidebar = document.getElementById('spSidebar');
+    const overlay = document.querySelector('.sp-overlay');
+    sidebar.classList.toggle('open');
+    overlay.classList.toggle('open');
+};
+
 document.addEventListener('DOMContentLoaded', function() {
     const ajaxUrl = '<?php echo admin_url('admin-ajax.php'); ?>';
     const nonce = '<?php echo $nonce; ?>';
@@ -1504,6 +1612,13 @@ document.addEventListener('DOMContentLoaded', function() {
         document.querySelectorAll('.sp-nav-item').forEach(n => n.classList.remove('active'));
         document.getElementById('panel-' + panel)?.classList.add('active');
         document.querySelector('[data-panel="' + panel + '"]')?.classList.add('active');
+        // Close mobile menu on panel change
+        const sidebar = document.getElementById('spSidebar');
+        const overlay = document.querySelector('.sp-overlay');
+        if (sidebar && overlay) {
+            sidebar.classList.remove('open');
+            overlay.classList.remove('open');
+        }
     };
 
     document.querySelectorAll('.sp-nav-item[data-panel]').forEach(item => {
