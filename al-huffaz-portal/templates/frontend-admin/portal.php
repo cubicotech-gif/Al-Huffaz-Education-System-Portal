@@ -78,6 +78,23 @@ if (post_type_exists('alhuffaz_sponsor')) {
     $pending_sponsors_count = count($pending_posts);
 }
 
+// Get pending payments count from database
+global $wpdb;
+$payments_table = $wpdb->prefix . 'alhuffaz_payments';
+$table_exists = $wpdb->get_var($wpdb->prepare(
+    "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = %s AND table_name = %s",
+    DB_NAME, $payments_table
+));
+if ($table_exists) {
+    $pending_payments_count = (int) $wpdb->get_var("SELECT COUNT(*) FROM $payments_table WHERE status = 'pending'");
+}
+
+// Get staff count
+if (class_exists('\AlHuffaz\Core\Roles')) {
+    $staff_users = get_users(array('role' => 'alhuffaz_staff'));
+    $staff_count = count($staff_users);
+}
+
 // Get recent students
 $recent_students = array();
 if (post_type_exists('student')) {

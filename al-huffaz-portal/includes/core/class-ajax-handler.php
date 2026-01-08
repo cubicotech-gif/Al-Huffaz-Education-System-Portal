@@ -53,6 +53,8 @@ class Ajax_Handler {
         add_action('wp_ajax_alhuffaz_submit_payment', array($this, 'submit_payment'));
         add_action('wp_ajax_nopriv_alhuffaz_submit_payment', array($this, 'submit_payment'));
 
+        add_action('wp_ajax_alhuffaz_submit_payment_proof', array($this, 'submit_payment_proof'));
+
         add_action('wp_ajax_alhuffaz_get_available_students', array($this, 'get_available_students'));
         add_action('wp_ajax_nopriv_alhuffaz_get_available_students', array($this, 'get_available_students'));
 
@@ -1058,6 +1060,130 @@ class Ajax_Handler {
         wp_send_json_success(array(
             'message' => __('Payment submitted successfully. It will be verified shortly.', 'al-huffaz-portal'),
             'id'      => $payment_id,
+        ));
+    }
+
+    /**
+     * Submit payment proof for new sponsorship (public - from sponsor dashboard)
+     */
+    public function submit_payment_proof() {
+        // Verify nonce
+        if (!isset($_POST['nonce']) || !wp_verify_nonce($_POST['nonce'], 'alhuffaz_public_nonce')) {
+            wp_send_json_error(array('message' => __('Security check failed.', 'al-huffaz-portal')));
+        }
+
+        // Must be logged in
+        if (!is_user_logged_in()) {
+            wp_send_json_error(array('message' => __('You must be logged in.', 'al-huffaz-portal')));
+        }
+
+        $user_id = get_current_user_id();
+        $user = wp_get_current_user();
+
+        // Validate required fields
+        $student_id = isset($_POST['student_id']) ? intval($_POST['student_id']) : 0;
+        $amount = isset($_POST['amount']) ? floatval($_POST['amount']) : 0;
+        $payment_method = isset($_POST['payment_method']) ? sanitize_text_field($_POST['payment_method']) : '';
+        $transaction_id = isset($_POST['transaction_id']) ? sanitize_text_field($_POST['transaction_id']) : '';
+        $sponsorship_type = isset($_POST['sponsorship_type']) ? sanitize_text_field($_POST['sponsorship_type']) : 'monthly';
+        $payment_date = isset($_POST['payment_date']) ? sanitize_text_field($_POST['payment_date']) : current_time('Y-m-d');
+        $notes = isset($_POST['notes']) ? sanitize_textarea_field($_POST['notes']) : '';
+
+        if (!$student_id || !$amount || !$payment_method || !$transaction_id) {
+            wp_send_json_error(array('message' => __('Please fill in all required fields.', 'al-huffaz-portal')));
+        }
+
+        // Verify student exists and is eligible
+        $student = get_post($student_id);
+        if (!$student || $student->post_type !== 'student') {
+            wp_send_json_error(array('message' => __('Invalid student selected.', 'al-huffaz-portal')));
+        }
+
+        // Check if student is eligible for donation
+        $donation_eligible = get_post_meta($student_id, 'donation_eligible', true);
+        if ($donation_eligible !== 'yes') {
+            wp_send_json_error(array('message' => __('This student is not available for sponsorship.', 'al-huffaz-portal')));
+        }
+
+        // Create sponsorship record
+        $sponsorship_id = wp_insert_post(array(
+            'post_type'   => 'alhuffaz_sponsor',
+            'post_title'  => sprintf('%s - %s', $user->display_name, $student->post_title),
+            'post_status' => 'publish',
+        ));
+
+        if (is_wp_error($sponsorship_id)) {
+            wp_send_json_error(array('message' => __('Failed to create sponsorship record.', 'al-huffaz-portal')));
+        }
+
+        // Save sponsorship meta
+        update_post_meta($sponsorship_id, '_student_id', $student_id);
+        update_post_meta($sponsorship_id, '_sponsor_user_id', $user_id);
+        update_post_meta($sponsorship_id, '_sponsor_name', $user->display_name);
+        update_post_meta($sponsorship_id, '_sponsor_email', $user->user_email);
+        update_post_meta($sponsorship_id, '_amount', $amount);
+        update_post_meta($sponsorship_id, '_sponsorship_type', $sponsorship_type);
+        update_post_meta($sponsorship_id, '_payment_method', $payment_method);
+        update_post_meta($sponsorship_id, '_transaction_id', $transaction_id);
+        update_post_meta($sponsorship_id, '_payment_date', $payment_date);
+        update_post_meta($sponsorship_id, '_status', 'pending');
+        update_post_meta($sponsorship_id, '_linked', 'no');
+        update_post_meta($sponsorship_id, '_notes', $notes);
+        update_post_meta($sponsorship_id, '_created_at', current_time('mysql'));
+
+        // Handle payment screenshot upload
+        if (!empty($_FILES['payment_screenshot']) && $_FILES['payment_screenshot']['error'] === UPLOAD_ERR_OK) {
+            require_once(ABSPATH . 'wp-admin/includes/image.php');
+            require_once(ABSPATH . 'wp-admin/includes/file.php');
+            require_once(ABSPATH . 'wp-admin/includes/media.php');
+
+            $attachment_id = media_handle_upload('payment_screenshot', $sponsorship_id);
+
+            if (!is_wp_error($attachment_id)) {
+                update_post_meta($sponsorship_id, '_payment_screenshot', $attachment_id);
+            }
+        }
+
+        // Log activity
+        if (class_exists('AlHuffaz\\Core\\Helpers')) {
+            Helpers::log_activity('new_sponsorship_request', 'sponsorship', $sponsorship_id,
+                sprintf('New sponsorship request from %s for student %s - Amount: %s',
+                    $user->display_name, $student->post_title, Helpers::format_currency($amount)
+                )
+            );
+        }
+
+        // Send notification to admin
+        $admin_email = get_option('alhuffaz_admin_email', get_option('admin_email'));
+        if (class_exists('AlHuffaz\\Core\\Helpers')) {
+            Helpers::send_notification(
+                $admin_email,
+                __('New Sponsorship Payment Proof Submitted', 'al-huffaz-portal'),
+                sprintf(
+                    __('A new sponsorship payment proof has been submitted.
+
+Sponsor: %s (%s)
+Student: %s
+Amount: %s
+Plan: %s
+Payment Method: %s
+Transaction ID: %s
+
+Please verify the payment in the admin portal.', 'al-huffaz-portal'),
+                    $user->display_name,
+                    $user->user_email,
+                    $student->post_title,
+                    Helpers::format_currency($amount),
+                    ucfirst($sponsorship_type),
+                    ucfirst(str_replace('_', ' ', $payment_method)),
+                    $transaction_id
+                )
+            );
+        }
+
+        wp_send_json_success(array(
+            'message' => __('Payment proof submitted successfully! The school will verify your payment and notify you once approved.', 'al-huffaz-portal'),
+            'sponsorship_id' => $sponsorship_id,
         ));
     }
 
