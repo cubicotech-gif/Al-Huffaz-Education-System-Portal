@@ -44,7 +44,18 @@ $pending_sponsors_count = count(get_posts(array(
 // Get pending payments count
 global $wpdb;
 $payments_table = $wpdb->prefix . 'alhuffaz_payments';
-$pending_payments_count = (int) $wpdb->get_var("SELECT COUNT(*) FROM $payments_table WHERE status = 'pending'");
+$pending_payments_count = 0;
+
+// Check if payments table exists before querying
+$table_exists = $wpdb->get_var($wpdb->prepare(
+    "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = %s AND table_name = %s",
+    DB_NAME,
+    $payments_table
+));
+
+if ($table_exists) {
+    $pending_payments_count = (int) $wpdb->get_var("SELECT COUNT(*) FROM $payments_table WHERE status = 'pending'");
+}
 
 // Get donation eligible students count (not sponsored)
 $donation_eligible_count = count(get_posts(array(
