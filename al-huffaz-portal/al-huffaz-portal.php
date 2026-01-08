@@ -71,8 +71,12 @@ final class Al_Huffaz_Portal {
     private function load_dependencies() {
         // Core classes
         require_once ALHUFFAZ_PLUGIN_DIR . 'includes/core/class-autoloader.php';
+        require_once ALHUFFAZ_PLUGIN_DIR . 'includes/core/class-debug.php';
         require_once ALHUFFAZ_PLUGIN_DIR . 'includes/core/class-post-types.php';
         require_once ALHUFFAZ_PLUGIN_DIR . 'includes/core/class-roles.php';
+
+        // Initialize debug logging
+        \AlHuffaz\Core\Debug::init();
         require_once ALHUFFAZ_PLUGIN_DIR . 'includes/core/class-assets.php';
         require_once ALHUFFAZ_PLUGIN_DIR . 'includes/core/class-ajax-handler.php';
         require_once ALHUFFAZ_PLUGIN_DIR . 'includes/core/class-helpers.php';
