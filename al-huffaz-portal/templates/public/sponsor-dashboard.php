@@ -537,6 +537,83 @@ $nonce = wp_create_nonce('alhuffaz_public_nonce');
     margin-top: 6px;
 }
 
+/* Student Profile View */
+.sp-profile-view { padding: 0; }
+.sp-profile-header {
+    display: flex;
+    align-items: center;
+    gap: 24px;
+    padding: 24px;
+    background: linear-gradient(135deg, var(--sp-primary), var(--sp-primary-dark));
+    border-radius: 16px;
+    color: white;
+}
+.sp-profile-photo img, .sp-profile-placeholder {
+    width: 100px;
+    height: 100px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 4px solid rgba(255,255,255,0.3);
+}
+.sp-profile-placeholder {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(255,255,255,0.2);
+    font-size: 40px;
+    font-weight: 700;
+}
+.sp-profile-info h2 {
+    margin: 0 0 12px 0;
+    font-size: 24px;
+    font-weight: 700;
+}
+.sp-profile-badges { display: flex; gap: 8px; }
+.sp-profile-badges .sp-badge { background: rgba(255,255,255,0.2); color: white; }
+.sp-subjects-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 12px;
+}
+.sp-subject-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 14px 16px;
+    background: var(--sp-bg);
+    border-radius: 10px;
+    border-left: 4px solid var(--sp-primary);
+}
+.sp-subject-name { font-weight: 600; color: var(--sp-text); }
+.sp-subject-score { display: flex; align-items: center; gap: 8px; }
+.sp-subject-percentage { font-weight: 700; color: var(--sp-text); }
+.sp-subject-grade {
+    padding: 4px 8px;
+    border-radius: 6px;
+    font-size: 12px;
+    font-weight: 700;
+}
+.grade-a { background: #d1fae5; color: #065f46; }
+.grade-b { background: #dbeafe; color: #1e40af; }
+.grade-c { background: #fef3c7; color: #92400e; }
+.grade-d { background: #fed7aa; color: #c2410c; }
+.grade-f { background: #fee2e2; color: #b91c1c; }
+.sp-goals-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+.sp-goals-list li {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 0;
+    border-bottom: 1px solid var(--sp-border);
+    color: var(--sp-text);
+}
+.sp-goals-list li:last-child { border-bottom: none; }
+.sp-goals-list li i { color: var(--sp-success); }
+
 /* Profile */
 .sp-profile-grid {
     display: grid;
@@ -984,9 +1061,9 @@ $nonce = wp_create_nonce('alhuffaz_public_nonce');
                             </div>
                         </div>
                         <div class="sp-student-footer" style="display:flex;gap:10px;">
-                            <a href="<?php echo get_permalink($s['student_id']); ?>" class="sp-btn sp-btn-secondary sp-btn-sm" style="flex:1;">
-                                <i class="fas fa-eye"></i> <?php _e('View', 'al-huffaz-portal'); ?>
-                            </a>
+                            <button class="sp-btn sp-btn-secondary sp-btn-sm" style="flex:1;" onclick="viewStudentProfile(<?php echo $s['student_id']; ?>)">
+                                <i class="fas fa-eye"></i> <?php _e('View Profile', 'al-huffaz-portal'); ?>
+                            </button>
                             <button class="sp-btn sp-btn-primary sp-btn-sm" style="flex:1;" onclick="openPaymentModal(<?php echo $s['student_id']; ?>, '<?php echo esc_js($s['student_name']); ?>', <?php echo floatval($s['amount']); ?>)">
                                 <i class="fas fa-credit-card"></i> <?php _e('Pay', 'al-huffaz-portal'); ?>
                             </button>
@@ -995,6 +1072,23 @@ $nonce = wp_create_nonce('alhuffaz_public_nonce');
                     <?php endforeach; ?>
                 </div>
                 <?php endif; ?>
+            </div>
+
+            <!-- ==================== STUDENT PROFILE PANEL ==================== -->
+            <div class="sp-panel" id="panel-student-profile">
+                <div class="sp-header">
+                    <button class="sp-btn sp-btn-secondary sp-btn-sm" onclick="showPanel('my-students')" style="margin-right:16px;">
+                        <i class="fas fa-arrow-left"></i> <?php _e('Back', 'al-huffaz-portal'); ?>
+                    </button>
+                    <h1 class="sp-title"><?php _e('Student Profile', 'al-huffaz-portal'); ?></h1>
+                </div>
+
+                <div id="studentProfileContent">
+                    <div class="sp-loading" style="text-align:center;padding:60px;">
+                        <i class="fas fa-spinner fa-spin fa-2x"></i>
+                        <p style="margin-top:16px;"><?php _e('Loading student profile...', 'al-huffaz-portal'); ?></p>
+                    </div>
+                </div>
             </div>
 
             <!-- ==================== AVAILABLE STUDENTS PANEL ==================== -->
@@ -1437,6 +1531,130 @@ document.addEventListener('DOMContentLoaded', function() {
             amountInput.value = selected.dataset.amount;
         }
     };
+
+    // View student profile
+    window.viewStudentProfile = function(studentId) {
+        showPanel('student-profile');
+
+        const content = document.getElementById('studentProfileContent');
+        content.innerHTML = '<div class="sp-loading" style="text-align:center;padding:60px;"><i class="fas fa-spinner fa-spin fa-2x"></i><p style="margin-top:16px;"><?php _e('Loading student profile...', 'al-huffaz-portal'); ?></p></div>';
+
+        fetch(ajaxUrl, {
+            method: 'POST',
+            headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+            body: new URLSearchParams({
+                action: 'alhuffaz_get_student_profile',
+                nonce: nonce,
+                student_id: studentId
+            })
+        })
+        .then(r => r.json())
+        .then(data => {
+            if (data.success) {
+                renderStudentProfile(data.data);
+            } else {
+                content.innerHTML = '<div class="sp-alert sp-alert-danger"><i class="fas fa-exclamation-circle"></i> ' + (data.data?.message || '<?php _e('Error loading profile', 'al-huffaz-portal'); ?>') + '</div>';
+            }
+        })
+        .catch(() => {
+            content.innerHTML = '<div class="sp-alert sp-alert-danger"><i class="fas fa-exclamation-circle"></i> <?php _e('Network error. Please try again.', 'al-huffaz-portal'); ?></div>';
+        });
+    };
+
+    function renderStudentProfile(student) {
+        const content = document.getElementById('studentProfileContent');
+
+        let subjectsHtml = '';
+        if (student.subjects && student.subjects.length > 0) {
+            subjectsHtml = '<div class="sp-card" style="margin-top:20px;"><div class="sp-card-header"><h3 class="sp-card-title"><i class="fas fa-book"></i> <?php _e('Academic Progress', 'al-huffaz-portal'); ?></h3></div><div class="sp-card-body"><div class="sp-subjects-grid">';
+            student.subjects.forEach(subject => {
+                const grade = getGradeFromPercentage(subject.overall || 0);
+                subjectsHtml += `
+                    <div class="sp-subject-item">
+                        <div class="sp-subject-name">${subject.name || 'Subject'}</div>
+                        <div class="sp-subject-score">
+                            <span class="sp-subject-percentage">${subject.overall || 0}%</span>
+                            <span class="sp-subject-grade ${grade.class}">${grade.letter}</span>
+                        </div>
+                    </div>`;
+            });
+            subjectsHtml += '</div></div></div>';
+        }
+
+        let goalsHtml = '';
+        const goals = student.goals?.filter(g => g) || [];
+        if (goals.length > 0) {
+            goalsHtml = '<div class="sp-card" style="margin-top:20px;"><div class="sp-card-header"><h3 class="sp-card-title"><i class="fas fa-bullseye"></i> <?php _e('Learning Goals', 'al-huffaz-portal'); ?></h3></div><div class="sp-card-body"><ul class="sp-goals-list">';
+            goals.forEach(goal => {
+                goalsHtml += `<li><i class="fas fa-check-circle"></i> ${goal}</li>`;
+            });
+            goalsHtml += '</ul></div></div>';
+        }
+
+        content.innerHTML = `
+            <div class="sp-profile-view">
+                <div class="sp-profile-header">
+                    <div class="sp-profile-photo">
+                        ${student.photo ? `<img src="${student.photo}" alt="">` : `<div class="sp-profile-placeholder">${student.name?.charAt(0) || 'S'}</div>`}
+                    </div>
+                    <div class="sp-profile-info">
+                        <h2>${student.name}</h2>
+                        <div class="sp-profile-badges">
+                            ${student.grade ? `<span class="sp-badge sp-badge-grade">${student.grade}</span>` : ''}
+                            ${student.category ? `<span class="sp-badge sp-badge-category">${student.category}</span>` : ''}
+                        </div>
+                    </div>
+                </div>
+
+                <div class="sp-stats" style="margin-top:20px;">
+                    <div class="sp-stat">
+                        <div class="sp-stat-icon blue"><i class="fas fa-chart-line"></i></div>
+                        <div>
+                            <div class="sp-stat-label"><?php _e('Overall Progress', 'al-huffaz-portal'); ?></div>
+                            <div class="sp-stat-value">${student.overall_percentage || 0}%</div>
+                        </div>
+                    </div>
+                    <div class="sp-stat">
+                        <div class="sp-stat-icon green"><i class="fas fa-calendar-check"></i></div>
+                        <div>
+                            <div class="sp-stat-label"><?php _e('Attendance', 'al-huffaz-portal'); ?></div>
+                            <div class="sp-stat-value">${student.attendance?.percentage || 0}%</div>
+                        </div>
+                    </div>
+                    <div class="sp-stat">
+                        <div class="sp-stat-icon orange"><i class="fas fa-award"></i></div>
+                        <div>
+                            <div class="sp-stat-label"><?php _e('Overall Grade', 'al-huffaz-portal'); ?></div>
+                            <div class="sp-stat-value">${student.overall_grade || 'N/A'}</div>
+                        </div>
+                    </div>
+                </div>
+
+                ${student.teacher_comments ? `
+                <div class="sp-card" style="margin-top:20px;">
+                    <div class="sp-card-header" style="background:linear-gradient(135deg, var(--sp-success), #059669);color:white;">
+                        <h3 class="sp-card-title" style="color:white;"><i class="fas fa-comment-alt"></i> <?php _e('Teacher Comments', 'al-huffaz-portal'); ?></h3>
+                    </div>
+                    <div class="sp-card-body">
+                        <p style="font-style:italic;color:var(--sp-text);line-height:1.7;">"${student.teacher_comments}"</p>
+                    </div>
+                </div>
+                ` : ''}
+
+                ${subjectsHtml}
+                ${goalsHtml}
+            </div>
+        `;
+    }
+
+    function getGradeFromPercentage(percentage) {
+        if (percentage >= 90) return { letter: 'A+', class: 'grade-a' };
+        if (percentage >= 80) return { letter: 'A', class: 'grade-a' };
+        if (percentage >= 70) return { letter: 'B', class: 'grade-b' };
+        if (percentage >= 60) return { letter: 'C', class: 'grade-c' };
+        if (percentage >= 50) return { letter: 'D', class: 'grade-d' };
+        return { letter: 'F', class: 'grade-f' };
+    }
 
     // Go to payment proof page with selected plan
     window.goToPaymentPage = function(studentId, studentName, months, amount) {

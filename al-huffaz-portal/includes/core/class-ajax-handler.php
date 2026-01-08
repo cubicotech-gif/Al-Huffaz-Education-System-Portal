@@ -55,6 +55,8 @@ class Ajax_Handler {
 
         add_action('wp_ajax_alhuffaz_submit_payment_proof', array($this, 'submit_payment_proof'));
 
+        add_action('wp_ajax_alhuffaz_get_student_profile', array($this, 'get_student_profile'));
+
         add_action('wp_ajax_alhuffaz_get_available_students', array($this, 'get_available_students'));
         add_action('wp_ajax_nopriv_alhuffaz_get_available_students', array($this, 'get_available_students'));
 
@@ -641,14 +643,18 @@ class Ajax_Handler {
         update_post_meta($sponsorship_id, '_verified_by', get_current_user_id());
         update_post_meta($sponsorship_id, '_verified_at', current_time('mysql'));
 
+        // Automatically link sponsor to student on approval
+        update_post_meta($sponsorship_id, '_linked', 'yes');
+
         // Mark student as sponsored
         $student_id = get_post_meta($sponsorship_id, '_student_id', true);
         if ($student_id) {
             update_post_meta($student_id, '_is_sponsored', 'yes');
+            update_post_meta($student_id, '_sponsor_id', get_post_meta($sponsorship_id, '_sponsor_user_id', true));
         }
 
         // Log activity
-        Helpers::log_activity('approve_sponsorship', 'sponsorship', $sponsorship_id, 'Sponsorship approved');
+        Helpers::log_activity('approve_sponsorship', 'sponsorship', $sponsorship_id, 'Sponsorship approved and student linked');
 
         // Sync with Ultimate Member if sponsor has user account
         $sponsor_user_id = get_post_meta($sponsorship_id, '_sponsor_user_id', true);
@@ -1184,6 +1190,130 @@ Please verify the payment in the admin portal.', 'al-huffaz-portal'),
         wp_send_json_success(array(
             'message' => __('Payment proof submitted successfully! The school will verify your payment and notify you once approved.', 'al-huffaz-portal'),
             'sponsorship_id' => $sponsorship_id,
+        ));
+    }
+
+    /**
+     * Get student profile for sponsor (public - from sponsor dashboard)
+     */
+    public function get_student_profile() {
+        // Verify nonce
+        if (!isset($_POST['nonce']) || !wp_verify_nonce($_POST['nonce'], 'alhuffaz_public_nonce')) {
+            wp_send_json_error(array('message' => __('Security check failed.', 'al-huffaz-portal')));
+        }
+
+        // Must be logged in
+        if (!is_user_logged_in()) {
+            wp_send_json_error(array('message' => __('You must be logged in.', 'al-huffaz-portal')));
+        }
+
+        $user_id = get_current_user_id();
+        $student_id = isset($_POST['student_id']) ? intval($_POST['student_id']) : 0;
+
+        if (!$student_id) {
+            wp_send_json_error(array('message' => __('Invalid student ID.', 'al-huffaz-portal')));
+        }
+
+        // Verify sponsor has access to this student (must have approved, linked sponsorship)
+        $sponsorships = get_posts(array(
+            'post_type'      => 'alhuffaz_sponsor',
+            'posts_per_page' => 1,
+            'post_status'    => 'publish',
+            'meta_query'     => array(
+                'relation' => 'AND',
+                array(
+                    'key'   => '_sponsor_user_id',
+                    'value' => $user_id,
+                ),
+                array(
+                    'key'   => '_student_id',
+                    'value' => $student_id,
+                ),
+                array(
+                    'key'   => '_status',
+                    'value' => 'approved',
+                ),
+                array(
+                    'key'   => '_linked',
+                    'value' => 'yes',
+                ),
+            ),
+        ));
+
+        if (empty($sponsorships)) {
+            wp_send_json_error(array('message' => __('You do not have access to this student profile.', 'al-huffaz-portal')));
+        }
+
+        // Get student data
+        $student = get_post($student_id);
+        if (!$student || $student->post_type !== 'student') {
+            wp_send_json_error(array('message' => __('Student not found.', 'al-huffaz-portal')));
+        }
+
+        // Get student photo
+        $photo_id = get_post_meta($student_id, 'student_photo', true);
+        $photo_url = $photo_id ? wp_get_attachment_image_url($photo_id, 'medium') : '';
+
+        // Get basic info
+        $profile = array(
+            'id' => $student_id,
+            'name' => $student->post_title,
+            'photo' => $photo_url,
+            'gr_number' => get_post_meta($student_id, 'gr_number', true),
+            'roll_number' => get_post_meta($student_id, 'roll_number', true),
+            'gender' => get_post_meta($student_id, 'gender', true),
+            'date_of_birth' => get_post_meta($student_id, 'date_of_birth', true),
+            'grade_level' => get_post_meta($student_id, 'grade_level', true),
+            'islamic_studies_category' => get_post_meta($student_id, 'islamic_studies_category', true),
+            'academic_year' => get_post_meta($student_id, 'academic_year', true),
+            'academic_term' => get_post_meta($student_id, 'academic_term', true),
+        );
+
+        // Get attendance
+        $total_days = get_post_meta($student_id, 'total_school_days', true);
+        $present_days = get_post_meta($student_id, 'present_days', true);
+        $profile['attendance'] = array(
+            'total_days' => intval($total_days) ?: 0,
+            'present_days' => intval($present_days) ?: 0,
+            'percentage' => $total_days > 0 ? round(($present_days / $total_days) * 100, 1) : 0,
+        );
+
+        // Get subjects with grades
+        $subjects = get_post_meta($student_id, 'subjects', true);
+        $profile['subjects'] = is_array($subjects) ? $subjects : array();
+
+        // Get goals
+        $profile['goals'] = array(
+            get_post_meta($student_id, 'goal_1', true),
+            get_post_meta($student_id, 'goal_2', true),
+            get_post_meta($student_id, 'goal_3', true),
+        );
+        $profile['goals'] = array_filter($profile['goals']); // Remove empty goals
+
+        // Get teacher comments
+        $profile['teacher_comments'] = get_post_meta($student_id, 'teacher_overall_comments', true);
+
+        // Get behavior/performance ratings
+        $profile['ratings'] = array(
+            'health' => intval(get_post_meta($student_id, 'health_rating', true)),
+            'cleanness' => intval(get_post_meta($student_id, 'cleanness_rating', true)),
+            'homework' => intval(get_post_meta($student_id, 'completes_homework', true)),
+            'participation' => intval(get_post_meta($student_id, 'participates_in_class', true)),
+            'teamwork' => intval(get_post_meta($student_id, 'works_well_in_groups', true)),
+            'problem_solving' => intval(get_post_meta($student_id, 'problem_solving_skills', true)),
+            'organization' => intval(get_post_meta($student_id, 'organization_preparedness', true)),
+        );
+
+        // Get sponsorship details
+        $sponsorship = $sponsorships[0];
+        $profile['sponsorship'] = array(
+            'type' => get_post_meta($sponsorship->ID, '_sponsorship_type', true),
+            'amount' => floatval(get_post_meta($sponsorship->ID, '_amount', true)),
+            'start_date' => get_post_meta($sponsorship->ID, '_created_at', true) ?: $sponsorship->post_date,
+        );
+
+        wp_send_json_success(array(
+            'profile' => $profile,
         ));
     }
 
