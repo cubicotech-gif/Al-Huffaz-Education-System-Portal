@@ -21,6 +21,10 @@ class Shortcodes {
      * Constructor
      */
     public function __construct() {
+        // Authentication shortcodes (NEW - Unified Login System)
+        add_shortcode('alhuffaz_unified_login', array($this, 'unified_login'));
+        add_shortcode('alhuffaz_sponsor_registration', array($this, 'sponsor_registration'));
+
         // Public shortcodes
         add_shortcode('alhuffaz_students', array($this, 'students_display'));
         add_shortcode('alhuffaz_student_display', array($this, 'students_display'));
@@ -56,7 +60,9 @@ class Shortcodes {
      */
     public function sponsor_dashboard($atts) {
         if (!is_user_logged_in()) {
-            return $this->login_form();
+            // Redirect to unified login page
+            wp_redirect(home_url('/login/?access=denied'));
+            exit;
         }
 
         if (!\AlHuffaz\Core\Roles::is_sponsor()) {
@@ -86,7 +92,9 @@ class Shortcodes {
      */
     public function payment_form($atts) {
         if (!is_user_logged_in()) {
-            return $this->login_form();
+            // Redirect to unified login page
+            wp_redirect(home_url('/login/?access=denied'));
+            exit;
         }
 
         if (!\AlHuffaz\Core\Roles::is_sponsor()) {
@@ -205,11 +213,38 @@ class Shortcodes {
      */
     public function frontend_admin_portal($atts) {
         if (!$this->can_access_admin()) {
-            return $this->admin_login_form();
+            // Redirect to unified login page
+            wp_redirect(home_url('/login/?access=denied'));
+            exit;
         }
 
         ob_start();
         include ALHUFFAZ_TEMPLATES_DIR . 'frontend-admin/portal.php';
+        return ob_get_clean();
+    }
+
+    /**
+     * Unified Login Page
+     * Single login page for Admin, Staff, and Sponsors
+     * System automatically detects role and redirects to correct dashboard
+     * Usage: [alhuffaz_unified_login]
+     */
+    public function unified_login($atts) {
+        ob_start();
+        include ALHUFFAZ_TEMPLATES_DIR . 'public/unified-login.php';
+        return ob_get_clean();
+    }
+
+    /**
+     * Sponsor Registration Page
+     * Public registration form for new sponsors
+     * Account created with pending_approval status
+     * Admin must approve before sponsor can login
+     * Usage: [alhuffaz_sponsor_registration]
+     */
+    public function sponsor_registration($atts) {
+        ob_start();
+        include ALHUFFAZ_TEMPLATES_DIR . 'public/sponsor-registration.php';
         return ob_get_clean();
     }
 }
