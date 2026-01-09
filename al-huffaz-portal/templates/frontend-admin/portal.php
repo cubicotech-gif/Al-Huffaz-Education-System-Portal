@@ -1,281 +1,2991 @@
 <?php
 /**
- * Unified Front-end Admin Portal Template
+ * Front-end Admin Portal Template
  * Al-Huffaz Education System Portal
  *
- * ✅ NOW UNIFIED WITH BACKEND ADMIN
- * Uses same templates as WP Admin - any change reflects in BOTH places!
+ * SIMPLIFIED VERSION - No complex role dependencies
  */
-
-use AlHuffaz\Admin\Dashboard;
-use AlHuffaz\Admin\Student_Manager;
-use AlHuffaz\Admin\Sponsor_Manager;
-use AlHuffaz\Admin\Payment_Manager;
-use AlHuffaz\Admin\Reports;
-use AlHuffaz\Admin\Settings;
-use AlHuffaz\Admin\Bulk_Import;
-use AlHuffaz\Core\Helpers;
 
 defined('ABSPATH') || exit;
 
-// Check access
+// Simple check - just use WordPress capabilities
 $current_user = wp_get_current_user();
-if (!current_user_can('manage_options') && !current_user_can('edit_posts')) {
-    echo '<div class="alhuffaz-notice notice-error">' . __('Access denied. You don\'t have permission to access this portal.', 'al-huffaz-portal') . '</div>';
-    return;
+
+// Everyone with edit_posts can access (admins, editors, staff)
+$is_admin = current_user_can('manage_options');
+$can_manage_sponsors = current_user_can('manage_options');
+$can_manage_payments = current_user_can('manage_options');
+$can_manage_staff = current_user_can('manage_options');
+$is_staff = current_user_can('edit_posts') && !current_user_can('manage_options');
+$staff_count = 0;
+
+// Get stats - with null checks
+$student_counts = wp_count_posts('student');
+$total_students = isset($student_counts->publish) ? (int)$student_counts->publish : 0;
+
+$sponsor_counts = wp_count_posts('alhuffaz_sponsor');
+$total_sponsors = isset($sponsor_counts->publish) ? (int)$sponsor_counts->publish : 0;
+
+// Category counts
+$hifz_count = 0;
+$nazra_count = 0;
+$pending_sponsors_count = 0;
+$pending_payments_count = 0;
+$donation_eligible_count = 0;
+
+// Only query if post type exists
+if (post_type_exists('student')) {
+    $hifz_posts = get_posts(array(
+        'post_type' => 'student',
+        'post_status' => 'publish',
+        'posts_per_page' => -1,
+        'meta_key' => 'islamic_studies_category',
+        'meta_value' => 'hifz',
+        'fields' => 'ids'
+    ));
+    $hifz_count = count($hifz_posts);
+
+    $nazra_posts = get_posts(array(
+        'post_type' => 'student',
+        'post_status' => 'publish',
+        'posts_per_page' => -1,
+        'meta_key' => 'islamic_studies_category',
+        'meta_value' => 'nazra',
+        'fields' => 'ids'
+    ));
+    $nazra_count = count($nazra_posts);
+
+    $eligible_posts = get_posts(array(
+        'post_type' => 'student',
+        'post_status' => 'publish',
+        'posts_per_page' => -1,
+        'meta_key' => 'donation_eligible',
+        'meta_value' => 'yes',
+        'fields' => 'ids'
+    ));
+    $donation_eligible_count = count($eligible_posts);
 }
 
-// Get current page/tab
-$current_page = isset($_GET['admin_page']) ? sanitize_key($_GET['admin_page']) : 'dashboard';
+if (post_type_exists('alhuffaz_sponsor')) {
+    $pending_posts = get_posts(array(
+        'post_type' => 'alhuffaz_sponsor',
+        'post_status' => 'publish',
+        'posts_per_page' => -1,
+        'meta_key' => '_status',
+        'meta_value' => 'pending',
+        'fields' => 'ids'
+    ));
+    $pending_sponsors_count = count($pending_posts);
+}
 
-// Get current URL for building navigation links
-$current_url = (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? "https" : "http") . "://$_SERVER[HTTP_HOST]$_SERVER[REQUEST_URI]";
-$base_url = remove_query_arg(['admin_page', 'id', 'paged', 'view', 'status'], $current_url);
+// Get pending payments count from database
+global $wpdb;
+$payments_table = $wpdb->prefix . 'alhuffaz_payments';
+$table_exists = $wpdb->get_var($wpdb->prepare(
+    "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = %s AND table_name = %s",
+    DB_NAME, $payments_table
+));
+if ($table_exists) {
+    $pending_payments_count = (int) $wpdb->get_var("SELECT COUNT(*) FROM $payments_table WHERE status = 'pending'");
+}
 
+// Get staff count
+if (class_exists('\AlHuffaz\Core\Roles')) {
+    $staff_users = get_users(array('role' => 'alhuffaz_staff'));
+    $staff_count = count($staff_users);
+}
+
+// Get inactive sponsors count (sponsors with no active sponsorships)
+$inactive_sponsors_count = 0;
+$all_sponsor_users = get_users(array('role' => 'alhuffaz_sponsor'));
+foreach ($all_sponsor_users as $sponsor_user) {
+    $active_sponsorships = get_posts(array(
+        'post_type' => 'alhuffaz_sponsor',
+        'posts_per_page' => -1,
+        'meta_query' => array(
+            'relation' => 'AND',
+            array('key' => '_sponsor_user_id', 'value' => $sponsor_user->ID),
+            array('key' => '_status', 'value' => 'approved'),
+            array('key' => '_linked', 'value' => 'yes'),
+        ),
+        'fields' => 'ids',
+    ));
+    if (empty($active_sponsorships)) {
+        $inactive_sponsors_count++;
+    }
+}
+
+// Get recent students
+$recent_students = array();
+if (post_type_exists('student')) {
+    $recent_students = get_posts(array(
+        'post_type' => 'student',
+        'post_status' => 'publish',
+        'posts_per_page' => 5,
+        'orderby' => 'date',
+        'order' => 'DESC'
+    ));
+}
+
+// Check for edit mode
+$edit_id = isset($_GET['edit']) ? intval($_GET['edit']) : 0;
+$is_edit = ($edit_id > 0 && get_post_type($edit_id) === 'student');
+$student_data = array();
+$subjects = array();
+$photo_url = '';
+
+if ($is_edit) {
+    $student_data = array(
+        'student_name' => get_the_title($edit_id),
+        'gr_number' => get_post_meta($edit_id, 'gr_number', true),
+        'roll_number' => get_post_meta($edit_id, 'roll_number', true),
+        'gender' => get_post_meta($edit_id, 'gender', true),
+        'date_of_birth' => get_post_meta($edit_id, 'date_of_birth', true),
+        'admission_date' => get_post_meta($edit_id, 'admission_date', true),
+        'grade_level' => get_post_meta($edit_id, 'grade_level', true),
+        'islamic_studies_category' => get_post_meta($edit_id, 'islamic_studies_category', true),
+        'permanent_address' => get_post_meta($edit_id, 'permanent_address', true),
+        'current_address' => get_post_meta($edit_id, 'current_address', true),
+        'father_name' => get_post_meta($edit_id, 'father_name', true),
+        'father_cnic' => get_post_meta($edit_id, 'father_cnic', true),
+        'father_email' => get_post_meta($edit_id, 'father_email', true),
+        'guardian_name' => get_post_meta($edit_id, 'guardian_name', true),
+        'guardian_cnic' => get_post_meta($edit_id, 'guardian_cnic', true),
+        'guardian_email' => get_post_meta($edit_id, 'guardian_email', true),
+        'guardian_phone' => get_post_meta($edit_id, 'guardian_phone', true),
+        'guardian_whatsapp' => get_post_meta($edit_id, 'guardian_whatsapp', true),
+        'relationship_to_student' => get_post_meta($edit_id, 'relationship_to_student', true),
+        'emergency_contact' => get_post_meta($edit_id, 'emergency_contact', true),
+        'emergency_whatsapp' => get_post_meta($edit_id, 'emergency_whatsapp', true),
+        'monthly_tuition_fee' => get_post_meta($edit_id, 'monthly_tuition_fee', true),
+        'course_fee' => get_post_meta($edit_id, 'course_fee', true),
+        'uniform_fee' => get_post_meta($edit_id, 'uniform_fee', true),
+        'annual_fee' => get_post_meta($edit_id, 'annual_fee', true),
+        'admission_fee' => get_post_meta($edit_id, 'admission_fee', true),
+        'zakat_eligible' => get_post_meta($edit_id, 'zakat_eligible', true),
+        'donation_eligible' => get_post_meta($edit_id, 'donation_eligible', true),
+        'blood_group' => get_post_meta($edit_id, 'blood_group', true),
+        'allergies' => get_post_meta($edit_id, 'allergies', true),
+        'medical_conditions' => get_post_meta($edit_id, 'medical_conditions', true),
+        'total_school_days' => get_post_meta($edit_id, 'total_school_days', true),
+        'present_days' => get_post_meta($edit_id, 'present_days', true),
+        'academic_term' => get_post_meta($edit_id, 'academic_term', true),
+        'academic_year' => get_post_meta($edit_id, 'academic_year', true),
+        'health_rating' => get_post_meta($edit_id, 'health_rating', true),
+        'cleanness_rating' => get_post_meta($edit_id, 'cleanness_rating', true),
+        'completes_homework' => get_post_meta($edit_id, 'completes_homework', true),
+        'participates_in_class' => get_post_meta($edit_id, 'participates_in_class', true),
+        'works_well_in_groups' => get_post_meta($edit_id, 'works_well_in_groups', true),
+        'problem_solving_skills' => get_post_meta($edit_id, 'problem_solving_skills', true),
+        'organization_preparedness' => get_post_meta($edit_id, 'organization_preparedness', true),
+        'teacher_overall_comments' => get_post_meta($edit_id, 'teacher_overall_comments', true),
+        'goal_1' => get_post_meta($edit_id, 'goal_1', true),
+        'goal_2' => get_post_meta($edit_id, 'goal_2', true),
+        'goal_3' => get_post_meta($edit_id, 'goal_3', true),
+    );
+
+    $subjects = get_post_meta($edit_id, 'subjects', true);
+    if (!is_array($subjects)) $subjects = array();
+
+    $photo_id = get_post_meta($edit_id, 'student_photo', true);
+    $photo_url = $photo_id ? wp_get_attachment_image_url($photo_id, 'medium') : '';
+}
+
+// Helper functions - only define if not already defined
+if (!function_exists('ahp_fe_selected')) {
+    function ahp_fe_selected($field, $value, $data) {
+        return (isset($data[$field]) && $data[$field] === $value) ? 'selected' : '';
+    }
+}
+if (!function_exists('ahp_fe_checked')) {
+    function ahp_fe_checked($field, $data) {
+        return (!empty($data[$field]) && $data[$field] === 'yes') ? 'checked' : '';
+    }
+}
+
+$portal_url = get_permalink();
+$nonce = wp_create_nonce('alhuffaz_student_nonce');
 ?>
 
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+
 <style>
-/* Frontend Admin Portal Wrapper */
-.alhuffaz-frontend-admin {
-    background: #f0f0f1;
-    padding: 20px 0;
-    min-height: 100vh;
+/* ============================================
+   AL-HUFFAZ ADMIN PORTAL - MODERN TOP NAV DESIGN
+   Inspired by Stripe, Linear, Notion dashboards
+   ============================================ */
+
+/* CSS Variables - Scoped to .ahp-portal */
+.ahp-portal {
+    --ahp-primary: #0080ff;
+    --ahp-primary-dark: #0056b3;
+    --ahp-primary-light: #e0f2fe;
+    --ahp-success: #10b981;
+    --ahp-success-light: #d1fae5;
+    --ahp-warning: #f59e0b;
+    --ahp-warning-light: #fef3c7;
+    --ahp-danger: #ef4444;
+    --ahp-danger-light: #fee2e2;
+    --ahp-text: #1e293b;
+    --ahp-text-muted: #64748b;
+    --ahp-border: #e2e8f0;
+    --ahp-bg: #f8fafc;
+    --ahp-sidebar: #0f172a;
+    --ahp-card: #ffffff;
+    --ahp-header-bg: #ffffff;
 }
 
-.alhuffaz-frontend-admin .alhuffaz-wrap {
-    max-width: none !important;
-    margin: 0 !important;
-    padding: 0 20px !important;
+/* CSS Reset - Prevent WordPress theme bleeding */
+.ahp-portal,
+.ahp-portal *,
+.ahp-portal *::before,
+.ahp-portal *::after {
+    box-sizing: border-box !important;
+    margin: 0;
+    padding: 0;
 }
 
-/* Top Navigation Bar */
-.alhuffaz-frontend-nav {
-    background: #fff;
+/* Reset specific elements */
+.ahp-portal article, .ahp-portal aside, .ahp-portal details, .ahp-portal figcaption,
+.ahp-portal figure, .ahp-portal footer, .ahp-portal header, .ahp-portal hgroup,
+.ahp-portal menu, .ahp-portal nav, .ahp-portal section {
+    display: block;
+}
+
+.ahp-portal ol, .ahp-portal ul {
+    list-style: none;
+}
+
+.ahp-portal table {
+    border-collapse: collapse;
+    border-spacing: 0;
+}
+
+.ahp-portal a {
+    text-decoration: none;
+    color: inherit;
+}
+
+.ahp-portal button, .ahp-portal input, .ahp-portal select, .ahp-portal textarea {
+    font-family: inherit;
+    font-size: inherit;
+    line-height: inherit;
+}
+
+/* Main Portal Container */
+.ahp-portal {
+    font-family: 'Poppins', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif !important;
+    background: var(--ahp-bg) !important;
+    min-height: 100vh !important;
+    color: var(--ahp-text) !important;
+    line-height: 1.5 !important;
+    font-size: 14px !important;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    position: relative;
+    width: 100%;
+}
+
+/* ==================== TOP HEADER ==================== */
+.ahp-portal .ahp-header {
+    background: var(--ahp-header-bg) !important;
+    border-bottom: 1px solid var(--ahp-border) !important;
+    position: sticky !important;
+    top: 0 !important;
+    z-index: 100 !important;
+}
+
+body.admin-bar .ahp-portal .ahp-header {
+    top: 32px !important;
+}
+@media screen and (max-width: 782px) {
+    body.admin-bar .ahp-portal .ahp-header {
+        top: 46px !important;
+    }
+}
+
+.ahp-portal .ahp-header-inner {
+    max-width: 1400px !important;
+    margin: 0 auto !important;
+    padding: 0 24px !important;
+}
+
+.ahp-portal .ahp-header-top {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    height: 64px !important;
+}
+
+/* Layout - Top Navigation Design */
+.ahp-portal .ahp-wrapper {
+    display: flex !important;
+    flex-direction: column !important;
+    min-height: 100vh !important;
+}
+
+/* Sidebar converted to horizontal nav in header */
+.ahp-portal .ahp-sidebar {
+    display: none !important;
+}
+
+/* Main content - full width */
+.ahp-portal .ahp-main {
+    flex: 1 !important;
+    margin-left: 0 !important;
+    padding: 32px 24px !important;
+    max-width: 1400px !important;
+    margin: 0 auto !important;
+    width: 100% !important;
+    background: var(--ahp-bg) !important;
+}
+
+/* ==================== TOP HEADER STYLES ==================== */
+.ahp-portal .ahp-top-header {
+    background: var(--ahp-header-bg) !important;
+    border-bottom: 1px solid var(--ahp-border) !important;
+    position: sticky !important;
+    top: 0 !important;
+    z-index: 100 !important;
+}
+
+body.admin-bar .ahp-portal .ahp-top-header {
+    top: 32px !important;
+}
+@media screen and (max-width: 782px) {
+    body.admin-bar .ahp-portal .ahp-top-header {
+        top: 46px !important;
+    }
+}
+
+.ahp-portal .ahp-header-inner {
+    max-width: 1400px !important;
+    margin: 0 auto !important;
+    padding: 0 24px !important;
+}
+
+.ahp-portal .ahp-header-top {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    height: 64px !important;
+}
+
+.ahp-portal .ahp-logo {
+    display: flex !important;
+    align-items: center !important;
+    gap: 12px !important;
+    font-size: 18px !important;
+    font-weight: 700 !important;
+    color: var(--ahp-text) !important;
+}
+.ahp-portal .ahp-logo i {
+    font-size: 24px !important;
+    color: var(--ahp-primary) !important;
+}
+
+.ahp-portal .ahp-user-menu {
+    display: flex !important;
+    align-items: center !important;
+    gap: 16px !important;
+}
+
+.ahp-portal .ahp-user-info {
+    display: flex !important;
+    align-items: center !important;
+    gap: 12px !important;
+    padding: 8px 16px !important;
+    background: var(--ahp-bg) !important;
+    border-radius: 100px !important;
+}
+
+.ahp-portal .ahp-avatar {
+    width: 36px !important;
+    height: 36px !important;
+    border-radius: 50% !important;
+    background: linear-gradient(135deg, var(--ahp-primary), var(--ahp-primary-dark)) !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    font-size: 14px !important;
+    font-weight: 700 !important;
+    color: white !important;
+}
+
+.ahp-portal .ahp-user-name {
+    font-weight: 600 !important;
+    font-size: 14px !important;
+    color: var(--ahp-text) !important;
+}
+
+.ahp-portal .ahp-user-role {
+    font-size: 11px !important;
+    color: var(--ahp-text-muted) !important;
+    background: var(--ahp-primary-light) !important;
+    padding: 3px 10px !important;
+    border-radius: 100px !important;
+    font-weight: 600 !important;
+}
+
+.ahp-portal .ahp-logout-btn {
+    display: flex !important;
+    align-items: center !important;
+    gap: 6px !important;
+    padding: 8px 16px !important;
+    background: transparent !important;
+    border: 1px solid var(--ahp-border) !important;
+    border-radius: 8px !important;
+    font-size: 13px !important;
+    font-weight: 500 !important;
+    color: var(--ahp-text-muted) !important;
+    cursor: pointer !important;
+    transition: all 0.2s !important;
+    text-decoration: none !important;
+}
+
+.ahp-portal .ahp-logout-btn:hover {
+    background: var(--ahp-danger-light) !important;
+    border-color: var(--ahp-danger) !important;
+    color: var(--ahp-danger) !important;
+}
+
+/* ==================== HORIZONTAL TAB NAVIGATION ==================== */
+.ahp-portal .ahp-nav {
+    display: flex !important;
+    gap: 4px !important;
+    padding-bottom: 0 !important;
+    overflow-x: auto !important;
+    scrollbar-width: none !important;
+}
+
+.ahp-portal .ahp-nav::-webkit-scrollbar { display: none; }
+
+.ahp-portal .ahp-nav-item {
+    display: flex !important;
+    align-items: center !important;
+    gap: 8px !important;
+    padding: 12px 16px !important;
+    font-size: 14px !important;
+    font-weight: 500 !important;
+    color: var(--ahp-text-muted) !important;
+    border-bottom: 2px solid transparent !important;
+    cursor: pointer !important;
+    transition: all 0.2s !important;
+    white-space: nowrap !important;
+    background: transparent !important;
+    border-top: none !important;
+    border-left: none !important;
+    border-right: none !important;
+}
+
+.ahp-portal .ahp-nav-item:hover {
+    color: var(--ahp-text) !important;
+    background: var(--ahp-bg) !important;
+}
+
+.ahp-portal .ahp-nav-item.active {
+    color: var(--ahp-primary) !important;
+    border-bottom-color: var(--ahp-primary) !important;
+}
+
+.ahp-portal .ahp-nav-item i {
+    font-size: 16px !important;
+}
+
+.ahp-portal .ahp-nav-badge {
+    background: var(--ahp-primary) !important;
+    color: white !important;
+    padding: 2px 8px !important;
+    border-radius: 100px !important;
+    font-size: 11px !important;
+    font-weight: 700 !important;
+}
+
+.ahp-portal .ahp-nav-badge.warning { background: var(--ahp-warning) !important; }
+.ahp-portal .ahp-nav-badge.success { background: var(--ahp-success) !important; }
+.ahp-portal .ahp-nav-badge.info { background: #3b82f6 !important; }
+.ahp-portal .ahp-nav-badge.danger { background: var(--ahp-danger) !important; }
+
+/* Mobile Menu Toggle */
+.ahp-portal .ahp-menu-toggle {
+    display: none !important;
+    align-items: center !important;
+    justify-content: center !important;
+    width: 40px !important;
+    height: 40px !important;
+    background: var(--ahp-bg) !important;
+    border: none !important;
+    border-radius: 8px !important;
+    font-size: 20px !important;
+    color: var(--ahp-text) !important;
+    cursor: pointer !important;
+}
+
+/* Old sidebar elements - hide */
+.ahp-portal .ahp-sidebar-header,
+.ahp-portal .ahp-sidebar-footer {
+    display: none !important;
+}
+
+/* Page Header (within panels) */
+.ahp-portal .ahp-header {
+    display: flex !important;
+    justify-content: space-between !important;
+    align-items: center !important;
+    margin-bottom: 24px !important;
+}
+.ahp-portal .ahp-title { margin: 0 !important; font-size: 24px !important; font-weight: 700 !important; color: var(--ahp-text) !important; }
+.ahp-portal .ahp-actions { display: flex !important; gap: 10px !important; }
+
+/* Panels */
+.ahp-portal .ahp-panel { display: none !important; }
+.ahp-portal .ahp-panel.active { display: block !important; animation: ahpFadeIn 0.3s ease !important; }
+@keyframes ahpFadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+/* Stats */
+.ahp-portal .ahp-stats { display: grid !important; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)) !important; gap: 20px !important; margin-bottom: 24px !important; }
+.ahp-portal .ahp-stat {
+    background: var(--ahp-card) !important;
+    border-radius: 12px !important;
+    padding: 20px !important;
+    display: flex !important;
+    align-items: center !important;
+    gap: 16px !important;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.04) !important;
+    border: 1px solid var(--ahp-border) !important;
+}
+.ahp-portal .ahp-stat-icon {
+    width: 56px !important;
+    height: 56px !important;
+    border-radius: 12px !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    font-size: 24px !important;
+    flex-shrink: 0 !important;
+}
+.ahp-portal .ahp-stat-icon.blue { background: #dbeafe !important; color: #1e40af !important; }
+.ahp-portal .ahp-stat-icon.green { background: #d1fae5 !important; color: #065f46 !important; }
+.ahp-portal .ahp-stat-icon.purple { background: #e9d5ff !important; color: #6b21a8 !important; }
+.ahp-portal .ahp-stat-icon.orange { background: #fed7aa !important; color: #c2410c !important; }
+.ahp-portal .ahp-stat-label { font-size: 13px !important; color: var(--ahp-text-muted) !important; margin-bottom: 4px !important; }
+.ahp-portal .ahp-stat-value { font-size: 28px !important; font-weight: 800 !important; color: var(--ahp-text) !important; }
+
+/* Card */
+.ahp-portal .ahp-card {
+    background: var(--ahp-card) !important;
+    border-radius: 12px !important;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.04) !important;
+    margin-bottom: 24px !important;
+    overflow: hidden !important;
+    border: 1px solid var(--ahp-border) !important;
+}
+.ahp-portal .ahp-card-header {
+    padding: 16px 20px !important;
+    border-bottom: 1px solid var(--ahp-border) !important;
+    display: flex !important;
+    justify-content: space-between !important;
+    align-items: center !important;
+    background: var(--ahp-bg) !important;
+}
+.ahp-portal .ahp-card-title { margin: 0 !important; font-size: 16px !important; font-weight: 700 !important; color: var(--ahp-text) !important; }
+.ahp-portal .ahp-card-body { padding: 20px !important; }
+
+/* Buttons */
+.ahp-portal .ahp-btn {
+    display: inline-flex !important;
+    align-items: center !important;
+    gap: 6px !important;
+    padding: 10px 18px !important;
+    border-radius: 8px !important;
+    font-weight: 600 !important;
+    font-size: 13px !important;
+    cursor: pointer !important;
+    border: none !important;
+    font-family: inherit !important;
+    transition: all 0.2s ease !important;
+    text-decoration: none !important;
+    line-height: 1.4 !important;
+}
+.ahp-portal .ahp-btn-primary { background: var(--ahp-primary) !important; color: #fff !important; }
+.ahp-portal .ahp-btn-primary:hover { background: var(--ahp-primary-dark) !important; }
+.ahp-portal .ahp-btn-success { background: var(--ahp-success) !important; color: #fff !important; }
+.ahp-portal .ahp-btn-danger { background: var(--ahp-danger) !important; color: #fff !important; }
+.ahp-portal .ahp-btn-secondary { background: var(--ahp-bg) !important; color: var(--ahp-text) !important; border: 1px solid var(--ahp-border) !important; }
+.ahp-portal .ahp-btn-sm { padding: 6px 12px !important; font-size: 12px !important; }
+.ahp-portal .ahp-btn-icon { width: 32px !important; height: 32px !important; padding: 0 !important; justify-content: center !important; }
+
+/* Table */
+.ahp-portal .ahp-table-wrap { overflow-x: auto !important; }
+.ahp-portal .ahp-table { width: 100% !important; border-collapse: collapse !important; }
+.ahp-portal .ahp-table th, .ahp-portal .ahp-table td { padding: 12px 16px !important; text-align: left !important; border-bottom: 1px solid var(--ahp-border) !important; }
+.ahp-portal .ahp-table th { background: var(--ahp-bg) !important; font-weight: 600 !important; font-size: 12px !important; text-transform: uppercase !important; color: var(--ahp-text-muted) !important; }
+.ahp-portal .ahp-table tr:hover { background: var(--ahp-bg) !important; }
+.ahp-portal .ahp-student-cell { display: flex !important; align-items: center !important; gap: 10px !important; }
+.ahp-portal .ahp-student-avatar {
+    width: 36px !important;
+    height: 36px !important;
+    border-radius: 50% !important;
+    background: var(--ahp-primary) !important;
+    color: #fff !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    font-weight: 700 !important;
+    font-size: 13px !important;
+    object-fit: cover !important;
+}
+.ahp-portal .ahp-badge {
+    display: inline-block !important;
+    padding: 4px 10px !important;
+    border-radius: 20px !important;
+    font-size: 11px !important;
+    font-weight: 600 !important;
+}
+.ahp-portal .ahp-badge-primary { background: #dbeafe !important; color: #1e40af !important; }
+.ahp-portal .ahp-badge-success { background: #d1fae5 !important; color: #065f46 !important; }
+.ahp-portal .ahp-cell-actions { display: flex !important; gap: 6px !important; }
+
+/* Toolbar */
+.ahp-portal .ahp-toolbar { display: flex !important; gap: 12px !important; margin-bottom: 20px !important; flex-wrap: wrap !important; }
+.ahp-portal .ahp-search {
+    flex: 1 !important;
+    min-width: 250px !important;
+    position: relative !important;
+}
+.ahp-portal .ahp-search input {
+    width: 100% !important;
+    padding: 10px 14px 10px 40px !important;
+    border: 2px solid var(--ahp-border) !important;
+    border-radius: 8px !important;
+    font-size: 14px !important;
+    font-family: inherit !important;
+    background: white !important;
+    color: var(--ahp-text) !important;
+}
+.ahp-portal .ahp-search i { position: absolute !important; left: 14px !important; top: 50% !important; transform: translateY(-50%) !important; color: var(--ahp-text-muted) !important; }
+.ahp-portal .ahp-filter {
+    padding: 10px 14px !important;
+    border: 2px solid var(--ahp-border) !important;
+    border-radius: 8px !important;
+    font-size: 14px !important;
+    font-family: inherit !important;
+    min-width: 140px !important;
+    background: white !important;
+}
+
+/* Form */
+.ahp-portal .ahp-form-grid { display: grid !important; grid-template-columns: repeat(12, 1fr) !important; gap: 16px !important; }
+.ahp-portal .ahp-col-3 { grid-column: span 3 !important; }
+.ahp-portal .ahp-col-4 { grid-column: span 4 !important; }
+.ahp-portal .ahp-col-6 { grid-column: span 6 !important; }
+.ahp-portal .ahp-col-12 { grid-column: span 12 !important; }
+.ahp-portal .ahp-form-group { margin-bottom: 0 !important; }
+.ahp-portal .ahp-label { display: block !important; font-weight: 600 !important; font-size: 13px !important; margin-bottom: 6px !important; color: var(--ahp-text) !important; }
+.ahp-portal .ahp-label.required::after { content: ' *' !important; color: var(--ahp-danger) !important; }
+.ahp-portal .ahp-input {
+    width: 100% !important;
+    padding: 10px 14px !important;
+    border: 2px solid var(--ahp-border) !important;
+    border-radius: 8px !important;
+    font-size: 14px !important;
+    font-family: inherit !important;
+    transition: border-color 0.2s ease !important;
+    background: white !important;
+    color: var(--ahp-text) !important;
+}
+.ahp-portal .ahp-input:focus { outline: none !important; border-color: var(--ahp-primary) !important; }
+.ahp-portal textarea.ahp-input { resize: vertical !important; min-height: 80px !important; }
+
+/* Progress Bar */
+.ahp-portal .ahp-progress {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    margin-bottom: 32px !important;
+    padding: 20px !important;
+    background: var(--ahp-card) !important;
+    border-radius: 12px !important;
+}
+.ahp-portal .ahp-step {
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
+    position: relative !important;
+}
+.ahp-portal .ahp-step-num {
+    width: 40px !important;
+    height: 40px !important;
+    border-radius: 50% !important;
+    background: var(--ahp-border) !important;
+    color: var(--ahp-text-muted) !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    font-weight: 700 !important;
+    transition: all 0.3s ease !important;
+}
+.ahp-portal .ahp-step.active .ahp-step-num { background: var(--ahp-primary) !important; color: #fff !important; }
+.ahp-portal .ahp-step.completed .ahp-step-num { background: var(--ahp-success) !important; color: #fff !important; }
+.ahp-portal .ahp-step-label { font-size: 12px !important; margin-top: 8px !important; color: var(--ahp-text-muted) !important; font-weight: 500 !important; }
+.ahp-portal .ahp-step.active .ahp-step-label { color: var(--ahp-primary) !important; font-weight: 600 !important; }
+.ahp-portal .ahp-step-line {
+    width: 80px !important;
+    height: 3px !important;
+    background: var(--ahp-border) !important;
+    margin: 0 8px !important;
+    margin-bottom: 24px !important;
+}
+.ahp-portal .ahp-step-line.completed { background: var(--ahp-success) !important; }
+
+/* Form Steps */
+.ahp-portal .ahp-form-step { display: none !important; }
+.ahp-portal .ahp-form-step.active { display: block !important; }
+.ahp-portal .ahp-step-header {
+    display: flex !important;
+    align-items: center !important;
+    gap: 12px !important;
+    margin-bottom: 24px !important;
+    padding-bottom: 16px !important;
+    border-bottom: 2px solid var(--ahp-border) !important;
+}
+.ahp-portal .ahp-step-header i { font-size: 24px !important; color: var(--ahp-primary) !important; }
+.ahp-portal .ahp-step-header h2 { margin: 0 !important; font-size: 20px !important; color: var(--ahp-text) !important; }
+
+/* Sections */
+.ahp-portal .ahp-section {
+    background: var(--ahp-bg) !important;
+    border-radius: 10px !important;
+    padding: 20px !important;
+    margin-bottom: 20px !important;
+}
+.ahp-portal .ahp-section-title {
+    display: flex !important;
+    align-items: center !important;
+    gap: 8px !important;
+    font-size: 15px !important;
+    font-weight: 700 !important;
+    margin: 0 0 16px !important;
+    color: var(--ahp-text) !important;
+}
+.ahp-portal .ahp-section-title i { color: var(--ahp-primary) !important; }
+
+/* Subjects */
+.ahp-portal .ahp-subject-box {
+    background: var(--ahp-card) !important;
+    border: 2px solid var(--ahp-border) !important;
+    border-radius: 12px !important;
+    margin-bottom: 16px !important;
+    overflow: hidden !important;
+}
+.ahp-portal .ahp-subject-header {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    padding: 12px 16px !important;
+    background: var(--ahp-bg) !important;
+    border-bottom: 1px solid var(--ahp-border) !important;
+}
+.ahp-portal .ahp-subject-title { display: flex !important; align-items: center !important; gap: 10px !important; flex: 1 !important; }
+.ahp-portal .ahp-subject-title i { color: var(--ahp-primary) !important; }
+.ahp-portal .ahp-subject-name {
+    flex: 1 !important;
+    border: none !important;
+    background: transparent !important;
+    font-size: 15px !important;
+    font-weight: 600 !important;
+    font-family: inherit !important;
+    color: var(--ahp-text) !important;
+}
+.ahp-portal .ahp-subject-name:focus { outline: none !important; }
+.ahp-portal .ahp-subject-content { padding: 16px !important; }
+.ahp-portal .ahp-exam-section { margin-bottom: 20px !important; }
+.ahp-portal .ahp-exam-header {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    margin-bottom: 12px !important;
+}
+.ahp-portal .ahp-exam-header h4 { margin: 0 !important; font-size: 14px !important; display: flex !important; align-items: center !important; gap: 8px !important; color: var(--ahp-text) !important; }
+.ahp-portal .ahp-exam-header h4 i { color: var(--ahp-primary) !important; }
+.ahp-marks-row {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 12px;
+    margin-bottom: 12px;
+}
+.ahp-marks-group label {
+    display: block;
+    font-size: 11px;
+    color: var(--ahp-text-muted);
+    margin-bottom: 4px;
+    font-weight: 500;
+}
+.ahp-marks-group input {
+    width: 100%;
+    padding: 8px 10px;
+    border: 1px solid var(--ahp-border);
+    border-radius: 6px;
+    font-size: 14px;
+    text-align: center;
+}
+.ahp-monthly-exam {
+    background: var(--ahp-bg);
     border-radius: 8px;
-    padding: 15px 20px;
-    margin-bottom: 20px;
-    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    padding: 12px;
+    margin-bottom: 10px;
 }
-
-.alhuffaz-frontend-nav h2 {
-    margin: 0 0 15px 0;
-    font-size: 24px;
-    color: #1d1d1f;
-}
-
-.alhuffaz-frontend-nav-links {
+.ahp-monthly-header {
     display: flex;
     gap: 10px;
-    flex-wrap: wrap;
+    margin-bottom: 10px;
 }
-
-.alhuffaz-frontend-nav-link {
-    padding: 10px 20px;
-    background: #f6f6f7;
+.ahp-month-name {
+    flex: 1;
+    padding: 6px 10px;
+    border: 1px solid var(--ahp-border);
     border-radius: 6px;
-    text-decoration: none;
-    color: #333;
-    font-weight: 500;
-    transition: all 0.2s;
-    display: inline-flex;
+    font-size: 13px;
+}
+.ahp-btn-xs { padding: 4px 8px; font-size: 11px; }
+.ahp-empty-subjects {
+    text-align: center;
+    padding: 40px;
+    color: var(--ahp-text-muted);
+}
+.ahp-empty-subjects i { font-size: 48px; margin-bottom: 12px; display: block; opacity: 0.5; }
+
+/* Fee Cards */
+.ahp-fee-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 16px; margin-bottom: 20px; }
+.ahp-fee-card {
+    background: var(--ahp-bg);
+    border-radius: 12px;
+    padding: 20px;
+    text-align: center;
+}
+.ahp-fee-icon { font-size: 24px; color: var(--ahp-primary); margin-bottom: 8px; }
+.ahp-fee-card h4 { margin: 0 0 12px; font-size: 14px; }
+.ahp-fee-input { display: flex; align-items: center; gap: 8px; }
+.ahp-currency { font-weight: 600; color: var(--ahp-text-muted); }
+.ahp-fee-input input {
+    flex: 1;
+    padding: 8px;
+    border: 1px solid var(--ahp-border);
+    border-radius: 6px;
+    text-align: center;
+    font-size: 16px;
+    font-weight: 600;
+}
+.ahp-fee-summary {
+    background: var(--ahp-bg);
+    border-radius: 12px;
+    padding: 20px;
+}
+.ahp-fee-row { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px dashed var(--ahp-border); }
+.ahp-fee-row:last-child { border: none; font-size: 18px; font-weight: 700; color: var(--ahp-primary); }
+.ahp-checkbox-group { display: flex; flex-wrap: wrap; gap: 20px; }
+.ahp-checkbox-label {
+    display: flex;
     align-items: center;
     gap: 8px;
+    cursor: pointer;
+}
+.ahp-checkbox-label input { width: 18px; height: 18px; }
+
+/* Ratings */
+.ahp-rating-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; }
+.ahp-rating-item { background: var(--ahp-bg); padding: 16px; border-radius: 10px; }
+.ahp-rating-label { display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 600; margin-bottom: 10px; }
+.ahp-rating-label i { color: var(--ahp-primary); }
+.ahp-stars { display: flex; gap: 4px; }
+.ahp-star {
+    font-size: 20px;
+    color: var(--ahp-border);
+    cursor: pointer;
+    transition: color 0.2s;
+}
+.ahp-star.active, .ahp-star:hover { color: #fbbf24; }
+
+/* Navigation */
+.ahp-form-nav {
+    display: flex;
+    justify-content: space-between;
+    padding-top: 24px;
+    border-top: 2px solid var(--ahp-border);
+    margin-top: 24px;
 }
 
-.alhuffaz-frontend-nav-link:hover {
-    background: #e8e8e9;
-    color: #000;
-}
-
-.alhuffaz-frontend-nav-link.active {
-    background: var(--alhuffaz-primary, #2563eb);
+/* Toast */
+.ahp-toast {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    padding: 14px 24px;
+    border-radius: 10px;
     color: #fff;
+    font-weight: 600;
+    z-index: 9999;
+    display: none;
+    animation: slideIn 0.3s;
 }
+.ahp-toast.success { background: var(--ahp-success); }
+.ahp-toast.error { background: var(--ahp-danger); }
+@keyframes slideIn { from { transform: translateX(100%); } to { transform: translateX(0); } }
 
-.alhuffaz-frontend-nav-link .dashicons {
-    font-size: 18px;
-    width: 18px;
-    height: 18px;
+/* Loading */
+.ahp-loading { display: flex; justify-content: center; padding: 40px; }
+.ahp-spinner {
+    width: 40px;
+    height: 40px;
+    border: 3px solid var(--ahp-border);
+    border-top-color: var(--ahp-primary);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
 }
+@keyframes spin { to { transform: rotate(360deg); } }
 
-/* Content Area */
-.alhuffaz-frontend-content {
-    background: transparent;
-}
+/* Pagination */
+.ahp-portal .ahp-pagination { display: flex !important; justify-content: center !important; gap: 6px !important; padding: 20px !important; }
 
-/* Override some admin styles for frontend */
-.alhuffaz-frontend-admin .alhuffaz-header {
-    display: none; /* Hide duplicate header */
+/* Mobile Menu Toggle */
+.ahp-portal .ahp-menu-toggle {
+    display: none !important;
+    position: fixed !important;
+    top: 16px !important;
+    left: 16px !important;
+    z-index: 1001 !important;
+    width: 44px !important;
+    height: 44px !important;
+    border-radius: 12px !important;
+    background: var(--ahp-sidebar) !important;
+    color: white !important;
+    border: none !important;
+    font-size: 20px !important;
+    cursor: pointer !important;
+    align-items: center !important;
+    justify-content: center !important;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15) !important;
 }
-
-/* Make cards fit better in frontend */
-.alhuffaz-frontend-admin .alhuffaz-card {
-    background: #fff;
-    border-radius: 8px;
-    padding: 20px;
-    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+.ahp-portal .ahp-overlay {
+    display: none !important;
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    width: 100% !important;
+    height: 100% !important;
+    background: rgba(0,0,0,0.5) !important;
+    z-index: 99 !important;
 }
+.ahp-portal .ahp-overlay.open { display: block !important; }
 
 /* Responsive */
+@media (max-width: 1024px) {
+    .ahp-portal .ahp-menu-toggle { display: flex !important; }
+    .ahp-portal .ahp-main { padding: 24px 20px !important; }
+    .ahp-portal .ahp-form-grid { grid-template-columns: repeat(6, 1fr) !important; }
+    .ahp-portal .ahp-col-3, .ahp-portal .ahp-col-4 { grid-column: span 3 !important; }
+}
 @media (max-width: 768px) {
-    .alhuffaz-frontend-nav-links {
-        flex-direction: column;
+    .ahp-portal .ahp-header-inner { padding: 0 16px !important; }
+    .ahp-portal .ahp-menu-toggle { display: flex !important; }
+    .ahp-portal .ahp-user-menu { display: none !important; }
+
+    .ahp-portal .ahp-nav {
+        display: none !important;
+        position: absolute !important;
+        top: 100% !important;
+        left: 0 !important;
+        right: 0 !important;
+        background: white !important;
+        flex-direction: column !important;
+        padding: 16px !important;
+        border-bottom: 1px solid var(--ahp-border) !important;
+        box-shadow: 0 8px 16px rgba(0, 0, 0, 0.1) !important;
     }
 
-    .alhuffaz-frontend-nav-link {
-        width: 100%;
-        justify-content: center;
+    .ahp-portal .ahp-nav.open { display: flex !important; }
+
+    .ahp-portal .ahp-nav-item {
+        border-bottom: none !important;
+        border-radius: 8px !important;
+        padding: 12px 16px !important;
     }
+
+    .ahp-portal .ahp-nav-item.active {
+        background: var(--ahp-primary-light) !important;
+    }
+
+    .ahp-portal .ahp-main { padding: 24px 16px !important; }
+    .ahp-portal .ahp-form-grid { grid-template-columns: 1fr !important; }
+    .ahp-portal .ahp-col-3, .ahp-portal .ahp-col-4, .ahp-portal .ahp-col-6 { grid-column: span 1 !important; }
+    .ahp-portal .ahp-marks-row { grid-template-columns: repeat(2, 1fr) !important; }
+    .ahp-portal .ahp-stats { grid-template-columns: 1fr !important; }
+    .ahp-portal .ahp-progress { flex-wrap: wrap !important; }
+    .ahp-portal .ahp-step-line { display: none !important; }
+    .ahp-portal .ahp-title { font-size: 20px !important; }
+}
+@media (max-width: 480px) {
+    .ahp-portal .ahp-stats { grid-template-columns: 1fr !important; }
+    .ahp-portal .ahp-marks-row { grid-template-columns: 1fr !important; }
 }
 </style>
 
-<div class="alhuffaz-frontend-admin">
-    <!-- Top Navigation -->
-    <div class="alhuffaz-frontend-nav">
-        <h2><?php _e('Al-Huffaz School Admin Portal', 'al-huffaz-portal'); ?></h2>
+<div class="ahp-portal">
+    <!-- ==================== TOP HEADER ==================== -->
+    <header class="ahp-top-header">
+        <div class="ahp-header-inner">
+            <div class="ahp-header-top">
+                <div class="ahp-logo">
+                    <i class="fas fa-graduation-cap"></i>
+                    <span>School Admin Portal</span>
+                </div>
 
-        <div class="alhuffaz-frontend-nav-links">
-            <a href="<?php echo add_query_arg('admin_page', 'dashboard', $base_url); ?>"
-               class="alhuffaz-frontend-nav-link <?php echo $current_page === 'dashboard' ? 'active' : ''; ?>">
-                <span class="dashicons dashicons-dashboard"></span>
-                <?php _e('Dashboard', 'al-huffaz-portal'); ?>
-            </a>
+                <div class="ahp-user-menu">
+                    <div class="ahp-user-info">
+                        <div class="ahp-avatar"><?php echo strtoupper(substr($current_user->display_name, 0, 1)); ?></div>
+                        <span class="ahp-user-name"><?php echo esc_html($current_user->display_name); ?></span>
+                        <span class="ahp-user-role"><?php echo esc_html(ucfirst($current_user->roles[0] ?? 'User')); ?></span>
+                    </div>
+                    <?php if ($is_admin): ?>
+                    <a href="<?php echo admin_url(); ?>" class="ahp-logout-btn" target="_blank">
+                        <i class="fas fa-cog"></i>
+                        <span>WP Admin</span>
+                    </a>
+                    <?php endif; ?>
+                    <a href="<?php echo wp_logout_url(home_url()); ?>" class="ahp-logout-btn">
+                        <i class="fas fa-sign-out-alt"></i>
+                        <span>Logout</span>
+                    </a>
+                </div>
 
-            <a href="<?php echo add_query_arg('admin_page', 'students', $base_url); ?>"
-               class="alhuffaz-frontend-nav-link <?php echo $current_page === 'students' ? 'active' : ''; ?>">
-                <span class="dashicons dashicons-groups"></span>
-                <?php _e('Students', 'al-huffaz-portal'); ?>
-            </a>
+                <button class="ahp-menu-toggle" onclick="toggleMobileNav()">
+                    <i class="fas fa-bars"></i>
+                </button>
+            </div>
 
-            <a href="<?php echo add_query_arg('admin_page', 'add-student', $base_url); ?>"
-               class="alhuffaz-frontend-nav-link <?php echo $current_page === 'add-student' ? 'active' : ''; ?>">
-                <span class="dashicons dashicons-plus-alt"></span>
-                <?php _e('Add Student', 'al-huffaz-portal'); ?>
-            </a>
+            <!-- Navigation Tabs -->
+            <nav class="ahp-nav" id="ahpNav">
+                <button class="ahp-nav-item active" data-panel="dashboard">
+                    <i class="fas fa-home"></i>
+                    <span><?php _e('Dashboard', 'al-huffaz-portal'); ?></span>
+                </button>
+                <button class="ahp-nav-item" data-panel="students">
+                    <i class="fas fa-users"></i>
+                    <span><?php _e('Students', 'al-huffaz-portal'); ?></span>
+                </button>
+                <button class="ahp-nav-item" data-panel="add-student">
+                    <i class="fas fa-user-plus"></i>
+                    <span><?php _e('Add Student', 'al-huffaz-portal'); ?></span>
+                </button>
+                <?php if ($can_manage_sponsors): ?>
+                <button class="ahp-nav-item" data-panel="sponsors">
+                    <i class="fas fa-hand-holding-heart"></i>
+                    <span><?php _e('Sponsors', 'al-huffaz-portal'); ?></span>
+                    <?php if ($pending_sponsors_count > 0): ?>
+                    <span class="ahp-nav-badge danger"><?php echo $pending_sponsors_count; ?></span>
+                    <?php endif; ?>
+                </button>
+                <button class="ahp-nav-item" data-panel="sponsor-users">
+                    <i class="fas fa-users-cog"></i>
+                    <span><?php _e('Sponsor Users', 'al-huffaz-portal'); ?></span>
+                </button>
+                <?php endif; ?>
+                <?php if ($can_manage_payments): ?>
+                <button class="ahp-nav-item" data-panel="payments">
+                    <i class="fas fa-credit-card"></i>
+                    <span><?php _e('Payments', 'al-huffaz-portal'); ?></span>
+                    <?php if ($pending_payments_count > 0): ?>
+                    <span class="ahp-nav-badge warning"><?php echo $pending_payments_count; ?></span>
+                    <?php endif; ?>
+                </button>
+                <?php endif; ?>
+                <?php if ($can_manage_staff): ?>
+                <button class="ahp-nav-item" data-panel="staff">
+                    <i class="fas fa-user-shield"></i>
+                    <span><?php _e('Staff', 'al-huffaz-portal'); ?></span>
+                    <?php if ($staff_count > 0): ?>
+                    <span class="ahp-nav-badge info"><?php echo $staff_count; ?></span>
+                    <?php endif; ?>
+                </button>
+                <?php endif; ?>
+            </nav>
+        </div>
+    </header>
 
-            <a href="<?php echo add_query_arg('admin_page', 'sponsors', $base_url); ?>"
-               class="alhuffaz-frontend-nav-link <?php echo $current_page === 'sponsors' ? 'active' : ''; ?>">
-                <span class="dashicons dashicons-heart"></span>
-                <?php _e('Sponsors', 'al-huffaz-portal'); ?>
-            </a>
+    <div class="ahp-wrapper">
+        <!-- Main Content -->
+        <main class="ahp-main">
+            <!-- ==================== DASHBOARD PANEL ==================== -->
+            <div class="ahp-panel active" id="panel-dashboard">
+                <div class="ahp-header">
+                    <h1 class="ahp-title"><?php _e('Dashboard', 'al-huffaz-portal'); ?></h1>
+                    <div class="ahp-actions">
+                        <button class="ahp-btn ahp-btn-primary" onclick="showPanel('add-student')">
+                            <i class="fas fa-plus"></i> <?php _e('Add Student', 'al-huffaz-portal'); ?>
+                        </button>
+                    </div>
+                </div>
 
-            <a href="<?php echo add_query_arg('admin_page', 'payments', $base_url); ?>"
-               class="alhuffaz-frontend-nav-link <?php echo $current_page === 'payments' ? 'active' : ''; ?>">
-                <span class="dashicons dashicons-money-alt"></span>
-                <?php _e('Payments', 'al-huffaz-portal'); ?>
-            </a>
+                <div class="ahp-stats">
+                    <div class="ahp-stat">
+                        <div class="ahp-stat-icon blue"><i class="fas fa-user-graduate"></i></div>
+                        <div>
+                            <div class="ahp-stat-label"><?php _e('Total Students', 'al-huffaz-portal'); ?></div>
+                            <div class="ahp-stat-value"><?php echo $total_students; ?></div>
+                        </div>
+                    </div>
+                    <div class="ahp-stat">
+                        <div class="ahp-stat-icon green"><i class="fas fa-hand-holding-heart"></i></div>
+                        <div>
+                            <div class="ahp-stat-label"><?php _e('Total Sponsors', 'al-huffaz-portal'); ?></div>
+                            <div class="ahp-stat-value"><?php echo $total_sponsors; ?></div>
+                        </div>
+                    </div>
+                    <div class="ahp-stat">
+                        <div class="ahp-stat-icon purple"><i class="fas fa-quran"></i></div>
+                        <div>
+                            <div class="ahp-stat-label"><?php _e('Hifz Students', 'al-huffaz-portal'); ?></div>
+                            <div class="ahp-stat-value"><?php echo $hifz_count; ?></div>
+                        </div>
+                    </div>
+                    <div class="ahp-stat">
+                        <div class="ahp-stat-icon orange"><i class="fas fa-book-reader"></i></div>
+                        <div>
+                            <div class="ahp-stat-label"><?php _e('Nazra Students', 'al-huffaz-portal'); ?></div>
+                            <div class="ahp-stat-value"><?php echo $nazra_count; ?></div>
+                        </div>
+                    </div>
+                    <?php if ($can_manage_sponsors): ?>
+                    <div class="ahp-stat" onclick="showPanel('sponsor-users'); document.getElementById('filterUserStatus').value='inactive'; loadSponsorUsers();" style="cursor:pointer;" title="Click to view inactive sponsors">
+                        <div class="ahp-stat-icon gray"><i class="fas fa-user-slash"></i></div>
+                        <div>
+                            <div class="ahp-stat-label"><?php _e('Inactive Sponsors', 'al-huffaz-portal'); ?></div>
+                            <div class="ahp-stat-value"><?php echo $inactive_sponsors_count; ?></div>
+                        </div>
+                    </div>
+                    <?php endif; ?>
+                </div>
 
-            <a href="<?php echo add_query_arg('admin_page', 'reports', $base_url); ?>"
-               class="alhuffaz-frontend-nav-link <?php echo $current_page === 'reports' ? 'active' : ''; ?>">
-                <span class="dashicons dashicons-chart-bar"></span>
-                <?php _e('Reports', 'al-huffaz-portal'); ?>
-            </a>
+                <div class="ahp-card">
+                    <div class="ahp-card-header">
+                        <h3 class="ahp-card-title"><i class="fas fa-clock"></i> <?php _e('Recent Students', 'al-huffaz-portal'); ?></h3>
+                        <button class="ahp-btn ahp-btn-secondary ahp-btn-sm" onclick="showPanel('students')"><?php _e('View All', 'al-huffaz-portal'); ?></button>
+                    </div>
+                    <div class="ahp-card-body" style="padding:0;">
+                        <div class="ahp-table-wrap">
+                            <table class="ahp-table">
+                                <thead>
+                                    <tr>
+                                        <th><?php _e('Student', 'al-huffaz-portal'); ?></th>
+                                        <th><?php _e('GR #', 'al-huffaz-portal'); ?></th>
+                                        <th><?php _e('Grade', 'al-huffaz-portal'); ?></th>
+                                        <th><?php _e('Category', 'al-huffaz-portal'); ?></th>
+                                        <th><?php _e('Actions', 'al-huffaz-portal'); ?></th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <?php if (empty($recent_students)): ?>
+                                    <tr><td colspan="5" style="text-align:center;padding:40px;color:var(--ahp-text-muted);"><?php _e('No students yet', 'al-huffaz-portal'); ?></td></tr>
+                                    <?php else: foreach ($recent_students as $s):
+                                        $gr = get_post_meta($s->ID, 'gr_number', true);
+                                        $grade = get_post_meta($s->ID, 'grade_level', true);
+                                        $cat = get_post_meta($s->ID, 'islamic_studies_category', true);
+                                    ?>
+                                    <tr>
+                                        <td>
+                                            <div class="ahp-student-cell">
+                                                <div class="ahp-student-avatar"><?php echo strtoupper(substr($s->post_title, 0, 1)); ?></div>
+                                                <span><?php echo esc_html($s->post_title); ?></span>
+                                            </div>
+                                        </td>
+                                        <td><?php echo esc_html($gr ?: '-'); ?></td>
+                                        <td><span class="ahp-badge ahp-badge-primary"><?php echo esc_html(strtoupper($grade ?: '-')); ?></span></td>
+                                        <td><span class="ahp-badge ahp-badge-success"><?php echo esc_html(ucfirst($cat ?: '-')); ?></span></td>
+                                        <td>
+                                            <div class="ahp-cell-actions">
+                                                <a href="<?php echo get_permalink($s->ID); ?>" class="ahp-btn ahp-btn-secondary ahp-btn-icon" target="_blank" title="View"><i class="fas fa-eye"></i></a>
+                                                <button class="ahp-btn ahp-btn-primary ahp-btn-icon" onclick="editStudent(<?php echo $s->ID; ?>)" title="Edit"><i class="fas fa-edit"></i></button>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                    <?php endforeach; endif; ?>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
 
-            <a href="<?php echo add_query_arg('admin_page', 'import', $base_url); ?>"
-               class="alhuffaz-frontend-nav-link <?php echo $current_page === 'import' ? 'active' : ''; ?>">
-                <span class="dashicons dashicons-upload"></span>
-                <?php _e('Import', 'al-huffaz-portal'); ?>
-            </a>
+            <!-- ==================== STUDENTS LIST PANEL ==================== -->
+            <div class="ahp-panel" id="panel-students">
+                <div class="ahp-header">
+                    <h1 class="ahp-title"><?php _e('Students', 'al-huffaz-portal'); ?></h1>
+                    <div class="ahp-actions">
+                        <button class="ahp-btn ahp-btn-primary" onclick="showPanel('add-student')">
+                            <i class="fas fa-plus"></i> <?php _e('Add Student', 'al-huffaz-portal'); ?>
+                        </button>
+                    </div>
+                </div>
 
-            <a href="<?php echo add_query_arg('admin_page', 'settings', $base_url); ?>"
-               class="alhuffaz-frontend-nav-link <?php echo $current_page === 'settings' ? 'active' : ''; ?>">
-                <span class="dashicons dashicons-admin-settings"></span>
-                <?php _e('Settings', 'al-huffaz-portal'); ?>
-            </a>
+                <div class="ahp-toolbar">
+                    <div class="ahp-search">
+                        <i class="fas fa-search"></i>
+                        <input type="text" id="searchInput" placeholder="<?php _e('Search by name or GR number...', 'al-huffaz-portal'); ?>">
+                    </div>
+                    <select class="ahp-filter" id="filterGrade">
+                        <option value=""><?php _e('All Grades', 'al-huffaz-portal'); ?></option>
+                        <option value="kg1">KG 1</option>
+                        <option value="kg2">KG 2</option>
+                        <option value="class1">Class 1</option>
+                        <option value="class2">Class 2</option>
+                        <option value="class3">Class 3</option>
+                        <option value="level1">Level 1</option>
+                        <option value="level2">Level 2</option>
+                        <option value="level3">Level 3</option>
+                        <option value="shb">SHB</option>
+                        <option value="shg">SHG</option>
+                    </select>
+                    <select class="ahp-filter" id="filterCategory">
+                        <option value=""><?php _e('All Categories', 'al-huffaz-portal'); ?></option>
+                        <option value="hifz">Hifz</option>
+                        <option value="nazra">Nazra</option>
+                        <option value="qaidah">Qaidah</option>
+                    </select>
+                </div>
+
+                <div class="ahp-card">
+                    <div class="ahp-card-body" style="padding:0;">
+                        <div class="ahp-table-wrap">
+                            <table class="ahp-table">
+                                <thead>
+                                    <tr>
+                                        <th><?php _e('Student', 'al-huffaz-portal'); ?></th>
+                                        <th><?php _e('GR #', 'al-huffaz-portal'); ?></th>
+                                        <th><?php _e('Grade', 'al-huffaz-portal'); ?></th>
+                                        <th><?php _e('Category', 'al-huffaz-portal'); ?></th>
+                                        <th><?php _e('Father', 'al-huffaz-portal'); ?></th>
+                                        <th><?php _e('Actions', 'al-huffaz-portal'); ?></th>
+                                    </tr>
+                                </thead>
+                                <tbody id="studentsTableBody">
+                                    <tr><td colspan="6" class="ahp-loading"><div class="ahp-spinner"></div></td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+                <div id="pagination" class="ahp-pagination"></div>
+            </div>
+
+            <!-- ==================== ADD/EDIT STUDENT PANEL ==================== -->
+            <div class="ahp-panel" id="panel-add-student">
+                <div class="ahp-header">
+                    <h1 class="ahp-title" id="formTitle"><?php echo $is_edit ? __('Edit Student', 'al-huffaz-portal') : __('Add New Student', 'al-huffaz-portal'); ?></h1>
+                    <div class="ahp-actions">
+                        <button class="ahp-btn ahp-btn-secondary" onclick="showPanel('students')">
+                            <i class="fas fa-arrow-left"></i> <?php _e('Back to Students', 'al-huffaz-portal'); ?>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Progress Steps -->
+                <div class="ahp-progress">
+                    <div class="ahp-step active" data-step="1">
+                        <div class="ahp-step-num">1</div>
+                        <div class="ahp-step-label"><?php _e('Basic Info', 'al-huffaz-portal'); ?></div>
+                    </div>
+                    <div class="ahp-step-line"></div>
+                    <div class="ahp-step" data-step="2">
+                        <div class="ahp-step-num">2</div>
+                        <div class="ahp-step-label"><?php _e('Family', 'al-huffaz-portal'); ?></div>
+                    </div>
+                    <div class="ahp-step-line"></div>
+                    <div class="ahp-step" data-step="3">
+                        <div class="ahp-step-num">3</div>
+                        <div class="ahp-step-label"><?php _e('Academic', 'al-huffaz-portal'); ?></div>
+                    </div>
+                    <div class="ahp-step-line"></div>
+                    <div class="ahp-step" data-step="4">
+                        <div class="ahp-step-num">4</div>
+                        <div class="ahp-step-label"><?php _e('Fees', 'al-huffaz-portal'); ?></div>
+                    </div>
+                    <div class="ahp-step-line"></div>
+                    <div class="ahp-step" data-step="5">
+                        <div class="ahp-step-num">5</div>
+                        <div class="ahp-step-label"><?php _e('Health', 'al-huffaz-portal'); ?></div>
+                    </div>
+                </div>
+
+                <!-- Form -->
+                <form id="studentForm" enctype="multipart/form-data">
+                    <input type="hidden" name="student_id" id="studentId" value="<?php echo $is_edit ? $edit_id : 0; ?>">
+                    <input type="hidden" name="action" value="alhuffaz_save_student">
+                    <input type="hidden" name="nonce" value="<?php echo $nonce; ?>">
+
+                    <!-- STEP 1: Basic Information -->
+                    <div class="ahp-form-step active" data-step="1">
+                        <div class="ahp-card">
+                            <div class="ahp-card-body">
+                                <div class="ahp-step-header">
+                                    <i class="fas fa-user"></i>
+                                    <h2><?php _e('Basic Information', 'al-huffaz-portal'); ?></h2>
+                                </div>
+                                <div class="ahp-form-grid">
+                                    <div class="ahp-form-group ahp-col-6">
+                                        <label class="ahp-label required"><?php _e('Student Full Name', 'al-huffaz-portal'); ?></label>
+                                        <input type="text" name="student_name" class="ahp-input" required value="<?php echo esc_attr($student_data['student_name'] ?? ''); ?>">
+                                    </div>
+                                    <div class="ahp-form-group ahp-col-3">
+                                        <label class="ahp-label required"><?php _e('GR Number', 'al-huffaz-portal'); ?></label>
+                                        <input type="text" name="gr_number" class="ahp-input" required value="<?php echo esc_attr($student_data['gr_number'] ?? ''); ?>">
+                                    </div>
+                                    <div class="ahp-form-group ahp-col-3">
+                                        <label class="ahp-label"><?php _e('Roll Number', 'al-huffaz-portal'); ?></label>
+                                        <input type="text" name="roll_number" class="ahp-input" value="<?php echo esc_attr($student_data['roll_number'] ?? ''); ?>">
+                                    </div>
+                                    <div class="ahp-form-group ahp-col-4">
+                                        <label class="ahp-label required"><?php _e('Gender', 'al-huffaz-portal'); ?></label>
+                                        <select name="gender" class="ahp-input" required>
+                                            <option value="">Select Gender</option>
+                                            <option value="male" <?php echo ahp_fe_selected('gender', 'male', $student_data); ?>>Male</option>
+                                            <option value="female" <?php echo ahp_fe_selected('gender', 'female', $student_data); ?>>Female</option>
+                                        </select>
+                                    </div>
+                                    <div class="ahp-form-group ahp-col-4">
+                                        <label class="ahp-label"><?php _e('Date of Birth', 'al-huffaz-portal'); ?></label>
+                                        <input type="date" name="date_of_birth" class="ahp-input" value="<?php echo esc_attr($student_data['date_of_birth'] ?? ''); ?>">
+                                    </div>
+                                    <div class="ahp-form-group ahp-col-4">
+                                        <label class="ahp-label"><?php _e('Admission Date', 'al-huffaz-portal'); ?></label>
+                                        <input type="date" name="admission_date" class="ahp-input" value="<?php echo esc_attr($student_data['admission_date'] ?? ''); ?>">
+                                    </div>
+                                    <div class="ahp-form-group ahp-col-4">
+                                        <label class="ahp-label"><?php _e('Grade Level', 'al-huffaz-portal'); ?></label>
+                                        <select name="grade_level" class="ahp-input">
+                                            <option value="">Select Grade</option>
+                                            <option value="kg1" <?php echo ahp_fe_selected('grade_level', 'kg1', $student_data); ?>>KG 1</option>
+                                            <option value="kg2" <?php echo ahp_fe_selected('grade_level', 'kg2', $student_data); ?>>KG 2</option>
+                                            <option value="class1" <?php echo ahp_fe_selected('grade_level', 'class1', $student_data); ?>>Class 1</option>
+                                            <option value="class2" <?php echo ahp_fe_selected('grade_level', 'class2', $student_data); ?>>Class 2</option>
+                                            <option value="class3" <?php echo ahp_fe_selected('grade_level', 'class3', $student_data); ?>>Class 3</option>
+                                            <option value="level1" <?php echo ahp_fe_selected('grade_level', 'level1', $student_data); ?>>Level 1</option>
+                                            <option value="level2" <?php echo ahp_fe_selected('grade_level', 'level2', $student_data); ?>>Level 2</option>
+                                            <option value="level3" <?php echo ahp_fe_selected('grade_level', 'level3', $student_data); ?>>Level 3</option>
+                                            <option value="shb" <?php echo ahp_fe_selected('grade_level', 'shb', $student_data); ?>>SHB</option>
+                                            <option value="shg" <?php echo ahp_fe_selected('grade_level', 'shg', $student_data); ?>>SHG</option>
+                                        </select>
+                                    </div>
+                                    <div class="ahp-form-group ahp-col-4">
+                                        <label class="ahp-label"><?php _e('Islamic Studies', 'al-huffaz-portal'); ?></label>
+                                        <select name="islamic_studies_category" class="ahp-input">
+                                            <option value="">Select Category</option>
+                                            <option value="hifz" <?php echo ahp_fe_selected('islamic_studies_category', 'hifz', $student_data); ?>>Hifz</option>
+                                            <option value="nazra" <?php echo ahp_fe_selected('islamic_studies_category', 'nazra', $student_data); ?>>Nazra</option>
+                                            <option value="qaidah" <?php echo ahp_fe_selected('islamic_studies_category', 'qaidah', $student_data); ?>>Qaidah</option>
+                                        </select>
+                                    </div>
+                                    <div class="ahp-form-group ahp-col-4">
+                                        <label class="ahp-label"><?php _e('Student Photo', 'al-huffaz-portal'); ?></label>
+                                        <input type="file" name="student_photo" class="ahp-input" accept="image/*">
+                                    </div>
+                                    <div class="ahp-form-group ahp-col-6">
+                                        <label class="ahp-label"><?php _e('Permanent Address', 'al-huffaz-portal'); ?></label>
+                                        <textarea name="permanent_address" class="ahp-input" rows="2"><?php echo esc_textarea($student_data['permanent_address'] ?? ''); ?></textarea>
+                                    </div>
+                                    <div class="ahp-form-group ahp-col-6">
+                                        <label class="ahp-label"><?php _e('Current Address', 'al-huffaz-portal'); ?></label>
+                                        <textarea name="current_address" class="ahp-input" rows="2"><?php echo esc_textarea($student_data['current_address'] ?? ''); ?></textarea>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- STEP 2: Family Information -->
+                    <div class="ahp-form-step" data-step="2">
+                        <div class="ahp-card">
+                            <div class="ahp-card-body">
+                                <div class="ahp-step-header">
+                                    <i class="fas fa-users"></i>
+                                    <h2><?php _e('Family Information', 'al-huffaz-portal'); ?></h2>
+                                </div>
+
+                                <div class="ahp-section">
+                                    <h3 class="ahp-section-title"><i class="fas fa-user-tie"></i> <?php _e("Father's Information", 'al-huffaz-portal'); ?></h3>
+                                    <div class="ahp-form-grid">
+                                        <div class="ahp-form-group ahp-col-4">
+                                            <label class="ahp-label"><?php _e("Father's Name", 'al-huffaz-portal'); ?></label>
+                                            <input type="text" name="father_name" class="ahp-input" value="<?php echo esc_attr($student_data['father_name'] ?? ''); ?>">
+                                        </div>
+                                        <div class="ahp-form-group ahp-col-4">
+                                            <label class="ahp-label"><?php _e("Father's CNIC", 'al-huffaz-portal'); ?></label>
+                                            <input type="text" name="father_cnic" class="ahp-input" placeholder="XXXXX-XXXXXXX-X" value="<?php echo esc_attr($student_data['father_cnic'] ?? ''); ?>">
+                                        </div>
+                                        <div class="ahp-form-group ahp-col-4">
+                                            <label class="ahp-label"><?php _e("Father's Email", 'al-huffaz-portal'); ?></label>
+                                            <input type="email" name="father_email" class="ahp-input" value="<?php echo esc_attr($student_data['father_email'] ?? ''); ?>">
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="ahp-section">
+                                    <h3 class="ahp-section-title"><i class="fas fa-user-shield"></i> <?php _e('Guardian Information', 'al-huffaz-portal'); ?></h3>
+                                    <div class="ahp-form-grid">
+                                        <div class="ahp-form-group ahp-col-4">
+                                            <label class="ahp-label"><?php _e('Guardian Name', 'al-huffaz-portal'); ?></label>
+                                            <input type="text" name="guardian_name" class="ahp-input" value="<?php echo esc_attr($student_data['guardian_name'] ?? ''); ?>">
+                                        </div>
+                                        <div class="ahp-form-group ahp-col-4">
+                                            <label class="ahp-label"><?php _e('Guardian CNIC', 'al-huffaz-portal'); ?></label>
+                                            <input type="text" name="guardian_cnic" class="ahp-input" value="<?php echo esc_attr($student_data['guardian_cnic'] ?? ''); ?>">
+                                        </div>
+                                        <div class="ahp-form-group ahp-col-4">
+                                            <label class="ahp-label"><?php _e('Relationship', 'al-huffaz-portal'); ?></label>
+                                            <select name="relationship_to_student" class="ahp-input">
+                                                <option value="">Select</option>
+                                                <option value="father" <?php echo ahp_fe_selected('relationship_to_student', 'father', $student_data); ?>>Father</option>
+                                                <option value="mother" <?php echo ahp_fe_selected('relationship_to_student', 'mother', $student_data); ?>>Mother</option>
+                                                <option value="uncle" <?php echo ahp_fe_selected('relationship_to_student', 'uncle', $student_data); ?>>Uncle</option>
+                                                <option value="aunt" <?php echo ahp_fe_selected('relationship_to_student', 'aunt', $student_data); ?>>Aunt</option>
+                                                <option value="grandparent" <?php echo ahp_fe_selected('relationship_to_student', 'grandparent', $student_data); ?>>Grandparent</option>
+                                                <option value="other" <?php echo ahp_fe_selected('relationship_to_student', 'other', $student_data); ?>>Other</option>
+                                            </select>
+                                        </div>
+                                        <div class="ahp-form-group ahp-col-4">
+                                            <label class="ahp-label"><?php _e('Guardian Email', 'al-huffaz-portal'); ?></label>
+                                            <input type="email" name="guardian_email" class="ahp-input" value="<?php echo esc_attr($student_data['guardian_email'] ?? ''); ?>">
+                                        </div>
+                                        <div class="ahp-form-group ahp-col-4">
+                                            <label class="ahp-label"><?php _e('Guardian Phone', 'al-huffaz-portal'); ?></label>
+                                            <input type="tel" name="guardian_phone" class="ahp-input" value="<?php echo esc_attr($student_data['guardian_phone'] ?? ''); ?>">
+                                        </div>
+                                        <div class="ahp-form-group ahp-col-4">
+                                            <label class="ahp-label"><?php _e('Guardian WhatsApp', 'al-huffaz-portal'); ?></label>
+                                            <input type="tel" name="guardian_whatsapp" class="ahp-input" value="<?php echo esc_attr($student_data['guardian_whatsapp'] ?? ''); ?>">
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="ahp-section">
+                                    <h3 class="ahp-section-title"><i class="fas fa-ambulance"></i> <?php _e('Emergency Contact', 'al-huffaz-portal'); ?></h3>
+                                    <div class="ahp-form-grid">
+                                        <div class="ahp-form-group ahp-col-6">
+                                            <label class="ahp-label"><?php _e('Emergency Phone', 'al-huffaz-portal'); ?></label>
+                                            <input type="tel" name="emergency_contact" class="ahp-input" value="<?php echo esc_attr($student_data['emergency_contact'] ?? ''); ?>">
+                                        </div>
+                                        <div class="ahp-form-group ahp-col-6">
+                                            <label class="ahp-label"><?php _e('Emergency WhatsApp', 'al-huffaz-portal'); ?></label>
+                                            <input type="tel" name="emergency_whatsapp" class="ahp-input" value="<?php echo esc_attr($student_data['emergency_whatsapp'] ?? ''); ?>">
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- STEP 3: Academic Information -->
+                    <div class="ahp-form-step" data-step="3">
+                        <div class="ahp-card">
+                            <div class="ahp-card-body">
+                                <div class="ahp-step-header">
+                                    <i class="fas fa-graduation-cap"></i>
+                                    <h2><?php _e('Academic Information', 'al-huffaz-portal'); ?></h2>
+                                </div>
+
+                                <div class="ahp-section">
+                                    <h3 class="ahp-section-title"><i class="fas fa-calendar"></i> <?php _e('Academic Period', 'al-huffaz-portal'); ?></h3>
+                                    <div class="ahp-form-grid">
+                                        <div class="ahp-form-group ahp-col-6">
+                                            <label class="ahp-label"><?php _e('Academic Year', 'al-huffaz-portal'); ?></label>
+                                            <select name="academic_year" class="ahp-input">
+                                                <option value="">Select Year</option>
+                                                <?php for ($y = date('Y') + 1; $y >= 2020; $y--): ?>
+                                                <option value="<?php echo $y . '-' . ($y+1); ?>" <?php echo ahp_fe_selected('academic_year', $y . '-' . ($y+1), $student_data); ?>><?php echo $y . '-' . ($y+1); ?></option>
+                                                <?php endfor; ?>
+                                            </select>
+                                        </div>
+                                        <div class="ahp-form-group ahp-col-6">
+                                            <label class="ahp-label"><?php _e('Academic Term', 'al-huffaz-portal'); ?></label>
+                                            <select name="academic_term" class="ahp-input">
+                                                <option value="">Select Term</option>
+                                                <option value="mid" <?php echo ahp_fe_selected('academic_term', 'mid', $student_data); ?>>Mid Term</option>
+                                                <option value="annual" <?php echo ahp_fe_selected('academic_term', 'annual', $student_data); ?>>Annual</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="ahp-section">
+                                    <h3 class="ahp-section-title"><i class="fas fa-clipboard-check"></i> <?php _e('Attendance', 'al-huffaz-portal'); ?></h3>
+                                    <div class="ahp-form-grid">
+                                        <div class="ahp-form-group ahp-col-4">
+                                            <label class="ahp-label"><?php _e('Total School Days', 'al-huffaz-portal'); ?></label>
+                                            <input type="number" name="total_school_days" id="totalDays" class="ahp-input" min="0" value="<?php echo esc_attr($student_data['total_school_days'] ?? ''); ?>">
+                                        </div>
+                                        <div class="ahp-form-group ahp-col-4">
+                                            <label class="ahp-label"><?php _e('Present Days', 'al-huffaz-portal'); ?></label>
+                                            <input type="number" name="present_days" id="presentDays" class="ahp-input" min="0" value="<?php echo esc_attr($student_data['present_days'] ?? ''); ?>">
+                                        </div>
+                                        <div class="ahp-form-group ahp-col-4">
+                                            <label class="ahp-label"><?php _e('Attendance %', 'al-huffaz-portal'); ?></label>
+                                            <div id="attendanceDisplay" style="padding:10px;background:var(--ahp-bg);border-radius:8px;text-align:center;font-weight:700;font-size:18px;">--%</div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="ahp-section">
+                                    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+                                        <h3 class="ahp-section-title" style="margin:0;"><i class="fas fa-book"></i> <?php _e('Subject Performance', 'al-huffaz-portal'); ?></h3>
+                                        <button type="button" id="addSubjectBtn" class="ahp-btn ahp-btn-success ahp-btn-sm">
+                                            <i class="fas fa-plus"></i> <?php _e('Add Subject', 'al-huffaz-portal'); ?>
+                                        </button>
+                                    </div>
+                                    <div id="subjectsContainer">
+                                        <?php if (!empty($subjects)): foreach ($subjects as $idx => $subj): ?>
+                                        <div class="ahp-subject-box" data-index="<?php echo $idx; ?>">
+                                            <div class="ahp-subject-header">
+                                                <div class="ahp-subject-title">
+                                                    <i class="fas fa-book"></i>
+                                                    <input type="text" name="subjects[<?php echo $idx; ?>][name]" class="ahp-subject-name" placeholder="Subject Name" value="<?php echo esc_attr($subj['name'] ?? ''); ?>">
+                                                </div>
+                                                <button type="button" class="ahp-btn ahp-btn-danger ahp-btn-sm remove-subject"><i class="fas fa-trash"></i></button>
+                                            </div>
+                                            <div class="ahp-subject-content">
+                                                <!-- Monthly Exams -->
+                                                <div class="ahp-exam-section">
+                                                    <div class="ahp-exam-header">
+                                                        <h4><i class="fas fa-calendar-alt"></i> <?php _e('Monthly Exams', 'al-huffaz-portal'); ?></h4>
+                                                        <button type="button" class="ahp-btn ahp-btn-primary ahp-btn-sm add-monthly" data-subject="<?php echo $idx; ?>"><i class="fas fa-plus"></i> Add Month</button>
+                                                    </div>
+                                                    <div class="monthly-container" data-subject="<?php echo $idx; ?>">
+                                                        <?php if (!empty($subj['monthly_exams'])): foreach ($subj['monthly_exams'] as $midx => $mon): ?>
+                                                        <div class="ahp-monthly-exam" data-month="<?php echo $midx; ?>">
+                                                            <div class="ahp-monthly-header">
+                                                                <input type="text" name="subjects[<?php echo $idx; ?>][monthly_exams][<?php echo $midx; ?>][month_name]" class="ahp-month-name" placeholder="Month Name" value="<?php echo esc_attr($mon['month_name'] ?? ''); ?>">
+                                                                <button type="button" class="ahp-btn ahp-btn-danger ahp-btn-xs remove-monthly"><i class="fas fa-times"></i></button>
+                                                            </div>
+                                                            <div class="ahp-marks-row">
+                                                                <div class="ahp-marks-group"><label>Oral Total</label><input type="number" name="subjects[<?php echo $idx; ?>][monthly_exams][<?php echo $midx; ?>][oral_total]" min="0" value="<?php echo esc_attr($mon['oral_total'] ?? ''); ?>"></div>
+                                                                <div class="ahp-marks-group"><label>Oral Obtained</label><input type="number" name="subjects[<?php echo $idx; ?>][monthly_exams][<?php echo $midx; ?>][oral_obtained]" min="0" value="<?php echo esc_attr($mon['oral_obtained'] ?? ''); ?>"></div>
+                                                                <div class="ahp-marks-group"><label>Written Total</label><input type="number" name="subjects[<?php echo $idx; ?>][monthly_exams][<?php echo $midx; ?>][written_total]" min="0" value="<?php echo esc_attr($mon['written_total'] ?? ''); ?>"></div>
+                                                                <div class="ahp-marks-group"><label>Written Obtained</label><input type="number" name="subjects[<?php echo $idx; ?>][monthly_exams][<?php echo $midx; ?>][written_obtained]" min="0" value="<?php echo esc_attr($mon['written_obtained'] ?? ''); ?>"></div>
+                                                            </div>
+                                                        </div>
+                                                        <?php endforeach; endif; ?>
+                                                    </div>
+                                                </div>
+                                                <!-- Mid Semester -->
+                                                <div class="ahp-exam-section">
+                                                    <h4><i class="fas fa-book-open"></i> <?php _e('Mid Semester Exam', 'al-huffaz-portal'); ?></h4>
+                                                    <div class="ahp-marks-row">
+                                                        <div class="ahp-marks-group"><label>Oral Total</label><input type="number" name="subjects[<?php echo $idx; ?>][mid_semester][oral_total]" min="0" value="<?php echo esc_attr($subj['mid_semester']['oral_total'] ?? ''); ?>"></div>
+                                                        <div class="ahp-marks-group"><label>Oral Obtained</label><input type="number" name="subjects[<?php echo $idx; ?>][mid_semester][oral_obtained]" min="0" value="<?php echo esc_attr($subj['mid_semester']['oral_obtained'] ?? ''); ?>"></div>
+                                                        <div class="ahp-marks-group"><label>Written Total</label><input type="number" name="subjects[<?php echo $idx; ?>][mid_semester][written_total]" min="0" value="<?php echo esc_attr($subj['mid_semester']['written_total'] ?? ''); ?>"></div>
+                                                        <div class="ahp-marks-group"><label>Written Obtained</label><input type="number" name="subjects[<?php echo $idx; ?>][mid_semester][written_obtained]" min="0" value="<?php echo esc_attr($subj['mid_semester']['written_obtained'] ?? ''); ?>"></div>
+                                                    </div>
+                                                </div>
+                                                <!-- Annual Exam -->
+                                                <div class="ahp-exam-section">
+                                                    <h4><i class="fas fa-graduation-cap"></i> <?php _e('Annual Exam', 'al-huffaz-portal'); ?></h4>
+                                                    <div class="ahp-marks-row">
+                                                        <div class="ahp-marks-group"><label>Oral Total</label><input type="number" name="subjects[<?php echo $idx; ?>][final_semester][oral_total]" min="0" value="<?php echo esc_attr($subj['final_semester']['oral_total'] ?? ''); ?>"></div>
+                                                        <div class="ahp-marks-group"><label>Oral Obtained</label><input type="number" name="subjects[<?php echo $idx; ?>][final_semester][oral_obtained]" min="0" value="<?php echo esc_attr($subj['final_semester']['oral_obtained'] ?? ''); ?>"></div>
+                                                        <div class="ahp-marks-group"><label>Written Total</label><input type="number" name="subjects[<?php echo $idx; ?>][final_semester][written_total]" min="0" value="<?php echo esc_attr($subj['final_semester']['written_total'] ?? ''); ?>"></div>
+                                                        <div class="ahp-marks-group"><label>Written Obtained</label><input type="number" name="subjects[<?php echo $idx; ?>][final_semester][written_obtained]" min="0" value="<?php echo esc_attr($subj['final_semester']['written_obtained'] ?? ''); ?>"></div>
+                                                    </div>
+                                                </div>
+                                                <!-- Teacher Assessment -->
+                                                <div class="ahp-exam-section">
+                                                    <h4><i class="fas fa-comment-dots"></i> <?php _e('Teacher Assessment', 'al-huffaz-portal'); ?></h4>
+                                                    <div class="ahp-form-grid">
+                                                        <div class="ahp-form-group ahp-col-6">
+                                                            <label class="ahp-label">Strengths</label>
+                                                            <textarea name="subjects[<?php echo $idx; ?>][strengths]" class="ahp-input" rows="2"><?php echo esc_textarea($subj['strengths'] ?? ''); ?></textarea>
+                                                        </div>
+                                                        <div class="ahp-form-group ahp-col-6">
+                                                            <label class="ahp-label">Areas for Improvement</label>
+                                                            <textarea name="subjects[<?php echo $idx; ?>][areas_for_improvement]" class="ahp-input" rows="2"><?php echo esc_textarea($subj['areas_for_improvement'] ?? ''); ?></textarea>
+                                                        </div>
+                                                        <div class="ahp-form-group ahp-col-12">
+                                                            <label class="ahp-label">Teacher Comments</label>
+                                                            <textarea name="subjects[<?php echo $idx; ?>][teacher_comments]" class="ahp-input" rows="2"><?php echo esc_textarea($subj['teacher_comments'] ?? ''); ?></textarea>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <?php endforeach; endif; ?>
+                                    </div>
+                                    <div id="noSubjectsMsg" class="ahp-empty-subjects" <?php if (!empty($subjects)) echo 'style="display:none;"'; ?>>
+                                        <i class="fas fa-book-open"></i>
+                                        <p><?php _e('No subjects added yet. Click "Add Subject" to start.', 'al-huffaz-portal'); ?></p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- STEP 4: Fees -->
+                    <div class="ahp-form-step" data-step="4">
+                        <div class="ahp-card">
+                            <div class="ahp-card-body">
+                                <div class="ahp-step-header">
+                                    <i class="fas fa-money-bill-wave"></i>
+                                    <h2><?php _e('Fee Structure', 'al-huffaz-portal'); ?></h2>
+                                </div>
+
+                                <div class="ahp-fee-cards">
+                                    <div class="ahp-fee-card">
+                                        <div class="ahp-fee-icon"><i class="fas fa-sync-alt"></i></div>
+                                        <h4><?php _e('Monthly Tuition', 'al-huffaz-portal'); ?></h4>
+                                        <div class="ahp-fee-input">
+                                            <span class="ahp-currency">PKR</span>
+                                            <input type="number" name="monthly_tuition_fee" class="fee-input" min="0" value="<?php echo esc_attr($student_data['monthly_tuition_fee'] ?? ''); ?>">
+                                        </div>
+                                    </div>
+                                    <div class="ahp-fee-card">
+                                        <div class="ahp-fee-icon"><i class="fas fa-book-open"></i></div>
+                                        <h4><?php _e('Course Fee', 'al-huffaz-portal'); ?></h4>
+                                        <div class="ahp-fee-input">
+                                            <span class="ahp-currency">PKR</span>
+                                            <input type="number" name="course_fee" class="fee-input" min="0" value="<?php echo esc_attr($student_data['course_fee'] ?? ''); ?>">
+                                        </div>
+                                    </div>
+                                    <div class="ahp-fee-card">
+                                        <div class="ahp-fee-icon"><i class="fas fa-tshirt"></i></div>
+                                        <h4><?php _e('Uniform Fee', 'al-huffaz-portal'); ?></h4>
+                                        <div class="ahp-fee-input">
+                                            <span class="ahp-currency">PKR</span>
+                                            <input type="number" name="uniform_fee" class="fee-input" min="0" value="<?php echo esc_attr($student_data['uniform_fee'] ?? ''); ?>">
+                                        </div>
+                                    </div>
+                                    <div class="ahp-fee-card">
+                                        <div class="ahp-fee-icon"><i class="fas fa-calendar-alt"></i></div>
+                                        <h4><?php _e('Annual Fee', 'al-huffaz-portal'); ?></h4>
+                                        <div class="ahp-fee-input">
+                                            <span class="ahp-currency">PKR</span>
+                                            <input type="number" name="annual_fee" class="fee-input" min="0" value="<?php echo esc_attr($student_data['annual_fee'] ?? ''); ?>">
+                                        </div>
+                                    </div>
+                                    <div class="ahp-fee-card">
+                                        <div class="ahp-fee-icon"><i class="fas fa-user-plus"></i></div>
+                                        <h4><?php _e('Admission Fee', 'al-huffaz-portal'); ?></h4>
+                                        <div class="ahp-fee-input">
+                                            <span class="ahp-currency">PKR</span>
+                                            <input type="number" name="admission_fee" class="fee-input" min="0" value="<?php echo esc_attr($student_data['admission_fee'] ?? ''); ?>">
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="ahp-fee-summary">
+                                    <div class="ahp-fee-row"><span>Monthly Fee:</span><strong id="monthlyTotal">PKR 0</strong></div>
+                                    <div class="ahp-fee-row"><span>One-time Fees:</span><strong id="oneTimeTotal">PKR 0</strong></div>
+                                    <div class="ahp-fee-row"><span>Total (First Month):</span><strong id="grandTotal">PKR 0</strong></div>
+                                </div>
+
+                                <div class="ahp-section" style="margin-top:20px;">
+                                    <h3 class="ahp-section-title"><i class="fas fa-hand-holding-heart"></i> <?php _e('Financial Aid Eligibility', 'al-huffaz-portal'); ?></h3>
+                                    <div class="ahp-checkbox-group">
+                                        <label class="ahp-checkbox-label">
+                                            <input type="checkbox" name="zakat_eligible" value="yes" <?php echo ahp_fe_checked('zakat_eligible', $student_data); ?>>
+                                            <span><i class="fas fa-donate"></i> <?php _e('Eligible for Zakat', 'al-huffaz-portal'); ?></span>
+                                        </label>
+                                        <label class="ahp-checkbox-label">
+                                            <input type="checkbox" name="donation_eligible" value="yes" <?php echo ahp_fe_checked('donation_eligible', $student_data); ?>>
+                                            <span><i class="fas fa-gift"></i> <?php _e('Eligible for Donations/Sponsorship', 'al-huffaz-portal'); ?></span>
+                                        </label>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- STEP 5: Health & Behavior -->
+                    <div class="ahp-form-step" data-step="5">
+                        <div class="ahp-card">
+                            <div class="ahp-card-body">
+                                <div class="ahp-step-header">
+                                    <i class="fas fa-heartbeat"></i>
+                                    <h2><?php _e('Health & Behavior Assessment', 'al-huffaz-portal'); ?></h2>
+                                </div>
+
+                                <div class="ahp-section">
+                                    <h3 class="ahp-section-title"><i class="fas fa-notes-medical"></i> <?php _e('Medical Information', 'al-huffaz-portal'); ?></h3>
+                                    <div class="ahp-form-grid">
+                                        <div class="ahp-form-group ahp-col-4">
+                                            <label class="ahp-label"><?php _e('Blood Group', 'al-huffaz-portal'); ?></label>
+                                            <select name="blood_group" class="ahp-input">
+                                                <option value="">Select</option>
+                                                <?php foreach (['A+','A-','B+','B-','AB+','AB-','O+','O-'] as $bg): ?>
+                                                <option value="<?php echo $bg; ?>" <?php echo ahp_fe_selected('blood_group', $bg, $student_data); ?>><?php echo $bg; ?></option>
+                                                <?php endforeach; ?>
+                                            </select>
+                                        </div>
+                                        <div class="ahp-form-group ahp-col-4">
+                                            <label class="ahp-label"><?php _e('Allergies', 'al-huffaz-portal'); ?></label>
+                                            <input type="text" name="allergies" class="ahp-input" value="<?php echo esc_attr($student_data['allergies'] ?? ''); ?>">
+                                        </div>
+                                        <div class="ahp-form-group ahp-col-4">
+                                            <label class="ahp-label"><?php _e('Medical Conditions', 'al-huffaz-portal'); ?></label>
+                                            <input type="text" name="medical_conditions" class="ahp-input" value="<?php echo esc_attr($student_data['medical_conditions'] ?? ''); ?>">
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="ahp-section">
+                                    <h3 class="ahp-section-title"><i class="fas fa-star"></i> <?php _e('Behavior Assessment', 'al-huffaz-portal'); ?></h3>
+                                    <div class="ahp-rating-grid">
+                                        <?php
+                                        $ratings = array(
+                                            'health_rating' => array('icon' => 'fa-heartbeat', 'label' => 'Health & Wellness'),
+                                            'cleanness_rating' => array('icon' => 'fa-broom', 'label' => 'Cleanliness'),
+                                            'completes_homework' => array('icon' => 'fa-tasks', 'label' => 'Completes Homework'),
+                                            'participates_in_class' => array('icon' => 'fa-hand-paper', 'label' => 'Class Participation'),
+                                            'works_well_in_groups' => array('icon' => 'fa-users', 'label' => 'Group Work'),
+                                            'problem_solving_skills' => array('icon' => 'fa-lightbulb', 'label' => 'Problem Solving'),
+                                            'organization_preparedness' => array('icon' => 'fa-folder-open', 'label' => 'Organization'),
+                                        );
+                                        foreach ($ratings as $field => $info):
+                                            $val = $student_data[$field] ?? 0;
+                                        ?>
+                                        <div class="ahp-rating-item">
+                                            <label class="ahp-rating-label"><i class="fas <?php echo $info['icon']; ?>"></i> <?php echo $info['label']; ?></label>
+                                            <div class="ahp-stars" data-field="<?php echo $field; ?>">
+                                                <?php for ($i = 1; $i <= 5; $i++): ?>
+                                                <i class="fas fa-star ahp-star <?php echo ($val >= $i) ? 'active' : ''; ?>" data-value="<?php echo $i; ?>"></i>
+                                                <?php endfor; ?>
+                                                <input type="hidden" name="<?php echo $field; ?>" value="<?php echo esc_attr($val); ?>">
+                                            </div>
+                                        </div>
+                                        <?php endforeach; ?>
+                                    </div>
+                                </div>
+
+                                <div class="ahp-section">
+                                    <h3 class="ahp-section-title"><i class="fas fa-bullseye"></i> <?php _e('Goals & Comments', 'al-huffaz-portal'); ?></h3>
+                                    <div class="ahp-form-grid">
+                                        <div class="ahp-form-group ahp-col-4">
+                                            <label class="ahp-label"><?php _e('Goal 1', 'al-huffaz-portal'); ?></label>
+                                            <input type="text" name="goal_1" class="ahp-input" value="<?php echo esc_attr($student_data['goal_1'] ?? ''); ?>">
+                                        </div>
+                                        <div class="ahp-form-group ahp-col-4">
+                                            <label class="ahp-label"><?php _e('Goal 2', 'al-huffaz-portal'); ?></label>
+                                            <input type="text" name="goal_2" class="ahp-input" value="<?php echo esc_attr($student_data['goal_2'] ?? ''); ?>">
+                                        </div>
+                                        <div class="ahp-form-group ahp-col-4">
+                                            <label class="ahp-label"><?php _e('Goal 3', 'al-huffaz-portal'); ?></label>
+                                            <input type="text" name="goal_3" class="ahp-input" value="<?php echo esc_attr($student_data['goal_3'] ?? ''); ?>">
+                                        </div>
+                                        <div class="ahp-form-group ahp-col-12">
+                                            <label class="ahp-label"><?php _e("Teacher's Overall Comments", 'al-huffaz-portal'); ?></label>
+                                            <textarea name="teacher_overall_comments" class="ahp-input" rows="3"><?php echo esc_textarea($student_data['teacher_overall_comments'] ?? ''); ?></textarea>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Form Navigation -->
+                    <div class="ahp-form-nav">
+                        <button type="button" id="prevBtn" class="ahp-btn ahp-btn-secondary" style="display:none;">
+                            <i class="fas fa-arrow-left"></i> <?php _e('Previous', 'al-huffaz-portal'); ?>
+                        </button>
+                        <button type="button" id="nextBtn" class="ahp-btn ahp-btn-primary">
+                            <?php _e('Next', 'al-huffaz-portal'); ?> <i class="fas fa-arrow-right"></i>
+                        </button>
+                        <button type="submit" id="submitBtn" class="ahp-btn ahp-btn-success" style="display:none;">
+                            <i class="fas fa-save"></i> <?php echo $is_edit ? __('Update Student', 'al-huffaz-portal') : __('Enroll Student', 'al-huffaz-portal'); ?>
+                        </button>
+                    </div>
+                </form>
+            </div>
+
+            <!-- ==================== SPONSORS PANEL ==================== -->
+            <?php if ($can_manage_sponsors): ?>
+            <div class="ahp-panel" id="panel-sponsors">
+                <div class="ahp-header">
+                    <h1 class="ahp-title"><?php _e('Sponsor Management', 'al-huffaz-portal'); ?></h1>
+                    <div class="ahp-actions">
+                        <select class="ahp-filter" id="filterSponsorStatus" onchange="loadSponsors()">
+                            <option value=""><?php _e('All Status', 'al-huffaz-portal'); ?></option>
+                            <option value="pending" selected><?php _e('Pending', 'al-huffaz-portal'); ?></option>
+                            <option value="approved"><?php _e('Approved', 'al-huffaz-portal'); ?></option>
+                            <option value="rejected"><?php _e('Rejected', 'al-huffaz-portal'); ?></option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="ahp-stats">
+                    <div class="ahp-stat">
+                        <div class="ahp-stat-icon orange"><i class="fas fa-clock"></i></div>
+                        <div>
+                            <div class="ahp-stat-label"><?php _e('Pending Approval', 'al-huffaz-portal'); ?></div>
+                            <div class="ahp-stat-value" id="pendingSponsorCount"><?php echo $pending_sponsors_count; ?></div>
+                        </div>
+                    </div>
+                    <div class="ahp-stat">
+                        <div class="ahp-stat-icon green"><i class="fas fa-check-circle"></i></div>
+                        <div>
+                            <div class="ahp-stat-label"><?php _e('Approved', 'al-huffaz-portal'); ?></div>
+                            <div class="ahp-stat-value" id="approvedSponsorCount"><?php echo $total_sponsors; ?></div>
+                        </div>
+                    </div>
+                    <div class="ahp-stat">
+                        <div class="ahp-stat-icon blue"><i class="fas fa-user-check"></i></div>
+                        <div>
+                            <div class="ahp-stat-label"><?php _e('Donation Eligible Students', 'al-huffaz-portal'); ?></div>
+                            <div class="ahp-stat-value"><?php echo $donation_eligible_count; ?></div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="ahp-card">
+                    <div class="ahp-card-header">
+                        <h3 class="ahp-card-title"><i class="fas fa-hand-holding-heart"></i> <?php _e('Sponsorship Requests', 'al-huffaz-portal'); ?></h3>
+                    </div>
+                    <div class="ahp-card-body" style="padding:0;">
+                        <div class="ahp-table-wrap">
+                            <table class="ahp-table">
+                                <thead>
+                                    <tr>
+                                        <th><?php _e('Sponsor', 'al-huffaz-portal'); ?></th>
+                                        <th><?php _e('Student', 'al-huffaz-portal'); ?></th>
+                                        <th><?php _e('Amount', 'al-huffaz-portal'); ?></th>
+                                        <th><?php _e('Type', 'al-huffaz-portal'); ?></th>
+                                        <th><?php _e('Status', 'al-huffaz-portal'); ?></th>
+                                        <th><?php _e('Date', 'al-huffaz-portal'); ?></th>
+                                        <th><?php _e('Actions', 'al-huffaz-portal'); ?></th>
+                                    </tr>
+                                </thead>
+                                <tbody id="sponsorsTableBody">
+                                    <tr><td colspan="7" class="ahp-loading"><div class="ahp-spinner"></div></td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <?php endif; ?>
+
+            <!-- ==================== SPONSOR USERS PANEL ==================== -->
+            <?php if ($can_manage_sponsors): ?>
+            <div class="ahp-panel" id="panel-sponsor-users">
+                <div class="ahp-header">
+                    <h1 class="ahp-title"><?php _e('Sponsor User Management', 'al-huffaz-portal'); ?></h1>
+                    <div class="ahp-actions">
+                        <select class="ahp-filter" id="filterUserStatus" onchange="loadSponsorUsers()">
+                            <option value=""><?php _e('All Users', 'al-huffaz-portal'); ?></option>
+                            <option value="pending"><?php _e('Pending Approval', 'al-huffaz-portal'); ?></option>
+                            <option value="approved"><?php _e('Approved', 'al-huffaz-portal'); ?></option>
+                            <option value="inactive"><?php _e('Inactive (No Sponsorships)', 'al-huffaz-portal'); ?></option>
+                        </select>
+                        <input type="text" class="ahp-search" id="searchSponsorUsers" placeholder="<?php _e('Search sponsors...', 'al-huffaz-portal'); ?>">
+                    </div>
+                </div>
+
+                <div class="ahp-stats">
+                    <div class="ahp-stat">
+                        <div class="ahp-stat-icon orange"><i class="fas fa-user-clock"></i></div>
+                        <div>
+                            <div class="ahp-stat-label"><?php _e('Pending Approval', 'al-huffaz-portal'); ?></div>
+                            <div class="ahp-stat-value" id="pendingUsersCount">0</div>
+                        </div>
+                    </div>
+                    <div class="ahp-stat">
+                        <div class="ahp-stat-icon green"><i class="fas fa-user-check"></i></div>
+                        <div>
+                            <div class="ahp-stat-label"><?php _e('Active Sponsors', 'al-huffaz-portal'); ?></div>
+                            <div class="ahp-stat-value" id="activeUsersCount">0</div>
+                        </div>
+                    </div>
+                    <div class="ahp-stat">
+                        <div class="ahp-stat-icon gray"><i class="fas fa-user-slash"></i></div>
+                        <div>
+                            <div class="ahp-stat-label"><?php _e('Inactive Sponsors', 'al-huffaz-portal'); ?></div>
+                            <div class="ahp-stat-value" id="inactiveUsersCount">0</div>
+                        </div>
+                    </div>
+                    <div class="ahp-stat">
+                        <div class="ahp-stat-icon blue"><i class="fas fa-users"></i></div>
+                        <div>
+                            <div class="ahp-stat-label"><?php _e('Total Registered', 'al-huffaz-portal'); ?></div>
+                            <div class="ahp-stat-value" id="totalUsersCount">0</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="ahp-card">
+                    <div class="ahp-card-header">
+                        <h3 class="ahp-card-title"><i class="fas fa-users-cog"></i> <?php _e('Sponsor User Accounts', 'al-huffaz-portal'); ?></h3>
+                        <p style="margin:8px 0 0 0;color:var(--ahp-text-muted);font-size:14px;">
+                            <?php _e('Manage sponsor user accounts - approve registrations, view activity, and manage access', 'al-huffaz-portal'); ?>
+                        </p>
+                    </div>
+                    <div class="ahp-card-body" style="padding:0;">
+                        <div class="ahp-table-wrap">
+                            <table class="ahp-table">
+                                <thead>
+                                    <tr>
+                                        <th><?php _e('User', 'al-huffaz-portal'); ?></th>
+                                        <th><?php _e('Email', 'al-huffaz-portal'); ?></th>
+                                        <th><?php _e('Phone', 'al-huffaz-portal'); ?></th>
+                                        <th><?php _e('Status', 'al-huffaz-portal'); ?></th>
+                                        <th><?php _e('Sponsorships', 'al-huffaz-portal'); ?></th>
+                                        <th><?php _e('Registered', 'al-huffaz-portal'); ?></th>
+                                        <th><?php _e('Actions', 'al-huffaz-portal'); ?></th>
+                                    </tr>
+                                </thead>
+                                <tbody id="sponsorUsersTableBody">
+                                    <tr><td colspan="7" class="ahp-loading"><div class="ahp-spinner"></div></td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <?php endif; ?>
+
+            <!-- ==================== PAYMENTS PANEL ==================== -->
+            <?php if ($can_manage_payments): ?>
+            <div class="ahp-panel" id="panel-payments">
+                <div class="ahp-header">
+                    <h1 class="ahp-title"><?php _e('Payment Verification', 'al-huffaz-portal'); ?></h1>
+                    <div class="ahp-actions">
+                        <select class="ahp-filter" id="filterPaymentStatus" onchange="loadPayments()">
+                            <option value=""><?php _e('All Status', 'al-huffaz-portal'); ?></option>
+                            <option value="pending" selected><?php _e('Pending', 'al-huffaz-portal'); ?></option>
+                            <option value="approved"><?php _e('Verified', 'al-huffaz-portal'); ?></option>
+                            <option value="rejected"><?php _e('Rejected', 'al-huffaz-portal'); ?></option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="ahp-stats">
+                    <div class="ahp-stat">
+                        <div class="ahp-stat-icon orange"><i class="fas fa-hourglass-half"></i></div>
+                        <div>
+                            <div class="ahp-stat-label"><?php _e('Pending Verification', 'al-huffaz-portal'); ?></div>
+                            <div class="ahp-stat-value" id="pendingPaymentCount"><?php echo $pending_payments_count; ?></div>
+                        </div>
+                    </div>
+                    <div class="ahp-stat">
+                        <div class="ahp-stat-icon green"><i class="fas fa-check-double"></i></div>
+                        <div>
+                            <div class="ahp-stat-label"><?php _e('Verified Payments', 'al-huffaz-portal'); ?></div>
+                            <div class="ahp-stat-value" id="verifiedPaymentCount">-</div>
+                        </div>
+                    </div>
+                    <div class="ahp-stat">
+                        <div class="ahp-stat-icon blue"><i class="fas fa-rupee-sign"></i></div>
+                        <div>
+                            <div class="ahp-stat-label"><?php _e('Total Revenue', 'al-huffaz-portal'); ?></div>
+                            <div class="ahp-stat-value" id="totalRevenue">-</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="ahp-card">
+                    <div class="ahp-card-header">
+                        <h3 class="ahp-card-title"><i class="fas fa-receipt"></i> <?php _e('Payment Records', 'al-huffaz-portal'); ?></h3>
+                    </div>
+                    <div class="ahp-card-body" style="padding:0;">
+                        <div class="ahp-table-wrap">
+                            <table class="ahp-table">
+                                <thead>
+                                    <tr>
+                                        <th><?php _e('Sponsor', 'al-huffaz-portal'); ?></th>
+                                        <th><?php _e('Student', 'al-huffaz-portal'); ?></th>
+                                        <th><?php _e('Amount', 'al-huffaz-portal'); ?></th>
+                                        <th><?php _e('Method', 'al-huffaz-portal'); ?></th>
+                                        <th><?php _e('Transaction ID', 'al-huffaz-portal'); ?></th>
+                                        <th><?php _e('Status', 'al-huffaz-portal'); ?></th>
+                                        <th><?php _e('Date', 'al-huffaz-portal'); ?></th>
+                                        <th><?php _e('Actions', 'al-huffaz-portal'); ?></th>
+                                    </tr>
+                                </thead>
+                                <tbody id="paymentsTableBody">
+                                    <tr><td colspan="8" class="ahp-loading"><div class="ahp-spinner"></div></td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <?php endif; ?>
+
+            <!-- ==================== STAFF MANAGEMENT PANEL ==================== -->
+            <?php if ($can_manage_staff): ?>
+            <div class="ahp-panel" id="panel-staff">
+                <div class="ahp-header">
+                    <h1 class="ahp-title"><?php _e('Staff Management', 'al-huffaz-portal'); ?></h1>
+                    <div class="ahp-actions">
+                        <button class="ahp-btn ahp-btn-primary" onclick="showAddStaffModal()">
+                            <i class="fas fa-user-plus"></i> <?php _e('Add Staff', 'al-huffaz-portal'); ?>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="ahp-stats">
+                    <div class="ahp-stat">
+                        <div class="ahp-stat-icon blue"><i class="fas fa-user-shield"></i></div>
+                        <div>
+                            <div class="ahp-stat-label"><?php _e('Total Staff', 'al-huffaz-portal'); ?></div>
+                            <div class="ahp-stat-value" id="totalStaffCount"><?php echo $staff_count; ?></div>
+                        </div>
+                    </div>
+                    <div class="ahp-stat">
+                        <div class="ahp-stat-icon green"><i class="fas fa-user-check"></i></div>
+                        <div>
+                            <div class="ahp-stat-label"><?php _e('Admins', 'al-huffaz-portal'); ?></div>
+                            <div class="ahp-stat-value"><?php echo count(get_users(array('role' => 'alhuffaz_admin'))); ?></div>
+                        </div>
+                    </div>
+                    <div class="ahp-stat">
+                        <div class="ahp-stat-icon orange"><i class="fas fa-users"></i></div>
+                        <div>
+                            <div class="ahp-stat-label"><?php _e('Eligible Users', 'al-huffaz-portal'); ?></div>
+                            <div class="ahp-stat-value" id="eligibleUsersCount">-</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="ahp-card">
+                    <div class="ahp-card-header">
+                        <h3 class="ahp-card-title"><i class="fas fa-user-shield"></i> <?php _e('Current Staff Members', 'al-huffaz-portal'); ?></h3>
+                        <p style="color:var(--ahp-text-muted);margin:0;font-size:14px;"><?php _e('Staff can add and edit students only. They cannot manage sponsors, payments, or other staff.', 'al-huffaz-portal'); ?></p>
+                    </div>
+                    <div class="ahp-card-body" style="padding:0;">
+                        <div class="ahp-table-wrap">
+                            <table class="ahp-table">
+                                <thead>
+                                    <tr>
+                                        <th><?php _e('User', 'al-huffaz-portal'); ?></th>
+                                        <th><?php _e('Email', 'al-huffaz-portal'); ?></th>
+                                        <th><?php _e('Registered', 'al-huffaz-portal'); ?></th>
+                                        <th><?php _e('Actions', 'al-huffaz-portal'); ?></th>
+                                    </tr>
+                                </thead>
+                                <tbody id="staffTableBody">
+                                    <tr><td colspan="4" class="ahp-loading"><div class="ahp-spinner"></div></td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <?php endif; ?>
+
+        </main>
+    </div>
+    <div class="ahp-toast" id="toast"></div>
+</div>
+
+<!-- Modal for Adding Staff -->
+<?php if ($can_manage_staff): ?>
+<div id="addStaffModal" class="ahp-modal" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);z-index:1000;align-items:center;justify-content:center;">
+    <div style="background:#fff;border-radius:12px;max-width:500px;width:90%;max-height:80vh;overflow:auto;box-shadow:0 20px 50px rgba(0,0,0,0.2);">
+        <div style="padding:20px;border-bottom:1px solid var(--ahp-border);display:flex;justify-content:space-between;align-items:center;">
+            <h3 style="margin:0;"><?php _e('Grant Staff Access', 'al-huffaz-portal'); ?></h3>
+            <button onclick="closeAddStaffModal()" style="background:none;border:none;font-size:20px;cursor:pointer;">&times;</button>
+        </div>
+        <div style="padding:20px;">
+            <p style="color:var(--ahp-text-muted);margin-top:0;"><?php _e('Select a user to grant staff access. Staff members can add and edit students.', 'al-huffaz-portal'); ?></p>
+            <div class="ahp-form-group">
+                <label class="ahp-form-label"><?php _e('Select User', 'al-huffaz-portal'); ?></label>
+                <select id="eligibleUserSelect" class="ahp-form-select" style="width:100%;">
+                    <option value=""><?php _e('Loading users...', 'al-huffaz-portal'); ?></option>
+                </select>
+            </div>
+            <div id="selectedUserInfo" style="display:none;background:var(--ahp-bg);padding:15px;border-radius:8px;margin-top:15px;">
+                <strong id="selectedUserName"></strong>
+                <p id="selectedUserEmail" style="margin:5px 0 0;color:var(--ahp-text-muted);font-size:14px;"></p>
+            </div>
+        </div>
+        <div style="padding:20px;border-top:1px solid var(--ahp-border);display:flex;gap:10px;justify-content:flex-end;">
+            <button onclick="closeAddStaffModal()" class="ahp-btn"><?php _e('Cancel', 'al-huffaz-portal'); ?></button>
+            <button id="grantStaffBtn" onclick="grantStaffAccess()" class="ahp-btn ahp-btn-primary" disabled>
+                <i class="fas fa-user-plus"></i> <?php _e('Grant Access', 'al-huffaz-portal'); ?>
+            </button>
         </div>
     </div>
+</div>
+<?php endif; ?>
 
-    <!-- Content Area -->
-    <div class="alhuffaz-frontend-content">
-        <?php
-        // ✅ UNIFIED: Use the SAME templates as backend admin!
-        // Any change you make to admin templates automatically appears here!
-        switch ($current_page) {
-            case 'dashboard':
-                include ALHUFFAZ_TEMPLATES_DIR . 'admin/dashboard.php';
-                break;
-
-            case 'students':
-                include ALHUFFAZ_TEMPLATES_DIR . 'admin/students.php';
-                break;
-
-            case 'add-student':
-                include ALHUFFAZ_TEMPLATES_DIR . 'admin/student-form.php';
-                break;
-
-            case 'sponsors':
-                include ALHUFFAZ_TEMPLATES_DIR . 'admin/sponsors.php';
-                break;
-
-            case 'payments':
-                include ALHUFFAZ_TEMPLATES_DIR . 'admin/payments.php';
-                break;
-
-            case 'reports':
-                include ALHUFFAZ_TEMPLATES_DIR . 'admin/reports.php';
-                break;
-
-            case 'import':
-                include ALHUFFAZ_TEMPLATES_DIR . 'admin/import.php';
-                break;
-
-            case 'settings':
-                include ALHUFFAZ_TEMPLATES_DIR . 'admin/settings.php';
-                break;
-
-            default:
-                echo '<div class="alhuffaz-card">';
-                echo '<p>' . __('Page not found.', 'al-huffaz-portal') . '</p>';
-                echo '</div>';
-        }
-        ?>
+<!-- Modal for Sponsor Details -->
+<div id="sponsorModal" class="ahp-modal" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);z-index:1000;align-items:center;justify-content:center;">
+    <div class="ahp-modal-content" style="background:#fff;border-radius:16px;max-width:600px;width:90%;max-height:90vh;overflow-y:auto;margin:auto;">
+        <div class="ahp-modal-header" style="padding:20px;border-bottom:1px solid var(--ahp-border);display:flex;justify-content:space-between;align-items:center;">
+            <h3 style="margin:0;"><?php _e('Sponsorship Details', 'al-huffaz-portal'); ?></h3>
+            <button onclick="closeSponsorModal()" style="background:none;border:none;font-size:20px;cursor:pointer;">&times;</button>
+        </div>
+        <div id="sponsorModalBody" class="ahp-modal-body" style="padding:20px;"></div>
+        <div class="ahp-modal-footer" style="padding:20px;border-top:1px solid var(--ahp-border);display:flex;gap:10px;justify-content:flex-end;">
+            <button onclick="closeSponsorModal()" class="ahp-btn ahp-btn-secondary"><?php _e('Close', 'al-huffaz-portal'); ?></button>
+            <button id="rejectSponsorBtn" onclick="rejectSponsorship()" class="ahp-btn ahp-btn-danger"><i class="fas fa-times"></i> <?php _e('Reject', 'al-huffaz-portal'); ?></button>
+            <button id="approveSponsorBtn" onclick="approveSponsorship()" class="ahp-btn ahp-btn-success"><i class="fas fa-check"></i> <?php _e('Approve & Link', 'al-huffaz-portal'); ?></button>
+        </div>
     </div>
 </div>
 
 <script>
-jQuery(document).ready(function($) {
-    // Fix admin URLs in frontend context
-    // Replace admin.php?page= links with frontend shortcode links
-    $('.alhuffaz-frontend-admin a').each(function() {
-        var href = $(this).attr('href');
-        if (href && href.indexOf('admin.php?page=alhuffaz-') !== -1) {
-            // Extract page name
-            var match = href.match(/page=alhuffaz-([^&]+)/);
-            if (match && match[1]) {
-                var pageName = match[1];
-                var baseUrl = '<?php echo esc_js($base_url); ?>';
-                var newHref = baseUrl + (baseUrl.indexOf('?') !== -1 ? '&' : '?') + 'admin_page=' + pageName;
+// Mobile Navigation Toggle
+window.toggleMobileNav = function() {
+    const nav = document.getElementById('ahpNav');
+    nav.classList.toggle('open');
+};
 
-                // Preserve other query params
-                if (href.indexOf('&id=') !== -1) {
-                    var idMatch = href.match(/&id=(\d+)/);
-                    if (idMatch) newHref += '&id=' + idMatch[1];
-                }
-                if (href.indexOf('&view=') !== -1) {
-                    var viewMatch = href.match(/&view=([^&]+)/);
-                    if (viewMatch) newHref += '&view=' + viewMatch[1];
-                }
-                if (href.indexOf('&status=') !== -1) {
-                    var statusMatch = href.match(/&status=([^&]+)/);
-                    if (statusMatch) newHref += '&status=' + statusMatch[1];
-                }
-                if (href.indexOf('&paged=') !== -1) {
-                    var pagedMatch = href.match(/&paged=(\d+)/);
-                    if (pagedMatch) newHref += '&paged=' + pagedMatch[1];
-                }
+document.addEventListener('DOMContentLoaded', function() {
+    const ajaxUrl = '<?php echo admin_url('admin-ajax.php'); ?>';
+    const nonce = '<?php echo $nonce; ?>';
+    let currentStep = 1;
+    const totalSteps = 5;
+    let subjectIndex = <?php echo !empty($subjects) ? max(array_keys($subjects)) + 1 : 0; ?>;
+    let currentPage = 1;
 
-                $(this).attr('href', newHref);
+    // ==================== NAVIGATION ====================
+    window.showPanel = function(panel) {
+        document.querySelectorAll('.ahp-panel').forEach(p => p.classList.remove('active'));
+        document.querySelectorAll('.ahp-nav-item').forEach(n => n.classList.remove('active'));
+        document.getElementById('panel-' + panel)?.classList.add('active');
+        document.querySelector('[data-panel="' + panel + '"]')?.classList.add('active');
+        if (panel === 'students') loadStudents();
+        if (panel === 'add-student' && !document.getElementById('studentId').value) resetForm();
+        if (panel === 'sponsors') loadSponsors();
+        if (panel === 'sponsor-users') loadSponsorUsers();
+        if (panel === 'payments') loadPayments();
+        if (panel === 'staff') loadStaff();
+
+        // Close mobile nav when panel is selected
+        const nav = document.getElementById('ahpNav');
+        nav?.classList.remove('open');
+
+        // Scroll to top
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    };
+
+    document.querySelectorAll('.ahp-nav-item[data-panel]').forEach(item => {
+        item.addEventListener('click', function(e) {
+            e.preventDefault();
+            showPanel(this.dataset.panel);
+        });
+    });
+
+    // ==================== STUDENTS LIST ====================
+    function loadStudents(page = 1) {
+        currentPage = page;
+        const search = document.getElementById('searchInput').value;
+        const grade = document.getElementById('filterGrade').value;
+        const category = document.getElementById('filterCategory').value;
+        document.getElementById('studentsTableBody').innerHTML = '<tr><td colspan="6" class="ahp-loading"><div class="ahp-spinner"></div></td></tr>';
+
+        fetch(ajaxUrl, {
+            method: 'POST',
+            headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+            body: new URLSearchParams({action: 'alhuffaz_get_students', nonce, page, search, grade, category, per_page: 15})
+        })
+        .then(r => r.json())
+        .then(data => {
+            if (data.success) {
+                renderStudents(data.data.students);
+                renderPagination(data.data.total_pages, page);
+            } else {
+                document.getElementById('studentsTableBody').innerHTML = '<tr><td colspan="6" style="text-align:center;padding:40px;">Error loading students</td></tr>';
             }
+        });
+    }
+
+    function renderStudents(students) {
+        const tbody = document.getElementById('studentsTableBody');
+        if (!students || !students.length) {
+            tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:40px;color:var(--ahp-text-muted);">No students found</td></tr>';
+            return;
+        }
+        tbody.innerHTML = students.map(s => `
+            <tr>
+                <td><div class="ahp-student-cell">
+                    ${s.photo ? `<img src="${s.photo}" class="ahp-student-avatar">` : `<div class="ahp-student-avatar">${(s.name||'S').charAt(0).toUpperCase()}</div>`}
+                    <span>${s.name||'-'}</span>
+                </div></td>
+                <td>${s.gr_number||'-'}</td>
+                <td><span class="ahp-badge ahp-badge-primary">${(s.grade_level||'-').toUpperCase()}</span></td>
+                <td><span class="ahp-badge ahp-badge-success">${s.islamic_studies_category ? s.islamic_studies_category.charAt(0).toUpperCase() + s.islamic_studies_category.slice(1) : '-'}</span></td>
+                <td>${s.father_name||'-'}</td>
+                <td><div class="ahp-cell-actions">
+                    <a href="${s.permalink||'#'}" class="ahp-btn ahp-btn-secondary ahp-btn-icon" target="_blank"><i class="fas fa-eye"></i></a>
+                    <button class="ahp-btn ahp-btn-primary ahp-btn-icon" onclick="editStudent(${s.id})"><i class="fas fa-edit"></i></button>
+                    <button class="ahp-btn ahp-btn-danger ahp-btn-icon" onclick="deleteStudent(${s.id})"><i class="fas fa-trash"></i></button>
+                </div></td>
+            </tr>
+        `).join('');
+    }
+
+    function renderPagination(totalPages, current) {
+        const container = document.getElementById('pagination');
+        if (totalPages <= 1) { container.innerHTML = ''; return; }
+        let html = '';
+        for (let i = 1; i <= Math.min(totalPages, 10); i++) {
+            html += `<button class="ahp-btn ${i === current ? 'ahp-btn-primary' : 'ahp-btn-secondary'} ahp-btn-sm" onclick="loadStudentsPage(${i})">${i}</button>`;
+        }
+        container.innerHTML = html;
+    }
+    window.loadStudentsPage = (p) => loadStudents(p);
+
+    let searchTimeout;
+    document.getElementById('searchInput').addEventListener('input', () => { clearTimeout(searchTimeout); searchTimeout = setTimeout(() => loadStudents(1), 300); });
+    document.getElementById('filterGrade').addEventListener('change', () => loadStudents(1));
+    document.getElementById('filterCategory').addEventListener('change', () => loadStudents(1));
+
+    // ==================== EDIT/DELETE STUDENT ====================
+    window.editStudent = function(id) {
+        window.location.href = '<?php echo $portal_url; ?>?edit=' + id;
+    };
+
+    window.deleteStudent = function(id) {
+        if (!confirm('Are you sure you want to delete this student?')) return;
+        fetch(ajaxUrl, {
+            method: 'POST',
+            headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+            body: new URLSearchParams({action: 'alhuffaz_delete_student', nonce, student_id: id})
+        })
+        .then(r => r.json())
+        .then(data => {
+            if (data.success) { showToast('Student deleted', 'success'); loadStudents(currentPage); }
+            else showToast(data.data?.message || 'Error', 'error');
+        });
+    };
+
+    // ==================== FORM STEPS ====================
+    function updateSteps() {
+        document.querySelectorAll('.ahp-form-step').forEach(s => s.classList.remove('active'));
+        document.querySelector(`.ahp-form-step[data-step="${currentStep}"]`)?.classList.add('active');
+        document.querySelectorAll('.ahp-step').forEach((s, i) => {
+            s.classList.remove('active', 'completed');
+            if (i + 1 === currentStep) s.classList.add('active');
+            else if (i + 1 < currentStep) s.classList.add('completed');
+        });
+        document.querySelectorAll('.ahp-step-line').forEach((l, i) => {
+            l.classList.toggle('completed', i + 1 < currentStep);
+        });
+        document.getElementById('prevBtn').style.display = currentStep === 1 ? 'none' : 'inline-flex';
+        document.getElementById('nextBtn').style.display = currentStep === totalSteps ? 'none' : 'inline-flex';
+        document.getElementById('submitBtn').style.display = currentStep === totalSteps ? 'inline-flex' : 'none';
+    }
+
+    document.getElementById('nextBtn').addEventListener('click', () => { if (currentStep < totalSteps) { currentStep++; updateSteps(); } });
+    document.getElementById('prevBtn').addEventListener('click', () => { if (currentStep > 1) { currentStep--; updateSteps(); } });
+
+    // ==================== SUBJECTS ====================
+    document.getElementById('addSubjectBtn').addEventListener('click', addSubject);
+
+    function addSubject() {
+        document.getElementById('noSubjectsMsg').style.display = 'none';
+        const html = `
+        <div class="ahp-subject-box" data-index="${subjectIndex}">
+            <div class="ahp-subject-header">
+                <div class="ahp-subject-title"><i class="fas fa-book"></i><input type="text" name="subjects[${subjectIndex}][name]" class="ahp-subject-name" placeholder="Subject Name"></div>
+                <button type="button" class="ahp-btn ahp-btn-danger ahp-btn-sm remove-subject"><i class="fas fa-trash"></i></button>
+            </div>
+            <div class="ahp-subject-content">
+                <div class="ahp-exam-section">
+                    <div class="ahp-exam-header"><h4><i class="fas fa-calendar-alt"></i> Monthly Exams</h4><button type="button" class="ahp-btn ahp-btn-primary ahp-btn-sm add-monthly" data-subject="${subjectIndex}"><i class="fas fa-plus"></i> Add Month</button></div>
+                    <div class="monthly-container" data-subject="${subjectIndex}"></div>
+                </div>
+                <div class="ahp-exam-section">
+                    <h4><i class="fas fa-book-open"></i> Mid Semester Exam</h4>
+                    <div class="ahp-marks-row">
+                        <div class="ahp-marks-group"><label>Oral Total</label><input type="number" name="subjects[${subjectIndex}][mid_semester][oral_total]" min="0"></div>
+                        <div class="ahp-marks-group"><label>Oral Obtained</label><input type="number" name="subjects[${subjectIndex}][mid_semester][oral_obtained]" min="0"></div>
+                        <div class="ahp-marks-group"><label>Written Total</label><input type="number" name="subjects[${subjectIndex}][mid_semester][written_total]" min="0"></div>
+                        <div class="ahp-marks-group"><label>Written Obtained</label><input type="number" name="subjects[${subjectIndex}][mid_semester][written_obtained]" min="0"></div>
+                    </div>
+                </div>
+                <div class="ahp-exam-section">
+                    <h4><i class="fas fa-graduation-cap"></i> Annual Exam</h4>
+                    <div class="ahp-marks-row">
+                        <div class="ahp-marks-group"><label>Oral Total</label><input type="number" name="subjects[${subjectIndex}][final_semester][oral_total]" min="0"></div>
+                        <div class="ahp-marks-group"><label>Oral Obtained</label><input type="number" name="subjects[${subjectIndex}][final_semester][oral_obtained]" min="0"></div>
+                        <div class="ahp-marks-group"><label>Written Total</label><input type="number" name="subjects[${subjectIndex}][final_semester][written_total]" min="0"></div>
+                        <div class="ahp-marks-group"><label>Written Obtained</label><input type="number" name="subjects[${subjectIndex}][final_semester][written_obtained]" min="0"></div>
+                    </div>
+                </div>
+                <div class="ahp-exam-section">
+                    <h4><i class="fas fa-comment-dots"></i> Teacher Assessment</h4>
+                    <div class="ahp-form-grid">
+                        <div class="ahp-form-group ahp-col-6"><label class="ahp-label">Strengths</label><textarea name="subjects[${subjectIndex}][strengths]" class="ahp-input" rows="2"></textarea></div>
+                        <div class="ahp-form-group ahp-col-6"><label class="ahp-label">Areas for Improvement</label><textarea name="subjects[${subjectIndex}][areas_for_improvement]" class="ahp-input" rows="2"></textarea></div>
+                        <div class="ahp-form-group ahp-col-12"><label class="ahp-label">Teacher Comments</label><textarea name="subjects[${subjectIndex}][teacher_comments]" class="ahp-input" rows="2"></textarea></div>
+                    </div>
+                </div>
+            </div>
+        </div>`;
+        document.getElementById('subjectsContainer').insertAdjacentHTML('beforeend', html);
+        subjectIndex++;
+    }
+
+    document.getElementById('subjectsContainer').addEventListener('click', function(e) {
+        if (e.target.closest('.remove-subject')) {
+            e.target.closest('.ahp-subject-box').remove();
+            if (!document.querySelectorAll('.ahp-subject-box').length) document.getElementById('noSubjectsMsg').style.display = 'block';
+        }
+        if (e.target.closest('.add-monthly')) {
+            const btn = e.target.closest('.add-monthly');
+            const subj = btn.dataset.subject;
+            const container = document.querySelector(`.monthly-container[data-subject="${subj}"]`);
+            const midx = container.querySelectorAll('.ahp-monthly-exam').length;
+            container.insertAdjacentHTML('beforeend', `
+                <div class="ahp-monthly-exam" data-month="${midx}">
+                    <div class="ahp-monthly-header">
+                        <input type="text" name="subjects[${subj}][monthly_exams][${midx}][month_name]" class="ahp-month-name" placeholder="Month Name">
+                        <button type="button" class="ahp-btn ahp-btn-danger ahp-btn-xs remove-monthly"><i class="fas fa-times"></i></button>
+                    </div>
+                    <div class="ahp-marks-row">
+                        <div class="ahp-marks-group"><label>Oral Total</label><input type="number" name="subjects[${subj}][monthly_exams][${midx}][oral_total]" min="0"></div>
+                        <div class="ahp-marks-group"><label>Oral Obtained</label><input type="number" name="subjects[${subj}][monthly_exams][${midx}][oral_obtained]" min="0"></div>
+                        <div class="ahp-marks-group"><label>Written Total</label><input type="number" name="subjects[${subj}][monthly_exams][${midx}][written_total]" min="0"></div>
+                        <div class="ahp-marks-group"><label>Written Obtained</label><input type="number" name="subjects[${subj}][monthly_exams][${midx}][written_obtained]" min="0"></div>
+                    </div>
+                </div>
+            `);
+        }
+        if (e.target.closest('.remove-monthly')) {
+            e.target.closest('.ahp-monthly-exam').remove();
         }
     });
 
-    // Make forms work in frontend context
-    $('.alhuffaz-frontend-admin form').each(function() {
-        var action = $(this).attr('action');
-        if (action && action.indexOf('admin.php') !== -1) {
-            // Forms will submit to same page
-            $(this).attr('action', '<?php echo esc_js($current_url); ?>');
-        }
+    // ==================== ATTENDANCE ====================
+    function updateAttendance() {
+        const total = parseInt(document.getElementById('totalDays')?.value) || 0;
+        const present = parseInt(document.getElementById('presentDays')?.value) || 0;
+        const pct = total > 0 ? Math.round((present / total) * 100) : 0;
+        document.getElementById('attendanceDisplay').textContent = pct + '%';
+        document.getElementById('attendanceDisplay').style.color = pct >= 75 ? 'var(--ahp-success)' : 'var(--ahp-danger)';
+    }
+    document.getElementById('totalDays')?.addEventListener('input', updateAttendance);
+    document.getElementById('presentDays')?.addEventListener('input', updateAttendance);
+    updateAttendance();
+
+    // ==================== FEES ====================
+    function updateFees() {
+        const monthly = parseFloat(document.querySelector('[name="monthly_tuition_fee"]')?.value) || 0;
+        const course = parseFloat(document.querySelector('[name="course_fee"]')?.value) || 0;
+        const uniform = parseFloat(document.querySelector('[name="uniform_fee"]')?.value) || 0;
+        const annual = parseFloat(document.querySelector('[name="annual_fee"]')?.value) || 0;
+        const admission = parseFloat(document.querySelector('[name="admission_fee"]')?.value) || 0;
+        const oneTime = course + uniform + annual + admission;
+        document.getElementById('monthlyTotal').textContent = 'PKR ' + monthly.toLocaleString();
+        document.getElementById('oneTimeTotal').textContent = 'PKR ' + oneTime.toLocaleString();
+        document.getElementById('grandTotal').textContent = 'PKR ' + (monthly + oneTime).toLocaleString();
+    }
+    document.querySelectorAll('.fee-input').forEach(i => i.addEventListener('input', updateFees));
+    updateFees();
+
+    // ==================== RATINGS ====================
+    document.querySelectorAll('.ahp-stars').forEach(container => {
+        container.querySelectorAll('.ahp-star').forEach(star => {
+            star.addEventListener('click', function() {
+                const value = this.dataset.value;
+                const input = container.querySelector('input');
+                input.value = value;
+                container.querySelectorAll('.ahp-star').forEach((s, i) => {
+                    s.classList.toggle('active', i < value);
+                });
+            });
+        });
     });
+
+    // ==================== FORM SUBMIT ====================
+    document.getElementById('studentForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+        const btn = document.getElementById('submitBtn');
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Saving...';
+
+        fetch(ajaxUrl, {method: 'POST', body: new FormData(this)})
+        .then(r => r.json())
+        .then(data => {
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fas fa-save"></i> <?php echo $is_edit ? "Update" : "Enroll"; ?> Student';
+            if (data.success) {
+                showToast(data.data?.message || 'Student saved!', 'success');
+                setTimeout(() => showPanel('students'), 1000);
+            } else {
+                showToast(data.data?.message || 'Error saving', 'error');
+            }
+        });
+    });
+
+    function resetForm() {
+        document.getElementById('studentForm').reset();
+        document.getElementById('studentId').value = 0;
+        document.getElementById('formTitle').textContent = '<?php _e('Add New Student', 'al-huffaz-portal'); ?>';
+        document.getElementById('subjectsContainer').innerHTML = '';
+        document.getElementById('noSubjectsMsg').style.display = 'block';
+        currentStep = 1;
+        subjectIndex = 0;
+        updateSteps();
+        updateFees();
+        updateAttendance();
+    }
+
+    // ==================== TOAST ====================
+    window.showToast = function(msg, type) {
+        const toast = document.getElementById('toast');
+        toast.textContent = msg;
+        toast.className = 'ahp-toast ' + type;
+        toast.style.display = 'block';
+        setTimeout(() => toast.style.display = 'none', 3000);
+    };
+
+    // ==================== SPONSORS MANAGEMENT ====================
+    let currentSponsorId = null;
+
+    window.loadSponsors = function() {
+        const status = document.getElementById('filterSponsorStatus')?.value || '';
+        document.getElementById('sponsorsTableBody').innerHTML = '<tr><td colspan="7" class="ahp-loading"><div class="ahp-spinner"></div></td></tr>';
+
+        fetch(ajaxUrl, {
+            method: 'POST',
+            headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+            body: new URLSearchParams({action: 'alhuffaz_get_sponsorships', nonce, status, per_page: 50})
+        })
+        .then(r => r.json())
+        .then(data => {
+            if (data.success) {
+                renderSponsors(data.data.sponsorships);
+            } else {
+                document.getElementById('sponsorsTableBody').innerHTML = '<tr><td colspan="7" style="text-align:center;padding:40px;">Error loading sponsors</td></tr>';
+            }
+        });
+    };
+
+    function renderSponsors(sponsors) {
+        const tbody = document.getElementById('sponsorsTableBody');
+        if (!sponsors || !sponsors.length) {
+            tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:40px;color:var(--ahp-text-muted);">No sponsorship requests found</td></tr>';
+            return;
+        }
+
+        tbody.innerHTML = sponsors.map(s => {
+            const statusBadge = s.status === 'pending' ? 'ahp-badge-warning' :
+                               s.status === 'approved' ? 'ahp-badge-success' : 'ahp-badge-danger';
+            return `
+            <tr>
+                <td>
+                    <div><strong>${s.sponsor_name || '-'}</strong></div>
+                    <small style="color:var(--ahp-text-muted)">${s.sponsor_email || ''}</small>
+                </td>
+                <td>${s.student_name || '-'}</td>
+                <td><strong>${s.amount || '-'}</strong></td>
+                <td><span class="ahp-badge ahp-badge-primary">${(s.type || '-').toUpperCase()}</span></td>
+                <td><span class="ahp-badge ${statusBadge}">${(s.status || '-').charAt(0).toUpperCase() + (s.status || '-').slice(1)}</span></td>
+                <td>${s.date || '-'}</td>
+                <td>
+                    <div class="ahp-cell-actions">
+                        <button class="ahp-btn ahp-btn-secondary ahp-btn-icon" onclick="viewSponsor(${s.id})" title="View"><i class="fas fa-eye"></i></button>
+                        ${s.status === 'pending' ? `
+                        <button class="ahp-btn ahp-btn-success ahp-btn-icon" onclick="quickApprove(${s.id})" title="Approve"><i class="fas fa-check"></i></button>
+                        <button class="ahp-btn ahp-btn-danger ahp-btn-icon" onclick="quickReject(${s.id})" title="Reject"><i class="fas fa-times"></i></button>
+                        ` : ''}
+                        ${s.status === 'approved' && !s.linked ? `
+                        <button class="ahp-btn ahp-btn-primary ahp-btn-icon" onclick="linkSponsor(${s.id})" title="Link to Student"><i class="fas fa-link"></i></button>
+                        ` : ''}
+                    </div>
+                </td>
+            </tr>`;
+        }).join('');
+    }
+
+    window.viewSponsor = function(id) {
+        currentSponsorId = id;
+        document.getElementById('sponsorModalBody').innerHTML = '<div class="ahp-loading"><div class="ahp-spinner"></div></div>';
+        document.getElementById('sponsorModal').style.display = 'flex';
+
+        // Load sponsor details via AJAX (simplified for now)
+        document.getElementById('sponsorModalBody').innerHTML = `
+            <p>Loading sponsor details for ID: ${id}</p>
+            <p>Click Approve to approve this sponsorship and create the sponsor account.</p>
+        `;
+    };
+
+    window.closeSponsorModal = function() {
+        document.getElementById('sponsorModal').style.display = 'none';
+        currentSponsorId = null;
+    };
+
+    window.quickApprove = function(id) {
+        if (!confirm('<?php _e('Approve this sponsorship? This will create a sponsor account and link them to the student.', 'al-huffaz-portal'); ?>')) return;
+
+        fetch(ajaxUrl, {
+            method: 'POST',
+            headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+            body: new URLSearchParams({action: 'alhuffaz_approve_sponsorship', nonce, sponsorship_id: id})
+        })
+        .then(r => r.json())
+        .then(data => {
+            if (data.success) {
+                showToast('<?php _e('Sponsorship approved successfully!', 'al-huffaz-portal'); ?>', 'success');
+                loadSponsors();
+            } else {
+                showToast(data.data?.message || '<?php _e('Error approving sponsorship', 'al-huffaz-portal'); ?>', 'error');
+            }
+        });
+    };
+
+    window.quickReject = function(id) {
+        const reason = prompt('<?php _e('Please enter rejection reason:', 'al-huffaz-portal'); ?>');
+        if (reason === null) return;
+
+        fetch(ajaxUrl, {
+            method: 'POST',
+            headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+            body: new URLSearchParams({action: 'alhuffaz_reject_sponsorship', nonce, sponsorship_id: id, reason})
+        })
+        .then(r => r.json())
+        .then(data => {
+            if (data.success) {
+                showToast('<?php _e('Sponsorship rejected', 'al-huffaz-portal'); ?>', 'success');
+                loadSponsors();
+            } else {
+                showToast(data.data?.message || '<?php _e('Error rejecting sponsorship', 'al-huffaz-portal'); ?>', 'error');
+            }
+        });
+    };
+
+    window.approveSponsorship = function() {
+        if (currentSponsorId) quickApprove(currentSponsorId);
+        closeSponsorModal();
+    };
+
+    window.rejectSponsorship = function() {
+        if (currentSponsorId) quickReject(currentSponsorId);
+        closeSponsorModal();
+    };
+
+    window.linkSponsor = function(id) {
+        fetch(ajaxUrl, {
+            method: 'POST',
+            headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+            body: new URLSearchParams({action: 'alhuffaz_link_sponsor', nonce, sponsorship_id: id})
+        })
+        .then(r => r.json())
+        .then(data => {
+            if (data.success) {
+                showToast('<?php _e('Sponsor linked to student!', 'al-huffaz-portal'); ?>', 'success');
+                loadSponsors();
+            } else {
+                showToast(data.data?.message || '<?php _e('Error linking sponsor', 'al-huffaz-portal'); ?>', 'error');
+            }
+        });
+    };
+
+    // ==================== SPONSOR USERS MANAGEMENT ====================
+    window.loadSponsorUsers = function() {
+        const status = document.getElementById('filterUserStatus')?.value || '';
+        const search = document.getElementById('searchSponsorUsers')?.value || '';
+        document.getElementById('sponsorUsersTableBody').innerHTML = '<tr><td colspan="7" class="ahp-loading"><div class="ahp-spinner"></div></td></tr>';
+
+        fetch(ajaxUrl, {
+            method: 'POST',
+            headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+            body: new URLSearchParams({action: 'alhuffaz_get_sponsor_users', nonce, status, search})
+        })
+        .then(r => r.json())
+        .then(data => {
+            if (data.success) {
+                renderSponsorUsers(data.data.users);
+                updateUserStats(data.data.stats);
+            } else {
+                document.getElementById('sponsorUsersTableBody').innerHTML = '<tr><td colspan="7" style="text-align:center;padding:40px;">Error loading sponsor users</td></tr>';
+            }
+        });
+    };
+
+    function renderSponsorUsers(users) {
+        const tbody = document.getElementById('sponsorUsersTableBody');
+        if (!users || !users.length) {
+            tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:40px;color:var(--ahp-text-muted);">No sponsor users found</td></tr>';
+            return;
+        }
+
+        tbody.innerHTML = users.map(u => {
+            const statusBadge = u.status === 'pending' ? 'ahp-badge-warning' :
+                               u.status === 'approved' ? 'ahp-badge-success' : 'ahp-badge-secondary';
+            const statusText = u.status === 'pending' ? 'Pending' :
+                              u.status === 'approved' ? 'Approved' : 'Inactive';
+            return `
+            <tr>
+                <td>
+                    <div><strong>${u.display_name || u.username || '-'}</strong></div>
+                    <small style="color:var(--ahp-text-muted)">ID: ${u.id}</small>
+                </td>
+                <td><a href="mailto:${u.email}" style="color:var(--ahp-primary)">${u.email}</a></td>
+                <td>${u.phone || '-'}</td>
+                <td><span class="ahp-badge ${statusBadge}">${statusText}</span></td>
+                <td>
+                    <strong>${u.active_sponsorships || 0}</strong> active
+                    ${u.total_sponsorships > u.active_sponsorships ? `<br><small style="color:var(--ahp-text-muted)">${u.total_sponsorships} total</small>` : ''}
+                </td>
+                <td>${u.registered || '-'}</td>
+                <td>
+                    <div class="ahp-cell-actions">
+                        <button class="ahp-btn ahp-btn-secondary ahp-btn-icon" onclick="viewSponsorUser(${u.id})" title="View Details"><i class="fas fa-eye"></i></button>
+                        ${u.status === 'pending' ? `
+                        <button class="ahp-btn ahp-btn-success ahp-btn-icon" onclick="approveSponsorUser(${u.id})" title="Approve User"><i class="fas fa-check"></i></button>
+                        <button class="ahp-btn ahp-btn-danger ahp-btn-icon" onclick="rejectSponsorUser(${u.id})" title="Reject User"><i class="fas fa-times"></i></button>
+                        ` : ''}
+                        ${u.status === 'approved' ? `
+                        <button class="ahp-btn ahp-btn-warning ahp-btn-icon" onclick="sendReEngagementEmail(${u.id})" title="Send Re-engagement Email"><i class="fas fa-envelope"></i></button>
+                        ` : ''}
+                        <button class="ahp-btn ahp-btn-danger ahp-btn-icon" onclick="deleteSponsorUser(${u.id})" title="Delete User"><i class="fas fa-trash"></i></button>
+                    </div>
+                </td>
+            </tr>`;
+        }).join('');
+    }
+
+    function updateUserStats(stats) {
+        if (stats) {
+            document.getElementById('pendingUsersCount').textContent = stats.pending || 0;
+            document.getElementById('activeUsersCount').textContent = stats.active || 0;
+            document.getElementById('inactiveUsersCount').textContent = stats.inactive || 0;
+            document.getElementById('totalUsersCount').textContent = stats.total || 0;
+        }
+    }
+
+    window.viewSponsorUser = function(userId) {
+        fetch(ajaxUrl, {
+            method: 'POST',
+            headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+            body: new URLSearchParams({action: 'alhuffaz_get_sponsor_user_details', nonce, user_id: userId})
+        })
+        .then(r => r.json())
+        .then(data => {
+            if (data.success) {
+                const u = data.data;
+                alert(`Sponsor User Details:\n\nName: ${u.display_name}\nEmail: ${u.email}\nPhone: ${u.phone || 'N/A'}\nCountry: ${u.country || 'N/A'}\nStatus: ${u.status}\nActive Sponsorships: ${u.active_sponsorships}\nTotal Donated: ${u.total_donated || '$0'}\nRegistered: ${u.registered}`);
+            } else {
+                showToast('Error loading user details', 'error');
+            }
+        });
+    };
+
+    window.approveSponsorUser = function(userId) {
+        if (!confirm('<?php _e('Approve this sponsor user account? They will receive an email confirmation.', 'al-huffaz-portal'); ?>')) return;
+
+        fetch(ajaxUrl, {
+            method: 'POST',
+            headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+            body: new URLSearchParams({action: 'alhuffaz_approve_sponsor_user', nonce, user_id: userId})
+        })
+        .then(r => r.json())
+        .then(data => {
+            if (data.success) {
+                showToast('<?php _e('Sponsor user approved successfully!', 'al-huffaz-portal'); ?>', 'success');
+                loadSponsorUsers();
+            } else {
+                showToast(data.data?.message || '<?php _e('Error approving user', 'al-huffaz-portal'); ?>', 'error');
+            }
+        });
+    };
+
+    window.rejectSponsorUser = function(userId) {
+        const reason = prompt('<?php _e('Please enter rejection reason:', 'al-huffaz-portal'); ?>');
+        if (reason === null) return;
+
+        fetch(ajaxUrl, {
+            method: 'POST',
+            headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+            body: new URLSearchParams({action: 'alhuffaz_reject_sponsor_user', nonce, user_id: userId, reason})
+        })
+        .then(r => r.json())
+        .then(data => {
+            if (data.success) {
+                showToast('<?php _e('Sponsor user rejected', 'al-huffaz-portal'); ?>', 'success');
+                loadSponsorUsers();
+            } else {
+                showToast(data.data?.message || '<?php _e('Error rejecting user', 'al-huffaz-portal'); ?>', 'error');
+            }
+        });
+    };
+
+    window.deleteSponsorUser = function(userId) {
+        if (!confirm('<?php _e('Are you sure you want to delete this sponsor user? This action cannot be undone.', 'al-huffaz-portal'); ?>')) return;
+
+        const confirmText = prompt('<?php _e('Type DELETE to confirm:', 'al-huffaz-portal'); ?>');
+        if (confirmText !== 'DELETE') {
+            showToast('<?php _e('Deletion cancelled', 'al-huffaz-portal'); ?>', 'info');
+            return;
+        }
+
+        fetch(ajaxUrl, {
+            method: 'POST',
+            headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+            body: new URLSearchParams({action: 'alhuffaz_delete_sponsor_user', nonce, user_id: userId})
+        })
+        .then(r => r.json())
+        .then(data => {
+            if (data.success) {
+                showToast('<?php _e('Sponsor user deleted successfully', 'al-huffaz-portal'); ?>', 'success');
+                loadSponsorUsers();
+            } else {
+                showToast(data.data?.message || '<?php _e('Error deleting user', 'al-huffaz-portal'); ?>', 'error');
+            }
+        });
+    };
+
+    window.sendReEngagementEmail = function(userId) {
+        if (!confirm('<?php _e('Send a re-engagement email to this inactive sponsor?', 'al-huffaz-portal'); ?>')) return;
+
+        fetch(ajaxUrl, {
+            method: 'POST',
+            headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+            body: new URLSearchParams({action: 'alhuffaz_send_reengagement_email', nonce, user_id: userId})
+        })
+        .then(r => r.json())
+        .then(data => {
+            if (data.success) {
+                showToast('<?php _e('Re-engagement email sent successfully!', 'al-huffaz-portal'); ?>', 'success');
+            } else {
+                showToast(data.data?.message || '<?php _e('Error sending email', 'al-huffaz-portal'); ?>', 'error');
+            }
+        });
+    };
+
+    // Search debouncing for sponsor users
+    let userSearchTimeout;
+    document.getElementById('searchSponsorUsers')?.addEventListener('input', function() {
+        clearTimeout(userSearchTimeout);
+        userSearchTimeout = setTimeout(() => loadSponsorUsers(), 500);
+    });
+
+    // ==================== PAYMENTS MANAGEMENT ====================
+    window.loadPayments = function() {
+        const status = document.getElementById('filterPaymentStatus')?.value || '';
+        document.getElementById('paymentsTableBody').innerHTML = '<tr><td colspan="8" class="ahp-loading"><div class="ahp-spinner"></div></td></tr>';
+
+        fetch(ajaxUrl, {
+            method: 'POST',
+            headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+            body: new URLSearchParams({action: 'alhuffaz_get_payments', nonce, status, per_page: 50})
+        })
+        .then(r => r.json())
+        .then(data => {
+            if (data.success) {
+                renderPayments(data.data.payments);
+            } else {
+                document.getElementById('paymentsTableBody').innerHTML = '<tr><td colspan="8" style="text-align:center;padding:40px;">Error loading payments</td></tr>';
+            }
+        });
+    };
+
+    function renderPayments(payments) {
+        const tbody = document.getElementById('paymentsTableBody');
+        if (!payments || !payments.length) {
+            tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;padding:40px;color:var(--ahp-text-muted);">No payment records found</td></tr>';
+            return;
+        }
+
+        tbody.innerHTML = payments.map(p => {
+            const statusBadge = p.status === 'pending' ? 'ahp-badge-warning' :
+                               p.status === 'approved' ? 'ahp-badge-success' : 'ahp-badge-danger';
+            return `
+            <tr>
+                <td><strong>${p.sponsor_name || '-'}</strong></td>
+                <td>${p.student_name || '-'}</td>
+                <td><strong>${p.amount || '-'}</strong></td>
+                <td><span class="ahp-badge ahp-badge-primary">${(p.method || '-').toUpperCase()}</span></td>
+                <td><code>${p.transaction_id || '-'}</code></td>
+                <td><span class="ahp-badge ${statusBadge}">${(p.status || '-').charAt(0).toUpperCase() + (p.status || '-').slice(1)}</span></td>
+                <td>${p.date || '-'}</td>
+                <td>
+                    <div class="ahp-cell-actions">
+                        ${p.status === 'pending' ? `
+                        <button class="ahp-btn ahp-btn-success ahp-btn-icon" onclick="verifyPayment(${p.id}, 'approved')" title="Verify"><i class="fas fa-check"></i></button>
+                        <button class="ahp-btn ahp-btn-danger ahp-btn-icon" onclick="verifyPayment(${p.id}, 'rejected')" title="Reject"><i class="fas fa-times"></i></button>
+                        ` : ''}
+                    </div>
+                </td>
+            </tr>`;
+        }).join('');
+    }
+
+    window.verifyPayment = function(id, status) {
+        const confirmMsg = status === 'approved' ?
+            '<?php _e('Verify this payment?', 'al-huffaz-portal'); ?>' :
+            '<?php _e('Reject this payment?', 'al-huffaz-portal'); ?>';
+        if (!confirm(confirmMsg)) return;
+
+        fetch(ajaxUrl, {
+            method: 'POST',
+            headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+            body: new URLSearchParams({action: 'alhuffaz_verify_payment', nonce, payment_id: id, status})
+        })
+        .then(r => r.json())
+        .then(data => {
+            if (data.success) {
+                showToast(status === 'approved' ? '<?php _e('Payment verified!', 'al-huffaz-portal'); ?>' : '<?php _e('Payment rejected', 'al-huffaz-portal'); ?>', 'success');
+                loadPayments();
+            } else {
+                showToast(data.data?.message || '<?php _e('Error processing payment', 'al-huffaz-portal'); ?>', 'error');
+            }
+        });
+    };
+
+    // ==================== STAFF MANAGEMENT FUNCTIONS ====================
+    <?php if ($can_manage_staff): ?>
+    let eligibleUsers = [];
+
+    window.loadStaff = function() {
+        document.getElementById('staffTableBody').innerHTML = '<tr><td colspan="4" class="ahp-loading"><div class="ahp-spinner"></div></td></tr>';
+
+        fetch(ajaxUrl, {
+            method: 'POST',
+            headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+            body: new URLSearchParams({action: 'alhuffaz_get_staff_users', nonce})
+        })
+        .then(r => r.json())
+        .then(data => {
+            if (data.success) {
+                document.getElementById('totalStaffCount').textContent = data.data.count;
+                renderStaff(data.data.staff);
+            } else {
+                showToast(data.data?.message || '<?php _e('Error loading staff', 'al-huffaz-portal'); ?>', 'error');
+            }
+        });
+    };
+
+    function renderStaff(staff) {
+        const tbody = document.getElementById('staffTableBody');
+        if (!staff || staff.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;padding:40px;color:var(--ahp-text-muted);"><i class="fas fa-user-shield" style="font-size:48px;opacity:0.3;display:block;margin-bottom:10px;"></i><?php _e('No staff members yet. Click "Add Staff" to grant access to a user.', 'al-huffaz-portal'); ?></td></tr>';
+            return;
+        }
+
+        tbody.innerHTML = staff.map(s => `
+            <tr>
+                <td>
+                    <div style="display:flex;align-items:center;gap:10px;">
+                        <img src="${s.avatar}" alt="" style="width:40px;height:40px;border-radius:50%;">
+                        <strong>${s.display_name}</strong>
+                    </div>
+                </td>
+                <td>${s.email}</td>
+                <td>${s.registered}</td>
+                <td>
+                    <button class="ahp-btn ahp-btn-danger ahp-btn-icon" onclick="revokeStaffAccess(${s.id}, '${s.display_name}')" title="<?php _e('Revoke Access', 'al-huffaz-portal'); ?>">
+                        <i class="fas fa-user-slash"></i>
+                    </button>
+                </td>
+            </tr>
+        `).join('');
+    }
+
+    window.loadEligibleUsers = function() {
+        fetch(ajaxUrl, {
+            method: 'POST',
+            headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+            body: new URLSearchParams({action: 'alhuffaz_get_eligible_users', nonce})
+        })
+        .then(r => r.json())
+        .then(data => {
+            if (data.success) {
+                eligibleUsers = data.data.users;
+                document.getElementById('eligibleUsersCount').textContent = data.data.count;
+                updateEligibleUserSelect();
+            }
+        });
+    };
+
+    function updateEligibleUserSelect() {
+        const select = document.getElementById('eligibleUserSelect');
+        if (!eligibleUsers || eligibleUsers.length === 0) {
+            select.innerHTML = '<option value=""><?php _e('No eligible users found', 'al-huffaz-portal'); ?></option>';
+            return;
+        }
+
+        select.innerHTML = '<option value=""><?php _e('-- Select a user --', 'al-huffaz-portal'); ?></option>' +
+            eligibleUsers.map(u => `<option value="${u.id}" data-name="${u.display_name}" data-email="${u.email}">${u.display_name} (${u.email})</option>`).join('');
+    }
+
+    window.showAddStaffModal = function() {
+        document.getElementById('addStaffModal').style.display = 'flex';
+        loadEligibleUsers();
+
+        // Setup select change handler
+        document.getElementById('eligibleUserSelect').onchange = function() {
+            const selected = this.options[this.selectedIndex];
+            const btn = document.getElementById('grantStaffBtn');
+            const info = document.getElementById('selectedUserInfo');
+
+            if (this.value) {
+                document.getElementById('selectedUserName').textContent = selected.dataset.name;
+                document.getElementById('selectedUserEmail').textContent = selected.dataset.email;
+                info.style.display = 'block';
+                btn.disabled = false;
+            } else {
+                info.style.display = 'none';
+                btn.disabled = true;
+            }
+        };
+    };
+
+    window.closeAddStaffModal = function() {
+        document.getElementById('addStaffModal').style.display = 'none';
+        document.getElementById('eligibleUserSelect').value = '';
+        document.getElementById('selectedUserInfo').style.display = 'none';
+        document.getElementById('grantStaffBtn').disabled = true;
+    };
+
+    window.grantStaffAccess = function() {
+        const userId = document.getElementById('eligibleUserSelect').value;
+        if (!userId) return;
+
+        const userName = document.getElementById('eligibleUserSelect').options[document.getElementById('eligibleUserSelect').selectedIndex].dataset.name;
+
+        fetch(ajaxUrl, {
+            method: 'POST',
+            headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+            body: new URLSearchParams({action: 'alhuffaz_grant_staff_role', nonce, user_id: userId})
+        })
+        .then(r => r.json())
+        .then(data => {
+            if (data.success) {
+                showToast(data.data.message, 'success');
+                closeAddStaffModal();
+                loadStaff();
+                loadEligibleUsers();
+            } else {
+                showToast(data.data?.message || '<?php _e('Error granting access', 'al-huffaz-portal'); ?>', 'error');
+            }
+        });
+    };
+
+    window.revokeStaffAccess = function(userId, userName) {
+        if (!confirm('<?php _e('Are you sure you want to revoke staff access for', 'al-huffaz-portal'); ?> ' + userName + '?')) return;
+
+        fetch(ajaxUrl, {
+            method: 'POST',
+            headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+            body: new URLSearchParams({action: 'alhuffaz_revoke_staff_role', nonce, user_id: userId})
+        })
+        .then(r => r.json())
+        .then(data => {
+            if (data.success) {
+                showToast(data.data.message, 'success');
+                loadStaff();
+                loadEligibleUsers();
+            } else {
+                showToast(data.data?.message || '<?php _e('Error revoking access', 'al-huffaz-portal'); ?>', 'error');
+            }
+        });
+    };
+    <?php endif; ?>
+
+    // Auto-show panel based on URL
+    <?php if ($is_edit): ?>
+    showPanel('add-student');
+    <?php endif; ?>
 });
 </script>
