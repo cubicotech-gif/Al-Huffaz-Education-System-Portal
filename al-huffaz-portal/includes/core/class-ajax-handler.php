@@ -76,6 +76,11 @@ class Ajax_Handler {
         add_action('wp_ajax_alhuffaz_reject_sponsor_user', array($this, 'reject_sponsor_user'));
         add_action('wp_ajax_alhuffaz_delete_sponsor_user', array($this, 'delete_sponsor_user'));
         add_action('wp_ajax_alhuffaz_send_reengagement_email', array($this, 'send_reengagement_email'));
+
+        // Notifications AJAX actions
+        add_action('wp_ajax_alhuffaz_get_notifications', array($this, 'get_notifications'));
+        add_action('wp_ajax_alhuffaz_mark_notification_read', array($this, 'mark_notification_read'));
+        add_action('wp_ajax_alhuffaz_mark_all_notifications_read', array($this, 'mark_all_notifications_read'));
     }
 
     /**
@@ -683,6 +688,24 @@ class Ajax_Handler {
             );
         }
 
+        // Create in-app notification for sponsor
+        if ($sponsor_user_id && class_exists('AlHuffaz\\Core\\Notifications')) {
+            $student = get_post($student_id);
+            $student_name = $student ? $student->post_title : __('student', 'al-huffaz-portal');
+
+            Notifications::create(
+                $sponsor_user_id,
+                __('Sponsorship Approved!', 'al-huffaz-portal'),
+                sprintf(
+                    __('Congratulations! Your sponsorship for %s has been approved and is now active. You can now view the student\'s progress and academic records in your dashboard.', 'al-huffaz-portal'),
+                    $student_name
+                ),
+                'success',
+                $sponsorship_id,
+                'sponsorship'
+            );
+        }
+
         wp_send_json_success(array('message' => __('Sponsorship approved successfully.', 'al-huffaz-portal')));
     }
 
@@ -818,6 +841,9 @@ class Ajax_Handler {
         global $wpdb;
         $table = $wpdb->prefix . 'alhuffaz_payments';
 
+        // Get payment details before update for notification
+        $payment_record = $wpdb->get_row($wpdb->prepare("SELECT * FROM $table WHERE id = %d", $payment_id));
+
         $wpdb->update(
             $table,
             array(
@@ -832,6 +858,25 @@ class Ajax_Handler {
 
         // Log activity
         Helpers::log_activity('verify_payment', 'payment', $payment_id, 'Payment ' . $status);
+
+        // Create in-app notification for sponsor if payment is approved
+        if ($status === 'approved' && $payment_record && class_exists('AlHuffaz\\Core\\Notifications')) {
+            $student = get_post($payment_record->student_id);
+            $student_name = $student ? $student->post_title : __('student', 'al-huffaz-portal');
+
+            Notifications::create(
+                $payment_record->sponsor_id,
+                __('Payment Verified', 'al-huffaz-portal'),
+                sprintf(
+                    __('Your payment of %s for %s has been verified and approved. Thank you for your generous support!', 'al-huffaz-portal'),
+                    Helpers::format_currency($payment_record->amount),
+                    $student_name
+                ),
+                'success',
+                $payment_id,
+                'payment'
+            );
+        }
 
         wp_send_json_success(array('message' => __('Payment verified successfully.', 'al-huffaz-portal')));
     }
@@ -1204,6 +1249,21 @@ Please verify the payment in the admin portal.', 'al-huffaz-portal'),
             );
         }
 
+        // Create in-app notification for sponsor
+        if (class_exists('AlHuffaz\\Core\\Notifications')) {
+            Notifications::create(
+                $user_id,
+                __('Payment Proof Submitted', 'al-huffaz-portal'),
+                sprintf(
+                    __('Your payment proof for %s has been submitted successfully. We will verify your payment within 24-48 hours and notify you once approved.', 'al-huffaz-portal'),
+                    $student->post_title
+                ),
+                'success',
+                $sponsorship_id,
+                'sponsorship'
+            );
+        }
+
         // CRITICAL: Clear all caches to ensure fresh data on next load
         wp_cache_flush();
         wp_cache_delete('sponsor_dashboard_' . $user_id, 'alhuffaz');
@@ -1460,6 +1520,21 @@ The student is now available for sponsorship again.', 'al-huffaz-portal'),
                     $student_name,
                     current_time('F j, Y g:i a')
                 )
+            );
+        }
+
+        // Create in-app notification for sponsor
+        if (class_exists('AlHuffaz\\Core\\Notifications')) {
+            Notifications::create(
+                $user_id,
+                __('Sponsorship Cancelled', 'al-huffaz-portal'),
+                sprintf(
+                    __('Your sponsorship for %s has been cancelled. The student is now available for other sponsors. Thank you for your past support.', 'al-huffaz-portal'),
+                    $student_name
+                ),
+                'info',
+                $sponsorship_id,
+                'sponsorship'
             );
         }
 
@@ -2310,6 +2385,130 @@ With gratitude,
 
         wp_send_json_success(array(
             'message' => sprintf(__('Re-engagement email sent to %s.', 'al-huffaz-portal'), $user->display_name),
+        ));
+    }
+
+    /**
+     * Get notifications for current user
+     */
+    public function get_notifications() {
+        // Verify nonce
+        if (!isset($_POST['nonce']) || !wp_verify_nonce($_POST['nonce'], 'alhuffaz_public_nonce')) {
+            wp_send_json_error(array('message' => __('Security check failed.', 'al-huffaz-portal')));
+        }
+
+        // Must be logged in
+        if (!is_user_logged_in()) {
+            wp_send_json_error(array('message' => __('You must be logged in.', 'al-huffaz-portal')));
+        }
+
+        $user_id = get_current_user_id();
+        $limit = isset($_POST['limit']) ? intval($_POST['limit']) : 10;
+        $unread_only = isset($_POST['unread_only']) && $_POST['unread_only'] === 'true';
+
+        // Get notifications using Notifications class
+        if (!class_exists('AlHuffaz\\Core\\Notifications')) {
+            wp_send_json_error(array('message' => __('Notifications system not available.', 'al-huffaz-portal')));
+        }
+
+        $notifications = Notifications::get_user_notifications($user_id, $limit, $unread_only);
+        $unread_count = Notifications::get_unread_count($user_id);
+
+        // Format notifications for response
+        $formatted_notifications = array();
+        foreach ($notifications as $notification) {
+            $formatted_notifications[] = array(
+                'id' => $notification->id,
+                'title' => $notification->title,
+                'message' => $notification->message,
+                'type' => $notification->type,
+                'related_id' => $notification->related_id,
+                'related_type' => $notification->related_type,
+                'is_read' => (bool) $notification->is_read,
+                'created_at' => $notification->created_at,
+                'time_ago' => human_time_diff(strtotime($notification->created_at), current_time('timestamp')) . ' ago',
+            );
+        }
+
+        wp_send_json_success(array(
+            'notifications' => $formatted_notifications,
+            'unread_count' => $unread_count,
+        ));
+    }
+
+    /**
+     * Mark notification as read
+     */
+    public function mark_notification_read() {
+        // Verify nonce
+        if (!isset($_POST['nonce']) || !wp_verify_nonce($_POST['nonce'], 'alhuffaz_public_nonce')) {
+            wp_send_json_error(array('message' => __('Security check failed.', 'al-huffaz-portal')));
+        }
+
+        // Must be logged in
+        if (!is_user_logged_in()) {
+            wp_send_json_error(array('message' => __('You must be logged in.', 'al-huffaz-portal')));
+        }
+
+        $user_id = get_current_user_id();
+        $notification_id = isset($_POST['notification_id']) ? intval($_POST['notification_id']) : 0;
+
+        if (!$notification_id) {
+            wp_send_json_error(array('message' => __('Invalid notification ID.', 'al-huffaz-portal')));
+        }
+
+        // Check if Notifications class exists
+        if (!class_exists('AlHuffaz\\Core\\Notifications')) {
+            wp_send_json_error(array('message' => __('Notifications system not available.', 'al-huffaz-portal')));
+        }
+
+        // Mark as read (only for this user's notification)
+        $result = Notifications::mark_as_read($notification_id, $user_id);
+
+        if ($result === false) {
+            wp_send_json_error(array('message' => __('Failed to mark notification as read.', 'al-huffaz-portal')));
+        }
+
+        // Get updated unread count
+        $unread_count = Notifications::get_unread_count($user_id);
+
+        wp_send_json_success(array(
+            'message' => __('Notification marked as read.', 'al-huffaz-portal'),
+            'unread_count' => $unread_count,
+        ));
+    }
+
+    /**
+     * Mark all notifications as read
+     */
+    public function mark_all_notifications_read() {
+        // Verify nonce
+        if (!isset($_POST['nonce']) || !wp_verify_nonce($_POST['nonce'], 'alhuffaz_public_nonce')) {
+            wp_send_json_error(array('message' => __('Security check failed.', 'al-huffaz-portal')));
+        }
+
+        // Must be logged in
+        if (!is_user_logged_in()) {
+            wp_send_json_error(array('message' => __('You must be logged in.', 'al-huffaz-portal')));
+        }
+
+        $user_id = get_current_user_id();
+
+        // Check if Notifications class exists
+        if (!class_exists('AlHuffaz\\Core\\Notifications')) {
+            wp_send_json_error(array('message' => __('Notifications system not available.', 'al-huffaz-portal')));
+        }
+
+        // Mark all as read
+        $result = Notifications::mark_all_as_read($user_id);
+
+        if ($result === false) {
+            wp_send_json_error(array('message' => __('Failed to mark all notifications as read.', 'al-huffaz-portal')));
+        }
+
+        wp_send_json_success(array(
+            'message' => __('All notifications marked as read.', 'al-huffaz-portal'),
+            'unread_count' => 0,
         ));
     }
 }

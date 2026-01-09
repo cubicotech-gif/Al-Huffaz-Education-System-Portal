@@ -310,6 +310,181 @@ body.admin-bar .sp-portal .sp-header {
     color: var(--sp-danger) !important;
 }
 
+/* ==================== NOTIFICATIONS ==================== */
+.sp-notification-bell {
+    position: relative !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    width: 40px !important;
+    height: 40px !important;
+    background: transparent !important;
+    border: 1px solid var(--sp-border) !important;
+    border-radius: 8px !important;
+    color: var(--sp-text-secondary) !important;
+    cursor: pointer !important;
+    transition: all 0.2s !important;
+}
+
+.sp-notification-bell:hover {
+    background: var(--sp-bg) !important;
+    color: var(--sp-primary) !important;
+}
+
+.sp-notification-bell i {
+    font-size: 18px !important;
+}
+
+.sp-notification-badge {
+    position: absolute !important;
+    top: -4px !important;
+    right: -4px !important;
+    min-width: 20px !important;
+    height: 20px !important;
+    padding: 0 6px !important;
+    background: var(--sp-danger) !important;
+    color: white !important;
+    font-size: 11px !important;
+    font-weight: 600 !important;
+    border-radius: 10px !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+}
+
+.sp-notification-panel {
+    position: absolute !important;
+    top: 70px !important;
+    right: 24px !important;
+    width: 420px !important;
+    max-height: 500px !important;
+    background: white !important;
+    border-radius: 12px !important;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.12) !important;
+    z-index: 9999 !important;
+    overflow: hidden !important;
+}
+
+.sp-notification-header {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    padding: 16px 20px !important;
+    border-bottom: 1px solid var(--sp-border) !important;
+}
+
+.sp-notification-header h3 {
+    margin: 0 !important;
+    font-size: 16px !important;
+    font-weight: 700 !important;
+    color: var(--sp-text) !important;
+}
+
+.sp-mark-all-read {
+    display: flex !important;
+    align-items: center !important;
+    gap: 6px !important;
+    padding: 6px 12px !important;
+    background: transparent !important;
+    border: none !important;
+    border-radius: 6px !important;
+    font-size: 12px !important;
+    font-weight: 500 !important;
+    color: var(--sp-primary) !important;
+    cursor: pointer !important;
+    transition: all 0.2s !important;
+}
+
+.sp-mark-all-read:hover {
+    background: var(--sp-primary-light) !important;
+}
+
+.sp-notification-list {
+    max-height: 420px !important;
+    overflow-y: auto !important;
+}
+
+.sp-notification-loading {
+    padding: 40px 20px !important;
+    text-align: center !important;
+    color: var(--sp-text-secondary) !important;
+    font-size: 14px !important;
+}
+
+.sp-notification-empty {
+    padding: 40px 20px !important;
+    text-align: center !important;
+    color: var(--sp-text-secondary) !important;
+    font-size: 14px !important;
+}
+
+.sp-notification-item {
+    display: flex !important;
+    gap: 12px !important;
+    padding: 16px 20px !important;
+    border-bottom: 1px solid var(--sp-border) !important;
+    cursor: pointer !important;
+    transition: all 0.2s !important;
+}
+
+.sp-notification-item:hover {
+    background: var(--sp-bg) !important;
+}
+
+.sp-notification-item.unread {
+    background: #eff6ff !important;
+}
+
+.sp-notification-icon {
+    flex-shrink: 0 !important;
+    width: 40px !important;
+    height: 40px !important;
+    border-radius: 8px !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    font-size: 16px !important;
+}
+
+.sp-notification-icon.success {
+    background: var(--sp-success-light) !important;
+    color: #065f46 !important;
+}
+
+.sp-notification-icon.info {
+    background: var(--sp-primary-light) !important;
+    color: var(--sp-primary-dark) !important;
+}
+
+.sp-notification-icon.warning {
+    background: var(--sp-warning-light) !important;
+    color: #92400e !important;
+}
+
+.sp-notification-content {
+    flex: 1 !important;
+    min-width: 0 !important;
+}
+
+.sp-notification-title {
+    font-size: 14px !important;
+    font-weight: 600 !important;
+    color: var(--sp-text) !important;
+    margin-bottom: 4px !important;
+}
+
+.sp-notification-message {
+    font-size: 13px !important;
+    color: var(--sp-text-secondary) !important;
+    line-height: 1.5 !important;
+    margin-bottom: 6px !important;
+}
+
+.sp-notification-time {
+    font-size: 11px !important;
+    color: var(--sp-text-muted) !important;
+}
+
 /* ==================== NAVIGATION TABS ==================== */
 .sp-nav {
     display: flex !important;
@@ -1162,6 +1337,12 @@ body.admin-bar .sp-portal .sp-header {
                 </div>
 
                 <div class="sp-user-menu">
+                    <!-- Notification Bell -->
+                    <button class="sp-notification-bell" onclick="toggleNotifications()" id="notificationBell">
+                        <i class="fas fa-bell"></i>
+                        <span class="sp-notification-badge" id="notificationBadge" style="display: none;">0</span>
+                    </button>
+
                     <div class="sp-user-info">
                         <div class="sp-avatar"><?php echo strtoupper(substr($user->display_name, 0, 1)); ?></div>
                         <span class="sp-user-name"><?php echo esc_html($user->display_name); ?></span>
@@ -1174,6 +1355,21 @@ body.admin-bar .sp-portal .sp-header {
                         <i class="fas fa-sign-out-alt"></i>
                         <span>Logout</span>
                     </a>
+                </div>
+
+                <!-- Notification Dropdown Panel -->
+                <div class="sp-notification-panel" id="notificationPanel" style="display: none;">
+                    <div class="sp-notification-header">
+                        <h3><?php _e('Notifications', 'al-huffaz-portal'); ?></h3>
+                        <button class="sp-mark-all-read" onclick="markAllNotificationsRead()" id="markAllReadBtn">
+                            <i class="fas fa-check-double"></i> <?php _e('Mark all read', 'al-huffaz-portal'); ?>
+                        </button>
+                    </div>
+                    <div class="sp-notification-list" id="notificationList">
+                        <div class="sp-notification-loading">
+                            <i class="fas fa-spinner fa-spin"></i> <?php _e('Loading notifications...', 'al-huffaz-portal'); ?>
+                        </div>
+                    </div>
                 </div>
 
                 <button class="sp-menu-toggle" onclick="toggleMobileNav()">
@@ -2117,5 +2313,193 @@ body.admin-bar .sp-portal .sp-header {
     document.getElementById('sponsorModal').addEventListener('click', function(e) {
         if (e.target === this) closeSponsorModal();
     });
+
+    // ==================== NOTIFICATIONS ====================
+    let notificationPanel = null;
+
+    window.toggleNotifications = function() {
+        notificationPanel = document.getElementById('notificationPanel');
+        const isVisible = notificationPanel.style.display === 'block';
+
+        if (isVisible) {
+            notificationPanel.style.display = 'none';
+        } else {
+            notificationPanel.style.display = 'block';
+            loadNotifications();
+        }
+    };
+
+    // Close notification panel when clicking outside
+    document.addEventListener('click', function(e) {
+        const bell = document.getElementById('notificationBell');
+        const panel = document.getElementById('notificationPanel');
+
+        if (panel && bell && !bell.contains(e.target) && !panel.contains(e.target)) {
+            panel.style.display = 'none';
+        }
+    });
+
+    function loadNotifications() {
+        const listElement = document.getElementById('notificationList');
+        listElement.innerHTML = '<div class="sp-notification-loading"><i class="fas fa-spinner fa-spin"></i> <?php _e('Loading notifications...', 'al-huffaz-portal'); ?></div>';
+
+        fetch('<?php echo admin_url('admin-ajax.php'); ?>', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded',
+            },
+            body: new URLSearchParams({
+                action: 'alhuffaz_get_notifications',
+                nonce: '<?php echo wp_create_nonce('alhuffaz_public_nonce'); ?>',
+                limit: 15
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                renderNotifications(data.data.notifications);
+                updateNotificationBadge(data.data.unread_count);
+            } else {
+                listElement.innerHTML = '<div class="sp-notification-empty"><i class="fas fa-bell-slash"></i><br><?php _e('Failed to load notifications', 'al-huffaz-portal'); ?></div>';
+            }
+        })
+        .catch(error => {
+            console.error('Error loading notifications:', error);
+            listElement.innerHTML = '<div class="sp-notification-empty"><i class="fas fa-exclamation-circle"></i><br><?php _e('Error loading notifications', 'al-huffaz-portal'); ?></div>';
+        });
+    }
+
+    function renderNotifications(notifications) {
+        const listElement = document.getElementById('notificationList');
+
+        if (!notifications || notifications.length === 0) {
+            listElement.innerHTML = '<div class="sp-notification-empty"><i class="fas fa-bell-slash"></i><br><?php _e('No notifications yet', 'al-huffaz-portal'); ?></div>';
+            return;
+        }
+
+        let html = '';
+        notifications.forEach(notification => {
+            const unreadClass = notification.is_read ? '' : 'unread';
+            const iconClass = notification.type || 'info';
+            const iconMap = {
+                'success': 'check-circle',
+                'info': 'info-circle',
+                'warning': 'exclamation-triangle',
+                'error': 'times-circle'
+            };
+            const icon = iconMap[notification.type] || 'bell';
+
+            html += `
+                <div class="sp-notification-item ${unreadClass}" onclick="markNotificationRead(${notification.id})">
+                    <div class="sp-notification-icon ${iconClass}">
+                        <i class="fas fa-${icon}"></i>
+                    </div>
+                    <div class="sp-notification-content">
+                        <div class="sp-notification-title">${escapeHtml(notification.title)}</div>
+                        <div class="sp-notification-message">${escapeHtml(notification.message)}</div>
+                        <div class="sp-notification-time"><i class="far fa-clock"></i> ${notification.time_ago}</div>
+                    </div>
+                </div>
+            `;
+        });
+
+        listElement.innerHTML = html;
+    }
+
+    function escapeHtml(text) {
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    }
+
+    function updateNotificationBadge(count) {
+        const badge = document.getElementById('notificationBadge');
+        if (count > 0) {
+            badge.textContent = count > 99 ? '99+' : count;
+            badge.style.display = 'flex';
+        } else {
+            badge.style.display = 'none';
+        }
+    }
+
+    window.markNotificationRead = function(notificationId) {
+        fetch('<?php echo admin_url('admin-ajax.php'); ?>', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded',
+            },
+            body: new URLSearchParams({
+                action: 'alhuffaz_mark_notification_read',
+                nonce: '<?php echo wp_create_nonce('alhuffaz_public_nonce'); ?>',
+                notification_id: notificationId
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                loadNotifications();
+            }
+        })
+        .catch(error => console.error('Error marking notification as read:', error));
+    };
+
+    window.markAllNotificationsRead = function() {
+        const btn = document.getElementById('markAllReadBtn');
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> <?php _e('Marking...', 'al-huffaz-portal'); ?>';
+
+        fetch('<?php echo admin_url('admin-ajax.php'); ?>', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded',
+            },
+            body: new URLSearchParams({
+                action: 'alhuffaz_mark_all_notifications_read',
+                nonce: '<?php echo wp_create_nonce('alhuffaz_public_nonce'); ?>'
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                loadNotifications();
+                btn.disabled = false;
+                btn.innerHTML = '<i class="fas fa-check-double"></i> <?php _e('Mark all read', 'al-huffaz-portal'); ?>';
+            }
+        })
+        .catch(error => {
+            console.error('Error marking all as read:', error);
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fas fa-check-double"></i> <?php _e('Mark all read', 'al-huffaz-portal'); ?>';
+        });
+    };
+
+    // Load notification count on page load
+    function loadNotificationCount() {
+        fetch('<?php echo admin_url('admin-ajax.php'); ?>', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded',
+            },
+            body: new URLSearchParams({
+                action: 'alhuffaz_get_notifications',
+                nonce: '<?php echo wp_create_nonce('alhuffaz_public_nonce'); ?>',
+                limit: 1,
+                unread_only: 'true'
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                updateNotificationBadge(data.data.unread_count);
+            }
+        })
+        .catch(error => console.error('Error loading notification count:', error));
+    }
+
+    // Load notification count on page load
+    loadNotificationCount();
+
+    // Refresh notification count every 30 seconds
+    setInterval(loadNotificationCount, 30000);
 })();
 </script>
