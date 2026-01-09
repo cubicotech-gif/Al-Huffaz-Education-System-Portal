@@ -834,6 +834,38 @@ body.admin-bar .sp-portal .sp-header {
     gap: 16px !important;
 }
 
+.sp-form-actions {
+    display: flex !important;
+    gap: 12px !important;
+    justify-content: flex-end !important;
+    margin-top: 24px !important;
+}
+
+/* ==================== INFO GRID ==================== */
+.sp-info-grid {
+    display: grid !important;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)) !important;
+    gap: 20px !important;
+}
+
+.sp-info-item {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 4px !important;
+}
+
+.sp-info-label {
+    font-size: 13px !important;
+    color: var(--sp-text-secondary) !important;
+    font-weight: 500 !important;
+}
+
+.sp-info-value {
+    font-size: 16px !important;
+    color: var(--sp-text) !important;
+    font-weight: 600 !important;
+}
+
 /* ==================== EMPTY STATE ==================== */
 .sp-empty {
     text-align: center !important;
@@ -1586,6 +1618,106 @@ body.admin-bar .sp-portal .sp-header {
             <?php endif; ?>
         </div>
 
+        <!-- ==================== PAYMENT PROOF PANEL ==================== -->
+        <div class="sp-panel" id="panel-payment-proof">
+            <h1 class="sp-page-title"><?php _e('Submit Payment Proof', 'al-huffaz-portal'); ?></h1>
+            <p class="sp-page-subtitle"><?php _e('Please provide payment details and proof to complete your sponsorship.', 'al-huffaz-portal'); ?></p>
+
+            <div class="sp-card">
+                <div class="sp-card-header">
+                    <h3 class="sp-card-title"><i class="fas fa-info-circle"></i> <?php _e('Sponsorship Details', 'al-huffaz-portal'); ?></h3>
+                </div>
+                <div class="sp-card-body">
+                    <div class="sp-info-grid">
+                        <div class="sp-info-item">
+                            <span class="sp-info-label"><?php _e('Student:', 'al-huffaz-portal'); ?></span>
+                            <span class="sp-info-value" id="proofStudentName">-</span>
+                        </div>
+                        <div class="sp-info-item">
+                            <span class="sp-info-label"><?php _e('Duration:', 'al-huffaz-portal'); ?></span>
+                            <span class="sp-info-value" id="proofDuration">-</span>
+                        </div>
+                        <div class="sp-info-item">
+                            <span class="sp-info-label"><?php _e('Amount:', 'al-huffaz-portal'); ?></span>
+                            <span class="sp-info-value" id="proofAmount">-</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="sp-card">
+                <div class="sp-card-header">
+                    <h3 class="sp-card-title"><i class="fas fa-receipt"></i> <?php _e('Payment Information', 'al-huffaz-portal'); ?></h3>
+                </div>
+                <div class="sp-card-body">
+                    <form id="paymentProofForm" enctype="multipart/form-data">
+                        <input type="hidden" name="action" value="alhuffaz_submit_payment_proof">
+                        <input type="hidden" name="nonce" value="<?php echo $nonce; ?>">
+                        <input type="hidden" id="proofStudentId" name="student_id">
+                        <input type="hidden" id="proofAmountVal" name="amount">
+                        <input type="hidden" id="proofDurationVal" name="sponsorship_type">
+
+                        <div class="sp-alert sp-alert-info">
+                            <i class="fas fa-lightbulb"></i>
+                            <div class="sp-alert-content">
+                                <strong><?php _e('Payment Guidelines', 'al-huffaz-portal'); ?></strong>
+                                <ul style="margin: 8px 0 0 20px; padding: 0;">
+                                    <li><?php _e('Choose your preferred payment method below', 'al-huffaz-portal'); ?></li>
+                                    <li><?php _e('Complete the payment using your method', 'al-huffaz-portal'); ?></li>
+                                    <li><?php _e('Take a clear screenshot of the payment confirmation', 'al-huffaz-portal'); ?></li>
+                                    <li><?php _e('Upload the screenshot and fill in the transaction details', 'al-huffaz-portal'); ?></li>
+                                    <li><?php _e('We will verify your payment within 24-48 hours', 'al-huffaz-portal'); ?></li>
+                                </ul>
+                            </div>
+                        </div>
+
+                        <div class="sp-form-row">
+                            <div class="sp-form-group">
+                                <label class="sp-form-label"><?php _e('Payment Method', 'al-huffaz-portal'); ?> <span style="color: red;">*</span></label>
+                                <select name="payment_method" class="sp-form-select" required>
+                                    <option value=""><?php _e('Select payment method...', 'al-huffaz-portal'); ?></option>
+                                    <option value="bank_transfer"><?php _e('Bank Transfer', 'al-huffaz-portal'); ?></option>
+                                    <option value="easypaisa"><?php _e('Easypaisa', 'al-huffaz-portal'); ?></option>
+                                    <option value="jazzcash"><?php _e('JazzCash', 'al-huffaz-portal'); ?></option>
+                                </select>
+                            </div>
+                            <div class="sp-form-group">
+                                <label class="sp-form-label"><?php _e('Transaction ID / Reference', 'al-huffaz-portal'); ?> <span style="color: red;">*</span></label>
+                                <input type="text" name="transaction_id" class="sp-form-input" placeholder="<?php _e('Enter transaction ID', 'al-huffaz-portal'); ?>" required>
+                            </div>
+                        </div>
+
+                        <div class="sp-form-group">
+                            <label class="sp-form-label"><?php _e('Payment Date', 'al-huffaz-portal'); ?></label>
+                            <input type="date" name="payment_date" class="sp-form-input" value="<?php echo date('Y-m-d'); ?>">
+                        </div>
+
+                        <div class="sp-form-group">
+                            <label class="sp-form-label"><?php _e('Payment Screenshot / Proof', 'al-huffaz-portal'); ?> <span style="color: red;">*</span></label>
+                            <input type="file" name="payment_screenshot" class="sp-form-input" accept="image/*" required>
+                            <small style="color: var(--sp-text-muted); margin-top: 4px; display: block;">
+                                <?php _e('Upload a clear screenshot of your payment confirmation', 'al-huffaz-portal'); ?>
+                            </small>
+                        </div>
+
+                        <div class="sp-form-group">
+                            <label class="sp-form-label"><?php _e('Additional Notes (Optional)', 'al-huffaz-portal'); ?></label>
+                            <textarea name="notes" class="sp-form-input" rows="3" placeholder="<?php _e('Any additional information...', 'al-huffaz-portal'); ?>"></textarea>
+                        </div>
+
+                        <div class="sp-form-actions">
+                            <button type="button" class="sp-btn sp-btn-secondary" onclick="showPanel('available-students')">
+                                <i class="fas fa-arrow-left"></i> <?php _e('Cancel', 'al-huffaz-portal'); ?>
+                            </button>
+                            <button type="submit" class="sp-btn sp-btn-success">
+                                <i class="fas fa-paper-plane"></i> <?php _e('Submit Payment Proof', 'al-huffaz-portal'); ?>
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
         <!-- ==================== PAYMENT HISTORY PANEL ==================== -->
         <div class="sp-panel" id="panel-history">
             <h1 class="sp-page-title"><?php _e('Payment History', 'al-huffaz-portal'); ?></h1>
@@ -1718,30 +1850,45 @@ body.admin-bar .sp-portal .sp-header {
         document.getElementById('sponsorModal').classList.remove('open');
     };
 
+    // Store sponsorship details for payment proof
+    let pendingSponsorship = null;
+
     window.submitSponsorship = function() {
         const form = document.getElementById('sponsorForm');
         const formData = new FormData(form);
 
-        fetch('<?php echo admin_url('admin-ajax.php'); ?>', {
-            method: 'POST',
-            body: formData
-        })
-        .then(response => response.json())
-        .then(data => {
-            closeSponsorModal();
-            if (data.success) {
-                showToast('Sponsorship created successfully!', 'success');
-                setTimeout(() => location.reload(), 1500);
-            } else {
-                showToast(data.data || 'An error occurred', 'error');
+        // Store the sponsorship details for payment proof form
+        pendingSponsorship = {
+            studentId: formData.get('student_id'),
+            studentName: document.getElementById('modalStudentName').textContent,
+            duration: formData.get('duration'),
+            amount: formData.get('amount')
+        };
+
+        closeSponsorModal();
+
+        // Show toast and redirect to payment proof panel
+        showToast('Please submit payment proof to complete sponsorship', 'info');
+
+        setTimeout(() => {
+            showPanel('payment-proof');
+
+            // Pre-fill the payment proof form
+            if (pendingSponsorship) {
+                document.getElementById('proofStudentName').textContent = pendingSponsorship.studentName;
+                document.getElementById('proofAmount').textContent = 'PKR ' + Number(pendingSponsorship.amount).toLocaleString();
+                document.getElementById('proofDuration').textContent = pendingSponsorship.duration + ' month' + (pendingSponsorship.duration > 1 ? 's' : '');
+
+                document.getElementById('proofStudentId').value = pendingSponsorship.studentId;
+                document.getElementById('proofAmountVal').value = pendingSponsorship.amount;
+                document.getElementById('proofDurationVal').value = pendingSponsorship.duration;
             }
-        })
-        .catch(() => {
-            showToast('An error occurred', 'error');
-        });
+
+            window.scrollTo(0, 0);
+        }, 500);
     };
 
-    // Payment Form
+    // Payment Form (for existing sponsorships)
     const paymentForm = document.getElementById('paymentForm');
     if (paymentForm) {
         paymentForm.addEventListener('submit', function(e) {
@@ -1764,6 +1911,54 @@ body.admin-bar .sp-portal .sp-header {
             })
             .catch(() => {
                 showToast('An error occurred', 'error');
+            });
+        });
+    }
+
+    // Payment Proof Form (for new sponsorships)
+    const paymentProofForm = document.getElementById('paymentProofForm');
+    if (paymentProofForm) {
+        paymentProofForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+
+            const submitBtn = this.querySelector('button[type="submit"]');
+            const originalText = submitBtn.innerHTML;
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Submitting...';
+
+            const formData = new FormData(this);
+
+            fetch('<?php echo admin_url('admin-ajax.php'); ?>', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = originalText;
+
+                if (data.success) {
+                    showToast('Payment proof submitted successfully! We will verify it within 24-48 hours.', 'success');
+                    this.reset();
+                    pendingSponsorship = null;
+
+                    // Clear the info display
+                    document.getElementById('proofStudentName').textContent = '-';
+                    document.getElementById('proofAmount').textContent = '-';
+                    document.getElementById('proofDuration').textContent = '-';
+
+                    // Redirect to payment history after 2 seconds
+                    setTimeout(() => {
+                        location.reload(); // Reload to show the new sponsorship
+                    }, 2000);
+                } else {
+                    showToast(data.data?.message || data.data || 'An error occurred', 'error');
+                }
+            })
+            .catch(() => {
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = originalText;
+                showToast('An error occurred while submitting', 'error');
             });
         });
     }
