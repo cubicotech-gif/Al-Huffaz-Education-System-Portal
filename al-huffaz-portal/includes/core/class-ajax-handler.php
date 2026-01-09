@@ -2056,7 +2056,8 @@ The student is now available for sponsorship again.', 'al-huffaz-portal'),
         foreach ($users as $user) {
             // Get user meta
             $um_status = get_user_meta($user->ID, 'account_status', true);
-            $phone = get_user_meta($user->ID, 'phone', true);
+            $phone = get_user_meta($user->ID, 'sponsor_phone', true);
+            $country = get_user_meta($user->ID, 'sponsor_country', true);
 
             // Count active sponsorships (approved + linked)
             $active_sponsorships = get_posts(array(
@@ -2086,9 +2087,11 @@ The student is now available for sponsorship again.', 'al-huffaz-portal'),
 
             // Determine status
             $user_status = 'approved';
-            if ($um_status === 'awaiting_admin_review') {
+            if ($um_status === 'pending_approval') {
                 $user_status = 'pending';
-            } elseif ($active_count === 0 && $total_count === 0) {
+            } elseif ($um_status === 'rejected') {
+                $user_status = 'rejected';
+            } elseif ($active_count === 0 && $total_count === 0 && $um_status === 'approved') {
                 $user_status = 'inactive';
             }
 
@@ -2103,6 +2106,7 @@ The student is now available for sponsorship again.', 'al-huffaz-portal'),
                 'display_name' => $user->display_name,
                 'email' => $user->user_email,
                 'phone' => $phone,
+                'country' => $country,
                 'status' => $user_status,
                 'active_sponsorships' => $active_count,
                 'total_sponsorships' => $total_count,
@@ -2147,8 +2151,9 @@ The student is now available for sponsorship again.', 'al-huffaz-portal'),
         }
 
         $um_status = get_user_meta($user_id, 'account_status', true);
-        $phone = get_user_meta($user_id, 'phone', true);
-        $country = get_user_meta($user_id, 'country', true);
+        $phone = get_user_meta($user_id, 'sponsor_phone', true);
+        $country = get_user_meta($user_id, 'sponsor_country', true);
+        $whatsapp = get_user_meta($user_id, 'sponsor_whatsapp', true);
 
         // Count sponsorships
         $active_sponsorships = get_posts(array(
@@ -2171,13 +2176,20 @@ The student is now available for sponsorship again.', 'al-huffaz-portal'),
             $user_id
         ));
 
-        $user_status = ($um_status === 'awaiting_admin_review') ? 'pending' : 'approved';
+        // Determine user status
+        $user_status = 'approved';
+        if ($um_status === 'pending_approval') {
+            $user_status = 'pending';
+        } elseif ($um_status === 'rejected') {
+            $user_status = 'rejected';
+        }
 
         wp_send_json_success(array(
             'display_name' => $user->display_name,
             'email' => $user->user_email,
             'phone' => $phone,
             'country' => $country,
+            'whatsapp' => $whatsapp,
             'status' => $user_status,
             'active_sponsorships' => count($active_sponsorships),
             'total_donated' => Helpers::format_currency($total_donated ?: 0),
@@ -2225,7 +2237,7 @@ You can now log in and start sponsoring students who need your support.
 Login at: %s
 
 Thank you for your generosity!', 'al-huffaz-portal'),
-                    wp_login_url()
+                    home_url('/login/?approved=yes')
                 )
             );
         }
