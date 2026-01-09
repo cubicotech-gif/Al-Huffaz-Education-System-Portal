@@ -56,6 +56,7 @@ class Ajax_Handler {
         add_action('wp_ajax_alhuffaz_submit_payment_proof', array($this, 'submit_payment_proof'));
 
         add_action('wp_ajax_alhuffaz_create_sponsorship', array($this, 'create_sponsorship'));
+        add_action('wp_ajax_alhuffaz_cancel_sponsorship', array($this, 'cancel_sponsorship'));
 
         add_action('wp_ajax_alhuffaz_get_student_profile', array($this, 'get_student_profile'));
 
@@ -1105,8 +1106,14 @@ class Ajax_Handler {
         $payment_date = isset($_POST['payment_date']) ? sanitize_text_field($_POST['payment_date']) : current_time('Y-m-d');
         $notes = isset($_POST['notes']) ? sanitize_textarea_field($_POST['notes']) : '';
 
-        if (!$student_id || !$amount || !$payment_method || !$transaction_id) {
+        // Transaction ID is optional - only validate student, amount, and payment method
+        if (!$student_id || !$amount || !$payment_method) {
             wp_send_json_error(array('message' => __('Please fill in all required fields.', 'al-huffaz-portal')));
+        }
+
+        // If no transaction ID provided, generate a unique reference
+        if (empty($transaction_id)) {
+            $transaction_id = 'SP-' . strtoupper(substr(md5(uniqid()), 0, 10));
         }
 
         // Verify student exists and is eligible
@@ -1347,6 +1354,107 @@ Thank you for your generosity!', 'al-huffaz-portal'),
             'message' => __('Sponsorship created successfully! Please submit payment proof to complete the process.', 'al-huffaz-portal'),
             'sponsorship_id' => $sponsorship_id,
             'redirect' => 'payment', // Tell frontend to redirect to payment panel
+        ));
+    }
+
+    /**
+     * Cancel sponsorship (from sponsor dashboard)
+     */
+    public function cancel_sponsorship() {
+        // Verify nonce
+        if (!isset($_POST['nonce']) || !wp_verify_nonce($_POST['nonce'], 'alhuffaz_public_nonce')) {
+            wp_send_json_error(array('message' => __('Security check failed.', 'al-huffaz-portal')));
+        }
+
+        // Must be logged in
+        if (!is_user_logged_in()) {
+            wp_send_json_error(array('message' => __('You must be logged in.', 'al-huffaz-portal')));
+        }
+
+        $user_id = get_current_user_id();
+        $sponsorship_id = isset($_POST['sponsorship_id']) ? intval($_POST['sponsorship_id']) : 0;
+
+        if (!$sponsorship_id) {
+            wp_send_json_error(array('message' => __('Invalid sponsorship ID.', 'al-huffaz-portal')));
+        }
+
+        // Verify sponsorship exists
+        $sponsorship = get_post($sponsorship_id);
+        if (!$sponsorship || $sponsorship->post_type !== 'alhuffaz_sponsor') {
+            wp_send_json_error(array('message' => __('Sponsorship not found.', 'al-huffaz-portal')));
+        }
+
+        // Verify ownership - user must be the sponsor
+        $sponsor_user_id = get_post_meta($sponsorship_id, '_sponsor_user_id', true);
+        if ($sponsor_user_id != $user_id) {
+            wp_send_json_error(array('message' => __('You do not have permission to cancel this sponsorship.', 'al-huffaz-portal')));
+        }
+
+        $student_id = get_post_meta($sponsorship_id, '_student_id', true);
+        $student = get_post($student_id);
+        $student_name = $student ? $student->post_title : 'Unknown';
+
+        // Update sponsorship status to cancelled
+        update_post_meta($sponsorship_id, '_status', 'cancelled');
+        update_post_meta($sponsorship_id, '_linked', 'no');
+        update_post_meta($sponsorship_id, '_cancelled_at', current_time('mysql'));
+        update_post_meta($sponsorship_id, '_cancelled_by', 'sponsor');
+
+        // Make student available again
+        update_post_meta($student_id, '_is_sponsored', 'no');
+
+        // Check if there are any other active sponsorships for this student
+        $other_active_sponsorships = get_posts(array(
+            'post_type' => 'alhuffaz_sponsor',
+            'posts_per_page' => -1,
+            'post__not_in' => array($sponsorship_id),
+            'meta_query' => array(
+                'relation' => 'AND',
+                array('key' => '_student_id', 'value' => $student_id),
+                array('key' => '_status', 'value' => 'approved'),
+                array('key' => '_linked', 'value' => 'yes'),
+            ),
+            'fields' => 'ids',
+        ));
+
+        // If there are other active sponsorships, keep student as sponsored
+        if (!empty($other_active_sponsorships)) {
+            update_post_meta($student_id, '_is_sponsored', 'yes');
+        }
+
+        // Log activity
+        if (class_exists('AlHuffaz\\Core\\Helpers')) {
+            $user = wp_get_current_user();
+            Helpers::log_activity('sponsorship_cancelled', 'sponsorship', $sponsorship_id,
+                sprintf('Sponsorship cancelled by sponsor %s for student %s', $user->display_name, $student_name)
+            );
+        }
+
+        // Send notification to admin
+        $admin_email = get_option('alhuffaz_admin_email', get_option('admin_email'));
+        if (class_exists('AlHuffaz\\Core\\Helpers')) {
+            $user = wp_get_current_user();
+            Helpers::send_notification(
+                $admin_email,
+                __('Sponsorship Cancelled by Sponsor', 'al-huffaz-portal'),
+                sprintf(
+                    __('A sponsorship has been cancelled.
+
+Sponsor: %s (%s)
+Student: %s
+Cancelled Date: %s
+
+The student is now available for sponsorship again.', 'al-huffaz-portal'),
+                    $user->display_name,
+                    $user->user_email,
+                    $student_name,
+                    current_time('F j, Y g:i a')
+                )
+            );
+        }
+
+        wp_send_json_success(array(
+            'message' => sprintf(__('Sponsorship for %s has been cancelled. The student is now available for others to sponsor.', 'al-huffaz-portal'), $student_name),
         ));
     }
 
