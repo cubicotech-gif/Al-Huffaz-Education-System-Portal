@@ -618,6 +618,8 @@ body.admin-bar .sp-portal .sp-header {
     padding: 16px 20px !important;
     background: var(--sp-bg) !important;
     border-top: 1px solid var(--sp-border) !important;
+    display: flex !important;
+    gap: 12px !important;
 }
 
 /* ==================== BUTTONS ==================== */
@@ -1450,9 +1452,12 @@ body.admin-bar .sp-portal .sp-header {
                         </div>
                     </div>
                     <div class="sp-student-footer">
-                        <a href="<?php echo get_permalink($student_id); ?>" class="sp-btn sp-btn-primary sp-btn-block sp-btn-sm">
-                            <i class="fas fa-eye"></i> <?php _e('View Full Profile', 'al-huffaz-portal'); ?>
+                        <a href="<?php echo get_permalink($student_id); ?>" class="sp-btn sp-btn-primary sp-btn-sm" style="flex: 1;">
+                            <i class="fas fa-eye"></i> <?php _e('View Profile', 'al-huffaz-portal'); ?>
                         </a>
+                        <button class="sp-btn sp-btn-danger sp-btn-sm" onclick="cancelSponsorship(<?php echo $s['id']; ?>, '<?php echo esc_js($s['student_name']); ?>')" style="flex: 1;">
+                            <i class="fas fa-times-circle"></i> <?php _e('Cancel', 'al-huffaz-portal'); ?>
+                        </button>
                     </div>
                 </div>
                 <?php endforeach; ?>
@@ -1671,20 +1676,22 @@ body.admin-bar .sp-portal .sp-header {
                             </div>
                         </div>
 
-                        <div class="sp-form-row">
-                            <div class="sp-form-group">
-                                <label class="sp-form-label"><?php _e('Payment Method', 'al-huffaz-portal'); ?> <span style="color: red;">*</span></label>
-                                <select name="payment_method" class="sp-form-select" required>
-                                    <option value=""><?php _e('Select payment method...', 'al-huffaz-portal'); ?></option>
-                                    <option value="bank_transfer"><?php _e('Bank Transfer', 'al-huffaz-portal'); ?></option>
-                                    <option value="easypaisa"><?php _e('Easypaisa', 'al-huffaz-portal'); ?></option>
-                                    <option value="jazzcash"><?php _e('JazzCash', 'al-huffaz-portal'); ?></option>
-                                </select>
-                            </div>
-                            <div class="sp-form-group">
-                                <label class="sp-form-label"><?php _e('Transaction ID / Reference', 'al-huffaz-portal'); ?> <span style="color: red;">*</span></label>
-                                <input type="text" name="transaction_id" class="sp-form-input" placeholder="<?php _e('Enter transaction ID', 'al-huffaz-portal'); ?>" required>
-                            </div>
+                        <div class="sp-form-group">
+                            <label class="sp-form-label"><?php _e('Payment Method', 'al-huffaz-portal'); ?> <span style="color: red;">*</span></label>
+                            <select name="payment_method" class="sp-form-select" required>
+                                <option value=""><?php _e('Select payment method...', 'al-huffaz-portal'); ?></option>
+                                <option value="bank_transfer"><?php _e('Bank Transfer', 'al-huffaz-portal'); ?></option>
+                                <option value="easypaisa"><?php _e('Easypaisa', 'al-huffaz-portal'); ?></option>
+                                <option value="jazzcash"><?php _e('JazzCash', 'al-huffaz-portal'); ?></option>
+                            </select>
+                        </div>
+
+                        <div class="sp-form-group">
+                            <label class="sp-form-label"><?php _e('Transaction ID / Reference Number', 'al-huffaz-portal'); ?> <span style="color: var(--sp-text-muted);">(<?php _e('Optional', 'al-huffaz-portal'); ?>)</span></label>
+                            <input type="text" name="transaction_id" class="sp-form-input" placeholder="<?php _e('e.g., TXN123456 (if available)', 'al-huffaz-portal'); ?>">
+                            <small style="color: var(--sp-text-muted); margin-top: 4px; display: block;">
+                                <?php _e('Enter transaction reference if your bank/service provided one. You can leave this blank if not available.', 'al-huffaz-portal'); ?>
+                            </small>
                         </div>
 
                         <div class="sp-form-group">
@@ -1938,7 +1945,31 @@ body.admin-bar .sp-portal .sp-header {
                 submitBtn.innerHTML = originalText;
 
                 if (data.success) {
-                    showToast('Payment proof submitted successfully! We will verify it within 24-48 hours.', 'success');
+                    // Show prominent success message
+                    const successAlert = document.createElement('div');
+                    successAlert.className = 'sp-alert sp-alert-success';
+                    successAlert.style.position = 'fixed';
+                    successAlert.style.top = '50%';
+                    successAlert.style.left = '50%';
+                    successAlert.style.transform = 'translate(-50%, -50%)';
+                    successAlert.style.zIndex = '99999';
+                    successAlert.style.maxWidth = '500px';
+                    successAlert.style.boxShadow = '0 10px 40px rgba(0,0,0,0.3)';
+                    successAlert.innerHTML = `
+                        <i class="fas fa-check-circle"></i>
+                        <div class="sp-alert-content">
+                            <strong style="font-size: 18px;">Payment Proof Submitted Successfully!</strong>
+                            <p style="margin: 12px 0 0 0; font-size: 15px;">
+                                Your payment proof has been received. Our team will verify your payment within <strong>24-48 hours</strong>.
+                                <br><br>
+                                You will receive an email notification once your sponsorship is approved.
+                                <br><br>
+                                Thank you for your generosity!
+                            </p>
+                        </div>
+                    `;
+                    document.body.appendChild(successAlert);
+
                     this.reset();
                     pendingSponsorship = null;
 
@@ -1947,10 +1978,12 @@ body.admin-bar .sp-portal .sp-header {
                     document.getElementById('proofAmount').textContent = '-';
                     document.getElementById('proofDuration').textContent = '-';
 
-                    // Redirect to payment history after 2 seconds
+                    // Redirect to my students panel after 5 seconds
                     setTimeout(() => {
+                        successAlert.remove();
+                        showPanel('my-students');
                         location.reload(); // Reload to show the new sponsorship
-                    }, 2000);
+                    }, 5000);
                 } else {
                     showToast(data.data?.message || data.data || 'An error occurred', 'error');
                 }
@@ -1972,6 +2005,44 @@ body.admin-bar .sp-portal .sp-header {
         setTimeout(() => { toast.style.display = 'none'; }, 3000);
     }
     window.showToast = showToast;
+
+    // Cancel sponsorship
+    window.cancelSponsorship = function(sponsorshipId, studentName) {
+        if (!confirm(`Are you sure you want to cancel your sponsorship for ${studentName}?\n\nThis action will make the student available for others to sponsor.`)) {
+            return;
+        }
+
+        const confirmText = prompt('Type "CANCEL" to confirm:');
+        if (confirmText !== 'CANCEL') {
+            showToast('Cancellation aborted', 'info');
+            return;
+        }
+
+        // Show loading state
+        showToast('Canceling sponsorship...', 'info');
+
+        fetch('<?php echo admin_url('admin-ajax.php'); ?>', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+            body: new URLSearchParams({
+                action: 'alhuffaz_cancel_sponsorship',
+                nonce: '<?php echo $nonce; ?>',
+                sponsorship_id: sponsorshipId
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                showToast('Sponsorship cancelled successfully', 'success');
+                setTimeout(() => location.reload(), 1500);
+            } else {
+                showToast(data.data?.message || 'Failed to cancel sponsorship', 'error');
+            }
+        })
+        .catch(() => {
+            showToast('An error occurred', 'error');
+        });
+    };
 
     // Close modal on outside click
     document.getElementById('sponsorModal').addEventListener('click', function(e) {
