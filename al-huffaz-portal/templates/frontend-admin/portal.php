@@ -2866,8 +2866,8 @@ document.addEventListener('DOMContentLoaded', function() {
                     <div class="ahp-cell-actions">
                         <button class="ahp-btn ahp-btn-secondary ahp-btn-icon" onclick="viewSponsorUser(${u.id})" title="View Details"><i class="fas fa-eye"></i></button>
                         ${u.status === 'pending' ? `
-                        <button class="ahp-btn ahp-btn-success ahp-btn-icon" onclick="approveSponsorUser(${u.id})" title="Approve User"><i class="fas fa-check"></i></button>
-                        <button class="ahp-btn ahp-btn-danger ahp-btn-icon" onclick="rejectSponsorUser(${u.id})" title="Reject User"><i class="fas fa-times"></i></button>
+                        <button class="ahp-btn ahp-btn-success ahp-btn-icon" onclick="approveSponsorUser(${u.id}, event)" title="Approve User"><i class="fas fa-check"></i></button>
+                        <button class="ahp-btn ahp-btn-danger ahp-btn-icon" onclick="rejectSponsorUser(${u.id}, event)" title="Reject User"><i class="fas fa-times"></i></button>
                         ` : ''}
                         ${u.status === 'approved' ? `
                         <button class="ahp-btn ahp-btn-warning ahp-btn-icon" onclick="sendReEngagementEmail(${u.id})" title="Send Re-engagement Email"><i class="fas fa-envelope"></i></button>
@@ -2889,6 +2889,10 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     window.viewSponsorUser = function(userId) {
+        // Show loading modal
+        showSponsorDetailsModal('<div style="text-align:center;padding:40px;"><i class="fas fa-spinner fa-spin" style="font-size:32px;color:var(--ahp-primary);"></i><p style="margin-top:16px;">Loading sponsor details...</p></div>');
+
+        // Fetch sponsor details
         fetch(ajaxUrl, {
             method: 'POST',
             headers: {'Content-Type': 'application/x-www-form-urlencoded'},
@@ -2898,15 +2902,217 @@ document.addEventListener('DOMContentLoaded', function() {
         .then(data => {
             if (data.success) {
                 const u = data.data;
-                alert(`Sponsor User Details:\n\nName: ${u.display_name}\nEmail: ${u.email}\nPhone: ${u.phone || 'N/A'}\nCountry: ${u.country || 'N/A'}\nStatus: ${u.status}\nActive Sponsorships: ${u.active_sponsorships}\nTotal Donated: ${u.total_donated || '$0'}\nRegistered: ${u.registered}`);
+                renderSponsorDetailsModal(u, userId);
             } else {
-                showToast('Error loading user details', 'error');
+                showSponsorDetailsModal('<div style="text-align:center;padding:40px;color:var(--ahp-text-muted);">Error loading sponsor details</div>');
+            }
+        })
+        .catch(err => {
+            showSponsorDetailsModal('<div style="text-align:center;padding:40px;color:var(--ahp-text-muted);">Network error</div>');
+        });
+    };
+
+    function showSponsorDetailsModal(content) {
+        // Remove existing modal if any
+        const existing = document.getElementById('sponsorDetailsModal');
+        if (existing) existing.remove();
+
+        // Create modal
+        const modal = document.createElement('div');
+        modal.id = 'sponsorDetailsModal';
+        modal.innerHTML = `
+            <div style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);z-index:10000;display:flex;align-items:center;justify-content:center;padding:20px;" onclick="if(event.target===this) this.parentElement.remove()">
+                <div style="background:var(--ahp-bg);border-radius:12px;max-width:900px;width:100%;max-height:90vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,0.3);">
+                    <div style="position:sticky;top:0;background:var(--ahp-bg);border-bottom:1px solid var(--ahp-border);padding:20px;display:flex;justify-content:space-between;align-items:center;z-index:1;">
+                        <h2 style="margin:0;font-size:20px;color:var(--ahp-text);"><i class="fas fa-user-circle"></i> <?php _e('Sponsor Details', 'al-huffaz-portal'); ?></h2>
+                        <button onclick="this.closest('#sponsorDetailsModal').remove()" style="background:none;border:none;font-size:24px;cursor:pointer;color:var(--ahp-text-muted);padding:0;width:32px;height:32px;display:flex;align-items:center;justify-content:center;border-radius:6px;" onmouseover="this.style.background='var(--ahp-hover)'" onmouseout="this.style.background='none'">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
+                    <div id="sponsorDetailsContent" style="padding:20px;">${content}</div>
+                </div>
+            </div>
+        `;
+        document.body.appendChild(modal);
+    }
+
+    function renderSponsorDetailsModal(sponsor, userId) {
+        const content = `
+            <!-- Profile Info -->
+            <div style="background:linear-gradient(135deg, #667eea 0%, #764ba2 100%);color:#fff;padding:24px;border-radius:8px;margin-bottom:20px;">
+                <h3 style="margin:0 0 16px 0;font-size:24px;"><i class="fas fa-user-circle"></i> ${sponsor.display_name || 'N/A'}</h3>
+                <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:16px;font-size:14px;">
+                    <div>
+                        <div style="opacity:0.8;margin-bottom:4px;"><i class="fas fa-envelope"></i> Email</div>
+                        <div style="font-weight:600;">${sponsor.email || 'N/A'}</div>
+                    </div>
+                    <div>
+                        <div style="opacity:0.8;margin-bottom:4px;"><i class="fas fa-phone"></i> Phone</div>
+                        <div style="font-weight:600;">${sponsor.phone || 'N/A'}</div>
+                    </div>
+                    <div>
+                        <div style="opacity:0.8;margin-bottom:4px;"><i class="fas fa-globe"></i> Country</div>
+                        <div style="font-weight:600;">${sponsor.country || 'N/A'}</div>
+                    </div>
+                    ${sponsor.whatsapp ? `
+                    <div>
+                        <div style="opacity:0.8;margin-bottom:4px;"><i class="fab fa-whatsapp"></i> WhatsApp</div>
+                        <div style="font-weight:600;">${sponsor.whatsapp}</div>
+                    </div>
+                    ` : ''}
+                </div>
+            </div>
+
+            <!-- Stats Cards -->
+            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:16px;margin-bottom:20px;">
+                <div style="background:var(--ahp-hover);padding:16px;border-radius:8px;text-align:center;">
+                    <div style="font-size:28px;font-weight:700;color:var(--ahp-primary);margin-bottom:4px;">${sponsor.active_sponsorships || 0}</div>
+                    <div style="font-size:13px;color:var(--ahp-text-muted);"><?php _e('Active Sponsorships', 'al-huffaz-portal'); ?></div>
+                </div>
+                <div style="background:var(--ahp-hover);padding:16px;border-radius:8px;text-align:center;">
+                    <div style="font-size:28px;font-weight:700;color:#10b981;margin-bottom:4px;">${sponsor.total_donated || '$0.00'}</div>
+                    <div style="font-size:13px;color:var(--ahp-text-muted);"><?php _e('Total Donated', 'al-huffaz-portal'); ?></div>
+                </div>
+                <div style="background:var(--ahp-hover);padding:16px;border-radius:8px;text-align:center;">
+                    <div style="font-size:28px;font-weight:700;color:#f59e0b;margin-bottom:4px;text-transform:capitalize;">${sponsor.status}</div>
+                    <div style="font-size:13px;color:var(--ahp-text-muted);"><?php _e('Account Status', 'al-huffaz-portal'); ?></div>
+                </div>
+                <div style="background:var(--ahp-hover);padding:16px;border-radius:8px;text-align:center;">
+                    <div style="font-size:16px;font-weight:600;color:var(--ahp-text);margin-bottom:4px;">${sponsor.registered}</div>
+                    <div style="font-size:13px;color:var(--ahp-text-muted);"><?php _e('Registered', 'al-huffaz-portal'); ?></div>
+                </div>
+            </div>
+
+            <!-- Sponsored Students -->
+            <div id="sponsorStudentsList" style="margin-bottom:20px;">
+                <h4 style="margin:0 0 12px 0;font-size:16px;color:var(--ahp-text);"><i class="fas fa-users"></i> <?php _e('Sponsored Students', 'al-huffaz-portal'); ?></h4>
+                <div style="text-align:center;padding:20px;color:var(--ahp-text-muted);">
+                    <i class="fas fa-spinner fa-spin"></i> <?php _e('Loading students...', 'al-huffaz-portal'); ?>
+                </div>
+            </div>
+
+            <!-- Payment History -->
+            <div id="sponsorPaymentHistory" style="margin-bottom:20px;">
+                <h4 style="margin:0 0 12px 0;font-size:16px;color:var(--ahp-text);"><i class="fas fa-history"></i> <?php _e('Payment History', 'al-huffaz-portal'); ?></h4>
+                <div style="text-align:center;padding:20px;color:var(--ahp-text-muted);">
+                    <i class="fas fa-spinner fa-spin"></i> <?php _e('Loading payments...', 'al-huffaz-portal'); ?>
+                </div>
+            </div>
+        `;
+
+        showSponsorDetailsModal(content);
+
+        // Load sponsored students
+        loadSponsorStudents(userId);
+
+        // Load payment history
+        loadSponsorPayments(userId);
+    }
+
+    function loadSponsorStudents(userId) {
+        fetch(ajaxUrl, {
+            method: 'POST',
+            headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+            body: new URLSearchParams({action: 'alhuffaz_get_sponsor_students', nonce, user_id: userId})
+        })
+        .then(r => r.json())
+        .then(data => {
+            const container = document.getElementById('sponsorStudentsList');
+            if (!container) return;
+
+            if (data.success && data.data.students && data.data.students.length > 0) {
+                const studentsHTML = `
+                    <h4 style="margin:0 0 12px 0;font-size:16px;color:var(--ahp-text);"><i class="fas fa-users"></i> <?php _e('Sponsored Students', 'al-huffaz-portal'); ?></h4>
+                    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:16px;">
+                        ${data.data.students.map(s => `
+                            <div style="border:1px solid var(--ahp-border);border-radius:8px;overflow:hidden;">
+                                <div style="height:150px;background:linear-gradient(135deg,#667eea,#764ba2);position:relative;">
+                                    <img src="${s.photo}" alt="${s.name}" style="width:100%;height:100%;object-fit:cover;">
+                                </div>
+                                <div style="padding:12px;">
+                                    <h5 style="margin:0 0 8px 0;font-size:15px;">${s.name}</h5>
+                                    <div style="font-size:13px;color:var(--ahp-text-muted);margin-bottom:8px;">
+                                        <div><i class="fas fa-graduation-cap"></i> ${s.grade || 'N/A'}</div>
+                                        <div><i class="fas fa-dollar-sign"></i> $${s.amount || '0'}/month</div>
+                                    </div>
+                                    <span style="font-size:11px;padding:4px 8px;background:#10b981;color:#fff;border-radius:4px;"><?php _e('Active', 'al-huffaz-portal'); ?></span>
+                                </div>
+                            </div>
+                        `).join('')}
+                    </div>
+                `;
+                container.innerHTML = studentsHTML;
+            } else {
+                container.innerHTML = `
+                    <h4 style="margin:0 0 12px 0;font-size:16px;color:var(--ahp-text);"><i class="fas fa-users"></i> <?php _e('Sponsored Students', 'al-huffaz-portal'); ?></h4>
+                    <div style="text-align:center;padding:20px;color:var(--ahp-text-muted);background:var(--ahp-hover);border-radius:8px;">
+                        <i class="fas fa-info-circle"></i> <?php _e('No active sponsorships yet', 'al-huffaz-portal'); ?>
+                    </div>
+                `;
+            }
+        });
+    }
+
+    function loadSponsorPayments(userId) {
+        fetch(ajaxUrl, {
+            method: 'POST',
+            headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+            body: new URLSearchParams({action: 'alhuffaz_get_sponsor_payments', nonce, user_id: userId})
+        })
+        .then(r => r.json())
+        .then(data => {
+            const container = document.getElementById('sponsorPaymentHistory');
+            if (!container) return;
+
+            if (data.success && data.data.payments && data.data.payments.length > 0) {
+                const paymentsHTML = `
+                    <h4 style="margin:0 0 12px 0;font-size:16px;color:var(--ahp-text);"><i class="fas fa-history"></i> <?php _e('Payment History', 'al-huffaz-portal'); ?></h4>
+                    <div style="background:var(--ahp-hover);border-radius:8px;overflow:hidden;">
+                        <table style="width:100%;border-collapse:collapse;">
+                            <thead style="background:var(--ahp-primary);color:#fff;">
+                                <tr>
+                                    <th style="padding:12px;text-align:left;"><?php _e('Date', 'al-huffaz-portal'); ?></th>
+                                    <th style="padding:12px;text-align:left;"><?php _e('Student', 'al-huffaz-portal'); ?></th>
+                                    <th style="padding:12px;text-align:right;"><?php _e('Amount', 'al-huffaz-portal'); ?></th>
+                                    <th style="padding:12px;text-align:center;"><?php _e('Method', 'al-huffaz-portal'); ?></th>
+                                    <th style="padding:12px;text-align:center;"><?php _e('Status', 'al-huffaz-portal'); ?></th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${data.data.payments.map((p, i) => `
+                                    <tr style="border-bottom:1px solid var(--ahp-border);${i % 2 === 0 ? 'background:var(--ahp-bg);' : ''}">
+                                        <td style="padding:12px;">${p.date}</td>
+                                        <td style="padding:12px;">${p.student_name}</td>
+                                        <td style="padding:12px;text-align:right;font-weight:600;">$${p.amount}</td>
+                                        <td style="padding:12px;text-align:center;"><span style="font-size:12px;padding:4px 8px;background:var(--ahp-border);border-radius:4px;">${p.method}</span></td>
+                                        <td style="padding:12px;text-align:center;">${p.status_badge}</td>
+                                    </tr>
+                                `).join('')}
+                            </tbody>
+                        </table>
+                    </div>
+                `;
+                container.innerHTML = paymentsHTML;
+            } else {
+                container.innerHTML = `
+                    <h4 style="margin:0 0 12px 0;font-size:16px;color:var(--ahp-text);"><i class="fas fa-history"></i> <?php _e('Payment History', 'al-huffaz-portal'); ?></h4>
+                    <div style="text-align:center;padding:20px;color:var(--ahp-text-muted);background:var(--ahp-hover);border-radius:8px;">
+                        <i class="fas fa-info-circle"></i> <?php _e('No payment history yet', 'al-huffaz-portal'); ?>
+                    </div>
+                `;
             }
         });
     };
 
-    window.approveSponsorUser = function(userId) {
+    window.approveSponsorUser = function(userId, event) {
         if (!confirm('<?php _e('Approve this sponsor user account? They will receive an email confirmation.', 'al-huffaz-portal'); ?>')) return;
+
+        // Get button element and disable it
+        const btn = event ? event.target.closest('button') : null;
+        if (btn) {
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> <?php _e('Approving...', 'al-huffaz-portal'); ?>';
+        }
 
         fetch(ajaxUrl, {
             method: 'POST',
@@ -2916,17 +3122,43 @@ document.addEventListener('DOMContentLoaded', function() {
         .then(r => r.json())
         .then(data => {
             if (data.success) {
-                showToast('<?php _e('Sponsor user approved successfully!', 'al-huffaz-portal'); ?>', 'success');
+                showToast('<?php _e('Sponsor user approved successfully! Email sent.', 'al-huffaz-portal'); ?>', 'success');
+
+                // Auto-switch to "Approved" filter to show the approved user
+                const filterDropdown = document.getElementById('filterUserStatus');
+                if (filterDropdown) {
+                    filterDropdown.value = 'approved';
+                }
+
+                // Reload sponsor users with new filter
                 loadSponsorUsers();
             } else {
                 showToast(data.data?.message || '<?php _e('Error approving user', 'al-huffaz-portal'); ?>', 'error');
+                if (btn) {
+                    btn.disabled = false;
+                    btn.innerHTML = '<i class="fas fa-check"></i>';
+                }
+            }
+        })
+        .catch(err => {
+            showToast('<?php _e('Network error. Please try again.', 'al-huffaz-portal'); ?>', 'error');
+            if (btn) {
+                btn.disabled = false;
+                btn.innerHTML = '<i class="fas fa-check"></i>';
             }
         });
     };
 
-    window.rejectSponsorUser = function(userId) {
+    window.rejectSponsorUser = function(userId, event) {
         const reason = prompt('<?php _e('Please enter rejection reason:', 'al-huffaz-portal'); ?>');
         if (reason === null) return;
+
+        // Get button element and disable it
+        const btn = event ? event.target.closest('button') : null;
+        if (btn) {
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+        }
 
         fetch(ajaxUrl, {
             method: 'POST',
@@ -2936,10 +3168,21 @@ document.addEventListener('DOMContentLoaded', function() {
         .then(r => r.json())
         .then(data => {
             if (data.success) {
-                showToast('<?php _e('Sponsor user rejected', 'al-huffaz-portal'); ?>', 'success');
+                showToast('<?php _e('Sponsor user rejected successfully', 'al-huffaz-portal'); ?>', 'success');
                 loadSponsorUsers();
             } else {
                 showToast(data.data?.message || '<?php _e('Error rejecting user', 'al-huffaz-portal'); ?>', 'error');
+                if (btn) {
+                    btn.disabled = false;
+                    btn.innerHTML = '<i class="fas fa-times"></i>';
+                }
+            }
+        })
+        .catch(err => {
+            showToast('<?php _e('Network error. Please try again.', 'al-huffaz-portal'); ?>', 'error');
+            if (btn) {
+                btn.disabled = false;
+                btn.innerHTML = '<i class="fas fa-times"></i>';
             }
         });
     };
