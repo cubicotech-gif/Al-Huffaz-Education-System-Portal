@@ -35,6 +35,7 @@ class Ajax_Handler {
         add_action('wp_ajax_alhuffaz_approve_sponsorship', array($this, 'approve_sponsorship'));
         add_action('wp_ajax_alhuffaz_reject_sponsorship', array($this, 'reject_sponsorship'));
         add_action('wp_ajax_alhuffaz_link_sponsor', array($this, 'link_sponsor'));
+        add_action('wp_ajax_alhuffaz_unlink_sponsor', array($this, 'unlink_sponsor'));
         add_action('wp_ajax_alhuffaz_get_sponsorships', array($this, 'get_sponsorships'));
 
         add_action('wp_ajax_alhuffaz_verify_payment', array($this, 'verify_payment'));
@@ -763,6 +764,39 @@ class Ajax_Handler {
         Helpers::log_activity('link_sponsor', 'sponsorship', $sponsorship_id, 'Sponsor linked to student');
 
         wp_send_json_success(array('message' => __('Sponsor linked successfully.', 'al-huffaz-portal')));
+    }
+
+    /**
+     * Unlink sponsor from student
+     */
+    public function unlink_sponsor() {
+        $this->verify_admin_nonce();
+
+        if (!current_user_can('alhuffaz_manage_sponsors')) {
+            wp_send_json_error(array('message' => __('Permission denied.', 'al-huffaz-portal')));
+        }
+
+        $sponsorship_id = isset($_POST['sponsorship_id']) ? intval($_POST['sponsorship_id']) : 0;
+
+        if (!$sponsorship_id) {
+            wp_send_json_error(array('message' => __('Invalid sponsorship ID.', 'al-huffaz-portal')));
+        }
+
+        // Unlink the sponsorship
+        update_post_meta($sponsorship_id, '_linked', 'no');
+
+        // Clear cache for real-time update
+        $sponsor_user_id = get_post_meta($sponsorship_id, '_sponsor_user_id', true);
+        if ($sponsor_user_id) {
+            wp_cache_delete('sponsor_dashboard_' . $sponsor_user_id, 'alhuffaz');
+            wp_cache_flush();
+        }
+        clean_post_cache($sponsorship_id);
+
+        // Log activity
+        Helpers::log_activity('unlink_sponsor', 'sponsorship', $sponsorship_id, 'Sponsor unlinked from student');
+
+        wp_send_json_success(array('message' => __('Sponsorship unlinked successfully.', 'al-huffaz-portal')));
     }
 
     /**
