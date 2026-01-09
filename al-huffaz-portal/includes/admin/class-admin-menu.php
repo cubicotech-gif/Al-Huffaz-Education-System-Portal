@@ -23,6 +23,7 @@ class Admin_Menu {
     public function __construct() {
         add_action('admin_menu', array($this, 'register_menu'));
         add_action('admin_init', array($this, 'handle_activation_redirect'));
+        add_action('admin_footer', array($this, 'render_notification_bell'));
     }
 
     /**
@@ -186,5 +187,17 @@ class Admin_Menu {
      */
     public function render_settings() {
         include ALHUFFAZ_TEMPLATES_DIR . 'admin/settings.php';
+    }
+
+    /**
+     * Render notification bell on admin pages
+     */
+    public function render_notification_bell() {
+        $screen = get_current_screen();
+
+        // Only show on Al-Huffaz admin pages
+        if ($screen && strpos($screen->id, 'alhuffaz') !== false) {
+            include ALHUFFAZ_TEMPLATES_DIR . 'admin/notifications-bell.php';
+        }
     }
 }
