@@ -49,16 +49,27 @@ class Sponsor_Dashboard {
      * Get dashboard data for sponsor
      */
     public static function get_dashboard_data($user_id) {
-        // Get sponsorships
+        // CRITICAL: Clear all WordPress caches for this user to force fresh data
+        wp_cache_delete('sponsor_dashboard_' . $user_id, 'alhuffaz');
+        wp_cache_flush(); // Flush object cache
+
+        // Get sponsorships - DISABLE ALL CACHING
         $sponsorships = get_posts(array(
             'post_type'      => 'alhuffaz_sponsor',
             'posts_per_page' => -1,
+            'post_status'    => 'publish',
             'meta_query'     => array(
                 array(
                     'key'   => '_sponsor_user_id',
                     'value' => $user_id,
                 ),
             ),
+            'orderby'        => 'date',
+            'order'          => 'DESC',
+            'suppress_filters' => false,
+            'cache_results'  => false,  // DISABLE POST CACHE
+            'update_post_meta_cache' => false, // DISABLE META CACHE
+            'update_post_term_cache' => false, // DISABLE TERM CACHE
         ));
 
         $active_sponsorships = array();

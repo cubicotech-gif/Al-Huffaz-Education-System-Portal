@@ -1204,6 +1204,16 @@ Please verify the payment in the admin portal.', 'al-huffaz-portal'),
             );
         }
 
+        // CRITICAL: Clear all caches to ensure fresh data on next load
+        wp_cache_flush();
+        wp_cache_delete('sponsor_dashboard_' . $user_id, 'alhuffaz');
+        clean_post_cache($sponsorship_id);
+        clean_post_cache($student_id);
+
+        // Send no-cache headers
+        header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
+        header('Pragma: no-cache');
+
         wp_send_json_success(array(
             'message' => __('Payment proof submitted successfully! The school will verify your payment and notify you once approved.', 'al-huffaz-portal'),
             'sponsorship_id' => $sponsorship_id,
@@ -1452,6 +1462,16 @@ The student is now available for sponsorship again.', 'al-huffaz-portal'),
                 )
             );
         }
+
+        // CRITICAL: Clear all caches to ensure fresh data
+        wp_cache_flush();
+        wp_cache_delete('sponsor_dashboard_' . $user_id, 'alhuffaz');
+        clean_post_cache($sponsorship_id);
+        clean_post_cache($student_id);
+
+        // Send no-cache headers
+        header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
+        header('Pragma: no-cache');
 
         wp_send_json_success(array(
             'message' => sprintf(__('Sponsorship for %s has been cancelled. The student is now available for others to sponsor.', 'al-huffaz-portal'), $student_name),

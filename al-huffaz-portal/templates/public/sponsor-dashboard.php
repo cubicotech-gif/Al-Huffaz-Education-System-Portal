@@ -13,6 +13,12 @@ use AlHuffaz\Core\Roles;
 
 if (!defined('ABSPATH')) exit;
 
+// CRITICAL: Disable all caching for sponsor dashboard
+header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
+header('Cache-Control: post-check=0, pre-check=0', false);
+header('Pragma: no-cache');
+header('Expires: 0');
+
 // Check if user is logged in
 if (!is_user_logged_in()) {
     ?>
@@ -1945,31 +1951,7 @@ body.admin-bar .sp-portal .sp-header {
                 submitBtn.innerHTML = originalText;
 
                 if (data.success) {
-                    // Show prominent success message
-                    const successAlert = document.createElement('div');
-                    successAlert.className = 'sp-alert sp-alert-success';
-                    successAlert.style.position = 'fixed';
-                    successAlert.style.top = '50%';
-                    successAlert.style.left = '50%';
-                    successAlert.style.transform = 'translate(-50%, -50%)';
-                    successAlert.style.zIndex = '99999';
-                    successAlert.style.maxWidth = '500px';
-                    successAlert.style.boxShadow = '0 10px 40px rgba(0,0,0,0.3)';
-                    successAlert.innerHTML = `
-                        <i class="fas fa-check-circle"></i>
-                        <div class="sp-alert-content">
-                            <strong style="font-size: 18px;">Payment Proof Submitted Successfully!</strong>
-                            <p style="margin: 12px 0 0 0; font-size: 15px;">
-                                Your payment proof has been received. Our team will verify your payment within <strong>24-48 hours</strong>.
-                                <br><br>
-                                You will receive an email notification once your sponsorship is approved.
-                                <br><br>
-                                Thank you for your generosity!
-                            </p>
-                        </div>
-                    `;
-                    document.body.appendChild(successAlert);
-
+                    // Reset form immediately
                     this.reset();
                     pendingSponsorship = null;
 
@@ -1978,12 +1960,99 @@ body.admin-bar .sp-portal .sp-header {
                     document.getElementById('proofAmount').textContent = '-';
                     document.getElementById('proofDuration').textContent = '-';
 
-                    // Redirect to my students panel after 5 seconds
-                    setTimeout(() => {
-                        successAlert.remove();
-                        showPanel('my-students');
-                        location.reload(); // Reload to show the new sponsorship
-                    }, 5000);
+                    // Show beautiful success modal
+                    const successModal = document.createElement('div');
+                    successModal.style.cssText = `
+                        position: fixed;
+                        top: 0;
+                        left: 0;
+                        right: 0;
+                        bottom: 0;
+                        background: rgba(0,0,0,0.7);
+                        display: flex;
+                        align-items: center;
+                        justify-content: center;
+                        z-index: 999999;
+                        animation: fadeIn 0.3s ease;
+                    `;
+                    successModal.innerHTML = `
+                        <style>
+                        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+                        @keyframes slideUp { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+                        @keyframes checkmark { 0% { transform: scale(0); } 50% { transform: scale(1.2); } 100% { transform: scale(1); } }
+                        </style>
+                        <div style="
+                            background: white;
+                            border-radius: 20px;
+                            padding: 40px;
+                            max-width: 500px;
+                            width: 90%;
+                            text-align: center;
+                            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+                            animation: slideUp 0.4s ease;
+                        ">
+                            <div style="
+                                width: 80px;
+                                height: 80px;
+                                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                                border-radius: 50%;
+                                margin: 0 auto 24px;
+                                display: flex;
+                                align-items: center;
+                                justify-content: center;
+                                animation: checkmark 0.5s ease 0.2s both;
+                            ">
+                                <i class="fas fa-check" style="font-size: 40px; color: white;"></i>
+                            </div>
+                            <h2 style="font-size: 28px; font-weight: 700; margin: 0 0 16px 0; color: #2d3748;">
+                                Payment Submitted!
+                            </h2>
+                            <p style="font-size: 16px; line-height: 1.6; color: #4a5568; margin: 0 0 24px 0;">
+                                Your payment proof has been received successfully.<br>
+                                We'll verify it within <strong style="color: #667eea;">24-48 hours</strong>.<br><br>
+                                You'll receive an <strong>email notification</strong> once approved.<br><br>
+                                <span style="color: #667eea; font-size: 18px;">✨ Thank you for your generosity! ✨</span>
+                            </p>
+                            <div style="
+                                background: #f7fafc;
+                                border-radius: 12px;
+                                padding: 16px;
+                                margin-bottom: 24px;
+                            ">
+                                <div style="font-size: 14px; color: #718096; margin-bottom: 8px;">Redirecting in</div>
+                                <div id="countdown" style="font-size: 32px; font-weight: 700; color: #667eea;">3</div>
+                            </div>
+                            <button onclick="this.closest('[style*=fixed]').remove(); showPanel('my-students'); location.reload();" style="
+                                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                                color: white;
+                                border: none;
+                                padding: 14px 32px;
+                                border-radius: 12px;
+                                font-size: 16px;
+                                font-weight: 600;
+                                cursor: pointer;
+                                transition: transform 0.2s;
+                            " onmouseover="this.style.transform='scale(1.05)'" onmouseout="this.style.transform='scale(1)'">
+                                View My Sponsorships
+                            </button>
+                        </div>
+                    `;
+                    document.body.appendChild(successModal);
+
+                    // Countdown timer
+                    let countdown = 3;
+                    const countdownEl = successModal.querySelector('#countdown');
+                    const timer = setInterval(() => {
+                        countdown--;
+                        if (countdownEl) countdownEl.textContent = countdown;
+                        if (countdown <= 0) {
+                            clearInterval(timer);
+                            successModal.remove();
+                            showPanel('my-students');
+                            // Force reload with cache-busting
+                            location.href = location.href.split('?')[0] + '?t=' + Date.now();
+                        }
+                    }, 1000);
                 } else {
                     showToast(data.data?.message || data.data || 'An error occurred', 'error');
                 }
