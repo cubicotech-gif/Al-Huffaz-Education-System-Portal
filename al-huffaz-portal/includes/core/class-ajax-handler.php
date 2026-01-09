@@ -76,6 +76,8 @@ class Ajax_Handler {
         // Sponsor user management AJAX actions (admin only)
         add_action('wp_ajax_alhuffaz_get_sponsor_users', array($this, 'get_sponsor_users'));
         add_action('wp_ajax_alhuffaz_get_sponsor_user_details', array($this, 'get_sponsor_user_details'));
+        add_action('wp_ajax_alhuffaz_get_sponsor_students', array($this, 'get_sponsor_students'));
+        add_action('wp_ajax_alhuffaz_get_sponsor_payments', array($this, 'get_sponsor_payments'));
         add_action('wp_ajax_alhuffaz_approve_sponsor_user', array($this, 'approve_sponsor_user'));
         add_action('wp_ajax_alhuffaz_reject_sponsor_user', array($this, 'reject_sponsor_user'));
         add_action('wp_ajax_alhuffaz_delete_sponsor_user', array($this, 'delete_sponsor_user'));
@@ -2732,5 +2734,118 @@ With gratitude,
 
         // Send email
         wp_mail($email, $subject, $message);
+    }
+
+    /**
+     * Get sponsor's sponsored students
+     * For sponsor details modal
+     */
+    public function get_sponsor_students() {
+        $this->verify_admin_nonce();
+
+        $user_id = isset($_POST['user_id']) ? intval($_POST['user_id']) : 0;
+        if (!$user_id) {
+            wp_send_json_error(array('message' => __('Invalid user ID.', 'al-huffaz-portal')));
+        }
+
+        // Get active sponsorships
+        $sponsorships = get_posts(array(
+            'post_type' => 'alhuffaz_sponsor',
+            'posts_per_page' => -1,
+            'meta_query' => array(
+                'relation' => 'AND',
+                array('key' => '_sponsor_user_id', 'value' => $user_id),
+                array('key' => '_status', 'value' => 'approved'),
+                array('key' => '_linked', 'value' => 'yes'),
+            ),
+        ));
+
+        $students = array();
+        foreach ($sponsorships as $sponsorship) {
+            $student_id = get_post_meta($sponsorship->ID, '_student_id', true);
+            $student = get_post($student_id);
+
+            if ($student) {
+                // Get student photo
+                $student_photo_id = get_post_meta($student_id, 'student_photo', true);
+                $student_photo = '';
+                if ($student_photo_id) {
+                    $student_photo = wp_get_attachment_image_url($student_photo_id, 'medium');
+                }
+                if (empty($student_photo)) {
+                    // Default placeholder
+                    $student_photo = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="200" height="200"%3E%3Crect fill="%23ddd" width="200" height="200"/%3E%3Ctext fill="%23999" font-family="sans-serif" font-size="60" dy="10.5" font-weight="bold" x="50%25" y="50%25" text-anchor="middle"%3E' . substr($student->post_title, 0, 1) . '%3C/text%3E%3C/svg%3E';
+                }
+
+                $students[] = array(
+                    'id' => $student_id,
+                    'name' => $student->post_title,
+                    'photo' => $student_photo,
+                    'grade' => get_post_meta($student_id, 'grade_level', true),
+                    'amount' => number_format(floatval(get_post_meta($sponsorship->ID, '_amount', true)), 2),
+                    'linked_date' => date_i18n(get_option('date_format'), strtotime($sponsorship->post_date)),
+                );
+            }
+        }
+
+        wp_send_json_success(array('students' => $students));
+    }
+
+    /**
+     * Get sponsor's payment history
+     * For sponsor details modal
+     */
+    public function get_sponsor_payments() {
+        $this->verify_admin_nonce();
+
+        $user_id = isset($_POST['user_id']) ? intval($_POST['user_id']) : 0;
+        if (!$user_id) {
+            wp_send_json_error(array('message' => __('Invalid user ID.', 'al-huffaz-portal')));
+        }
+
+        // Get payments from custom table
+        global $wpdb;
+        $payments_table = $wpdb->prefix . 'alhuffaz_payments';
+
+        $payments_data = $wpdb->get_results($wpdb->prepare(
+            "SELECT * FROM $payments_table WHERE sponsor_id = %d ORDER BY payment_date DESC LIMIT 50",
+            $user_id
+        ));
+
+        $payments = array();
+        foreach ($payments_data as $payment) {
+            // Get student name
+            $student = get_post($payment->student_id);
+            $student_name = $student ? $student->post_title : __('Unknown Student', 'al-huffaz-portal');
+
+            // Format status badge
+            $status_badge = '';
+            switch ($payment->status) {
+                case 'approved':
+                    $status_badge = '<span style="font-size:11px;padding:4px 8px;background:#10b981;color:#fff;border-radius:4px;">' . __('Approved', 'al-huffaz-portal') . '</span>';
+                    break;
+                case 'pending':
+                    $status_badge = '<span style="font-size:11px;padding:4px 8px;background:#f59e0b;color:#fff;border-radius:4px;">' . __('Pending', 'al-huffaz-portal') . '</span>';
+                    break;
+                case 'rejected':
+                    $status_badge = '<span style="font-size:11px;padding:4px 8px;background:#ef4444;color:#fff;border-radius:4px;">' . __('Rejected', 'al-huffaz-portal') . '</span>';
+                    break;
+                default:
+                    $status_badge = '<span style="font-size:11px;padding:4px 8px;background:#6b7280;color:#fff;border-radius:4px;">' . ucfirst($payment->status) . '</span>';
+            }
+
+            $payments[] = array(
+                'id' => $payment->id,
+                'date' => date_i18n(get_option('date_format'), strtotime($payment->payment_date)),
+                'student_name' => $student_name,
+                'amount' => number_format($payment->amount, 2),
+                'method' => ucfirst(str_replace('_', ' ', $payment->payment_method)),
+                'status' => $payment->status,
+                'status_badge' => $status_badge,
+                'transaction_id' => $payment->transaction_id,
+            );
+        }
+
+        wp_send_json_success(array('payments' => $payments));
     }
 }
