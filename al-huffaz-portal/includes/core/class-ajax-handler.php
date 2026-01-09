@@ -48,6 +48,9 @@ class Ajax_Handler {
         add_action('wp_ajax_alhuffaz_upload_image', array($this, 'upload_image'));
 
         // Public AJAX actions
+        add_action('wp_ajax_alhuffaz_register_sponsor', array($this, 'register_sponsor'));
+        add_action('wp_ajax_nopriv_alhuffaz_register_sponsor', array($this, 'register_sponsor'));
+
         add_action('wp_ajax_alhuffaz_submit_sponsorship', array($this, 'submit_sponsorship'));
         add_action('wp_ajax_nopriv_alhuffaz_submit_sponsorship', array($this, 'submit_sponsorship'));
 
@@ -2557,5 +2560,165 @@ With gratitude,
             'message' => __('All notifications marked as read.', 'al-huffaz-portal'),
             'unread_count' => 0,
         ));
+    }
+
+    /**
+     * Register new sponsor account (Public AJAX)
+     * Creates user with alhuffaz_sponsor role and pending_approval status
+     */
+    public function register_sponsor() {
+        // Verify nonce
+        if (!isset($_POST['sponsor_register_nonce']) ||
+            !wp_verify_nonce($_POST['sponsor_register_nonce'], 'alhuffaz_sponsor_registration')) {
+            wp_send_json_error(array('message' => __('Security verification failed.', 'al-huffaz-portal')));
+        }
+
+        // Get form data
+        $sponsor_name = isset($_POST['sponsor_name']) ? sanitize_text_field($_POST['sponsor_name']) : '';
+        $sponsor_email = isset($_POST['sponsor_email']) ? sanitize_email($_POST['sponsor_email']) : '';
+        $sponsor_password = isset($_POST['sponsor_password']) ? $_POST['sponsor_password'] : '';
+        $sponsor_phone = isset($_POST['sponsor_phone']) ? sanitize_text_field($_POST['sponsor_phone']) : '';
+        $sponsor_country = isset($_POST['sponsor_country']) ? sanitize_text_field($_POST['sponsor_country']) : '';
+        $sponsor_whatsapp = isset($_POST['sponsor_whatsapp']) ? sanitize_text_field($_POST['sponsor_whatsapp']) : '';
+        $agree_terms = isset($_POST['agree_terms']) ? true : false;
+
+        // Validate required fields
+        if (empty($sponsor_name)) {
+            wp_send_json_error(array('message' => __('Full name is required.', 'al-huffaz-portal')));
+        }
+
+        if (empty($sponsor_email) || !is_email($sponsor_email)) {
+            wp_send_json_error(array('message' => __('Valid email address is required.', 'al-huffaz-portal')));
+        }
+
+        if (empty($sponsor_password) || strlen($sponsor_password) < 8) {
+            wp_send_json_error(array('message' => __('Password must be at least 8 characters long.', 'al-huffaz-portal')));
+        }
+
+        if (empty($sponsor_phone)) {
+            wp_send_json_error(array('message' => __('Phone number is required.', 'al-huffaz-portal')));
+        }
+
+        if (empty($sponsor_country)) {
+            wp_send_json_error(array('message' => __('Country is required.', 'al-huffaz-portal')));
+        }
+
+        if (!$agree_terms) {
+            wp_send_json_error(array('message' => __('You must agree to the terms and conditions.', 'al-huffaz-portal')));
+        }
+
+        // Check if email already exists
+        if (email_exists($sponsor_email)) {
+            wp_send_json_error(array('message' => __('This email address is already registered.', 'al-huffaz-portal')));
+        }
+
+        // Create WordPress user
+        $user_id = wp_create_user($sponsor_email, $sponsor_password, $sponsor_email);
+
+        if (is_wp_error($user_id)) {
+            wp_send_json_error(array('message' => $user_id->get_error_message()));
+        }
+
+        // Update user data
+        wp_update_user(array(
+            'ID' => $user_id,
+            'display_name' => $sponsor_name,
+            'first_name' => $sponsor_name,
+        ));
+
+        // Add sponsor role
+        $user = new \WP_User($user_id);
+        $user->set_role('alhuffaz_sponsor');
+
+        // Add user meta
+        update_user_meta($user_id, 'account_status', 'pending_approval');
+        update_user_meta($user_id, 'sponsor_phone', $sponsor_phone);
+        update_user_meta($user_id, 'sponsor_country', $sponsor_country);
+        if (!empty($sponsor_whatsapp)) {
+            update_user_meta($user_id, 'sponsor_whatsapp', $sponsor_whatsapp);
+        }
+
+        // Send notification email to admins
+        $this->send_admin_notification_new_sponsor($user_id, $sponsor_name, $sponsor_email);
+
+        // Send confirmation email to sponsor
+        $this->send_sponsor_registration_confirmation($user_id, $sponsor_name, $sponsor_email);
+
+        // Log activity
+        Helpers::log_activity('sponsor_registered', 'user', $user_id,
+            sprintf('New sponsor registered: %s (%s)', $sponsor_name, $sponsor_email));
+
+        wp_send_json_success(array(
+            'message' => __('Registration successful! Your account is pending approval.', 'al-huffaz-portal'),
+            'redirect' => home_url('/login/?registered=success'),
+        ));
+    }
+
+    /**
+     * Send admin notification for new sponsor registration
+     */
+    private function send_admin_notification_new_sponsor($user_id, $name, $email) {
+        // Get admin emails
+        $admin_email = get_option('admin_email');
+
+        // Get all admins
+        $admins = get_users(array(
+            'role__in' => array('administrator', 'alhuffaz_admin'),
+        ));
+
+        $admin_emails = array($admin_email);
+        foreach ($admins as $admin) {
+            if (!in_array($admin->user_email, $admin_emails)) {
+                $admin_emails[] = $admin->user_email;
+            }
+        }
+
+        // Email subject
+        $subject = sprintf(__('[%s] New Sponsor Registration Pending Approval', 'al-huffaz-portal'),
+            get_bloginfo('name'));
+
+        // Email message
+        $message = sprintf(
+            __("A new sponsor has registered and is awaiting approval:\n\n", 'al-huffaz-portal') .
+            __("Name: %s\n", 'al-huffaz-portal') .
+            __("Email: %s\n\n", 'al-huffaz-portal') .
+            __("Please review and approve this account:\n%s\n\n", 'al-huffaz-portal') .
+            __("Thank you!", 'al-huffaz-portal'),
+            $name,
+            $email,
+            home_url('/admin-portal/')
+        );
+
+        // Send email to all admins
+        foreach ($admin_emails as $to_email) {
+            wp_mail($to_email, $subject, $message);
+        }
+    }
+
+    /**
+     * Send registration confirmation email to sponsor
+     */
+    private function send_sponsor_registration_confirmation($user_id, $name, $email) {
+        // Email subject
+        $subject = sprintf(__('[%s] Registration Received - Pending Approval', 'al-huffaz-portal'),
+            get_bloginfo('name'));
+
+        // Email message
+        $message = sprintf(
+            __("Dear %s,\n\n", 'al-huffaz-portal') .
+            __("Thank you for registering as a sponsor with %s!\n\n", 'al-huffaz-portal') .
+            __("Your account has been created and is currently pending approval by our team. ", 'al-huffaz-portal') .
+            __("This usually takes 24 hours.\n\n", 'al-huffaz-portal') .
+            __("You will receive an email notification once your account has been approved.\n\n", 'al-huffaz-portal') .
+            __("If you have any questions, please don't hesitate to contact us.\n\n", 'al-huffaz-portal') .
+            __("Thank you for your support!\n\n", 'al-huffaz-portal') .
+            __("Best regards,\n%s Team", 'al-huffaz-portal'),
+            $name,
+            get_bloginfo('name'),
+            get_bloginfo('name')
+        );
+
+        // Send email
+        wp_mail($email, $subject, $message);
     }
 }

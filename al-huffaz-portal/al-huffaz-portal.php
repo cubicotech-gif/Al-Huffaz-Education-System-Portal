@@ -81,6 +81,7 @@ final class Al_Huffaz_Portal {
         require_once ALHUFFAZ_PLUGIN_DIR . 'includes/core/class-ajax-handler.php';
         require_once ALHUFFAZ_PLUGIN_DIR . 'includes/core/class-helpers.php';
         require_once ALHUFFAZ_PLUGIN_DIR . 'includes/core/class-notifications.php';
+        require_once ALHUFFAZ_PLUGIN_DIR . 'includes/core/class-login-redirects.php';
         require_once ALHUFFAZ_PLUGIN_DIR . 'includes/core/class-um-integration.php';
 
         // Admin classes
@@ -130,6 +131,9 @@ final class Al_Huffaz_Portal {
 
         // Initialize AJAX handler
         $this->ajax = new AlHuffaz\Core\Ajax_Handler();
+
+        // Initialize login redirects (unified login system)
+        new AlHuffaz\Core\Login_Redirects();
 
         // Initialize Ultimate Member integration (if UM is active)
         new AlHuffaz\Core\UM_Integration();
