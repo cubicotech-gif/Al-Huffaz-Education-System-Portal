@@ -290,7 +290,16 @@
                 success: function(response) {
                     if (response.success) {
                         AlHuffazPublic.showNotice('success', response.data.message);
-                        $form[0].reset();
+
+                        // Check if redirect URL is provided
+                        if (response.data.redirect_url) {
+                            // Show message briefly, then redirect
+                            setTimeout(function() {
+                                window.location.href = response.data.redirect_url;
+                            }, 1500);
+                        } else {
+                            $form[0].reset();
+                        }
                     } else {
                         AlHuffazPublic.showNotice('error', response.data.message);
                     }
@@ -299,7 +308,10 @@
                     AlHuffazPublic.showNotice('error', alhuffazPublic.strings.error);
                 },
                 complete: function() {
-                    $btn.prop('disabled', false).text(originalText);
+                    // Don't re-enable button if redirecting
+                    if (!response || !response.success || !response.data.redirect_url) {
+                        $btn.prop('disabled', false).text(originalText);
+                    }
                 }
             });
         },

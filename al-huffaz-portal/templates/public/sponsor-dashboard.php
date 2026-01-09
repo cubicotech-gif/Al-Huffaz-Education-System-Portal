@@ -1423,12 +1423,53 @@ body.admin-bar .sp-portal .sp-header {
             <h1 class="sp-page-title"><?php printf(__('Welcome back, %s!', 'al-huffaz-portal'), esc_html($user->first_name ?: $user->display_name)); ?></h1>
             <p class="sp-page-subtitle"><?php _e('Here\'s an overview of your sponsorship activity.', 'al-huffaz-portal'); ?></p>
 
+            <?php if (isset($_GET['payment_submitted']) && $_GET['payment_submitted'] === 'success'): ?>
+            <div class="sp-alert sp-alert-success" id="payment-success-alert" style="animation: slideInDown 0.5s;">
+                <i class="fas fa-check-circle"></i>
+                <div class="sp-alert-content">
+                    <strong><?php _e('Payment Submitted Successfully!', 'al-huffaz-portal'); ?></strong>
+                    <span><?php _e('Your sponsorship payment has been received! Our team will verify your payment within 24-48 hours. You can track your payment status in the "Payment History" section below. Once verified, the student will appear in your "My Students" section.', 'al-huffaz-portal'); ?></span>
+                </div>
+                <button class="sp-alert-close" onclick="this.parentElement.remove()"><i class="fas fa-times"></i></button>
+            </div>
+            <?php endif; ?>
+
             <?php if ($sponsor_status === 'pending'): ?>
             <div class="sp-alert sp-alert-warning">
                 <i class="fas fa-clock"></i>
                 <div class="sp-alert-content">
                     <strong><?php _e('Account Pending Verification', 'al-huffaz-portal'); ?></strong>
                     <span><?php _e('Your sponsor account is being reviewed. You will be able to sponsor students once approved.', 'al-huffaz-portal'); ?></span>
+                </div>
+            </div>
+            <?php endif; ?>
+
+            <?php if (!empty($data['pending_sponsorships'])): ?>
+            <div class="sp-alert sp-alert-info">
+                <i class="fas fa-hourglass-half"></i>
+                <div class="sp-alert-content">
+                    <strong><?php _e('Pending Verification', 'al-huffaz-portal'); ?> (<?php echo count($data['pending_sponsorships']); ?>)</strong>
+                    <span><?php _e('The following payments are awaiting verification. Students will appear in your "My Students" section once payments are verified by our team (usually within 24-48 hours).', 'al-huffaz-portal'); ?></span>
+                </div>
+            </div>
+
+            <div class="sp-card" style="margin-bottom: 24px;">
+                <div class="sp-card-header">
+                    <h3 class="sp-card-title"><i class="fas fa-clock"></i> <?php _e('Pending Payments', 'al-huffaz-portal'); ?></h3>
+                </div>
+                <div class="sp-card-body">
+                    <?php foreach ($data['pending_sponsorships'] as $pending): ?>
+                    <div style="display: flex; justify-content: space-between; align-items: center; padding: 16px; background: #fef3c7; border-radius: 12px; border-left: 4px solid #f59e0b; margin-bottom: 12px;">
+                        <div>
+                            <h5 style="margin: 0 0 4px 0; font-size: 15px; font-weight: 600; color: #78350f;"><?php echo esc_html($pending['student_name']); ?></h5>
+                            <p style="margin: 0; font-size: 13px; color: #92400e;">
+                                <i class="fas fa-money-bill-wave"></i> <?php echo Helpers::format_currency($pending['amount']); ?> (<?php echo ucfirst($pending['type']); ?>)
+                                • <i class="fas fa-calendar"></i> <?php echo esc_html($pending['submitted_at']); ?>
+                            </p>
+                        </div>
+                        <span class="sp-badge sp-badge-warning"><i class="fas fa-clock"></i> <?php _e('Pending', 'al-huffaz-portal'); ?></span>
+                    </div>
+                    <?php endforeach; ?>
                 </div>
             </div>
             <?php endif; ?>
@@ -1465,6 +1506,36 @@ body.admin-bar .sp-portal .sp-header {
             </div>
 
             <?php if (!empty($data['sponsorships'])): ?>
+            <!-- Financial Summary Breakdown -->
+            <div class="sp-card" style="margin-bottom: 24px;">
+                <div class="sp-card-header">
+                    <h3 class="sp-card-title"><i class="fas fa-calculator"></i> <?php _e('Financial Summary', 'al-huffaz-portal'); ?></h3>
+                </div>
+                <div class="sp-card-body">
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px;">
+                        <div style="background: linear-gradient(135deg, #dbeafe, #bfdbfe); padding: 20px; border-radius: 12px; border-left: 4px solid #3b82f6;">
+                            <div style="font-size: 13px; color: #1e40af; margin-bottom: 6px; font-weight: 600;"><?php _e('Monthly Donations', 'al-huffaz-portal'); ?></div>
+                            <div style="font-size: 26px; font-weight: 800; color: #1e3a8a;"><?php echo esc_html($data['monthly_total']); ?></div>
+                        </div>
+
+                        <div style="background: linear-gradient(135deg, #d1fae5, #a7f3d0); padding: 20px; border-radius: 12px; border-left: 4px solid #10b981;">
+                            <div style="font-size: 13px; color: #065f46; margin-bottom: 6px; font-weight: 600;"><?php _e('Quarterly Donations', 'al-huffaz-portal'); ?></div>
+                            <div style="font-size: 26px; font-weight: 800; color: #064e3b;"><?php echo esc_html($data['quarterly_total']); ?></div>
+                        </div>
+
+                        <div style="background: linear-gradient(135deg, #fed7aa, #fdba74); padding: 20px; border-radius: 12px; border-left: 4px solid #f59e0b;">
+                            <div style="font-size: 13px; color: #92400e; margin-bottom: 6px; font-weight: 600;"><?php _e('Yearly Donations', 'al-huffaz-portal'); ?></div>
+                            <div style="font-size: 26px; font-weight: 800; color: #78350f;"><?php echo esc_html($data['yearly_total']); ?></div>
+                        </div>
+
+                        <div style="background: linear-gradient(135deg, #e0e7ff, #c7d2fe); padding: 20px; border-radius: 12px; border-left: 4px solid #6366f1;">
+                            <div style="font-size: 13px; color: #4338ca; margin-bottom: 6px; font-weight: 600;"><?php _e('Total Contributions', 'al-huffaz-portal'); ?></div>
+                            <div style="font-size: 26px; font-weight: 800; color: #3730a3;"><?php echo esc_html($data['total_contributed']); ?></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
             <div class="sp-card">
                 <div class="sp-card-header">
                     <h3 class="sp-card-title"><i class="fas fa-users"></i> <?php _e('Your Sponsored Students', 'al-huffaz-portal'); ?></h3>
@@ -2501,5 +2572,36 @@ body.admin-bar .sp-portal .sp-header {
 
     // Refresh notification count every 30 seconds
     setInterval(loadNotificationCount, 30000);
+
+    // Auto-open panel based on URL parameter
+    const urlParams = new URLSearchParams(window.location.search);
+    const openTab = urlParams.get('open_tab');
+
+    if (openTab === 'payments') {
+        // Open payments panel
+        showPanel('payments');
+    } else if (openTab === 'my-students') {
+        // Open my students panel
+        showPanel('my-students');
+    }
+
+    // Auto-dismiss success alert after 8 seconds
+    const successAlert = document.getElementById('payment-success-alert');
+    if (successAlert) {
+        setTimeout(function() {
+            successAlert.style.transition = 'opacity 0.5s, transform 0.5s';
+            successAlert.style.opacity = '0';
+            successAlert.style.transform = 'translateY(-20px)';
+            setTimeout(() => {
+                successAlert.remove();
+                // Remove URL parameters
+                const url = new URL(window.location.href);
+                url.searchParams.delete('payment_submitted');
+                url.searchParams.delete('open_tab');
+                url.searchParams.delete('sponsorship_id');
+                window.history.replaceState({}, '', url);
+            }, 500);
+        }, 8000);
+    }
 })();
 </script>

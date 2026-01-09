@@ -228,6 +228,14 @@ class Sponsor_Manager {
         // Log activity
         Helpers::log_activity('approve_sponsorship', 'sponsorship', $sponsorship_id, 'Approved sponsorship');
 
+        // CRITICAL: Clear sponsor dashboard cache for real-time update
+        $sponsor_user_id = get_post_meta($sponsorship_id, '_sponsor_user_id', true);
+        if ($sponsor_user_id) {
+            wp_cache_delete('sponsor_dashboard_' . $sponsor_user_id, 'alhuffaz');
+            wp_cache_flush(); // Force fresh data on next load
+            clean_post_cache($sponsorship_id);
+        }
+
         return true;
     }
 
@@ -271,6 +279,14 @@ class Sponsor_Manager {
         update_post_meta($sponsorship_id, '_linked', 'yes');
 
         Helpers::log_activity('link_sponsor', 'sponsorship', $sponsorship_id, 'Linked sponsor to student');
+
+        // CRITICAL: Clear sponsor dashboard cache
+        $sponsor_user_id = get_post_meta($sponsorship_id, '_sponsor_user_id', true);
+        if ($sponsor_user_id) {
+            wp_cache_delete('sponsor_dashboard_' . $sponsor_user_id, 'alhuffaz');
+            wp_cache_flush();
+            clean_post_cache($sponsorship_id);
+        }
 
         return true;
     }

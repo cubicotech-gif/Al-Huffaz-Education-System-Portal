@@ -73,12 +73,18 @@ class Sponsor_Dashboard {
         ));
 
         $active_sponsorships = array();
+        $pending_sponsorships = array();
         $students = array();
         $total_contributed = 0;
+        $monthly_total = 0;
+        $quarterly_total = 0;
+        $yearly_total = 0;
 
         foreach ($sponsorships as $sponsorship) {
             $status = get_post_meta($sponsorship->ID, '_status', true);
             $linked = get_post_meta($sponsorship->ID, '_linked', true);
+            $amount = floatval(get_post_meta($sponsorship->ID, '_amount', true));
+            $type = get_post_meta($sponsorship->ID, '_sponsorship_type', true);
 
             if ($status === 'approved' && $linked === 'yes') {
                 $student_id = get_post_meta($sponsorship->ID, '_student_id', true);
@@ -92,12 +98,37 @@ class Sponsor_Dashboard {
                         'student_photo'=> Helpers::get_student_photo($student_id, 'medium'),
                         'grade'        => Helpers::get_grade_label(get_post_meta($student_id, 'grade_level', true)),
                         'category'     => Helpers::get_islamic_category_label(get_post_meta($student_id, 'islamic_studies_category', true)),
-                        'amount'       => get_post_meta($sponsorship->ID, '_amount', true),
-                        'type'         => get_post_meta($sponsorship->ID, '_sponsorship_type', true),
+                        'amount'       => $amount,
+                        'type'         => $type,
                         'start_date'   => Helpers::format_date($sponsorship->post_date),
                     );
 
                     $students[] = $student_id;
+
+                    // Calculate totals by type
+                    if ($type === 'monthly') {
+                        $monthly_total += $amount;
+                    } elseif ($type === 'quarterly') {
+                        $quarterly_total += $amount;
+                    } elseif ($type === 'yearly') {
+                        $yearly_total += $amount;
+                    }
+                }
+            } else {
+                // Pending sponsorship
+                $student_id = get_post_meta($sponsorship->ID, '_student_id', true);
+                $student = get_post($student_id);
+
+                if ($student) {
+                    $pending_sponsorships[] = array(
+                        'id'           => $sponsorship->ID,
+                        'student_id'   => $student_id,
+                        'student_name' => $student->post_title,
+                        'amount'       => $amount,
+                        'type'         => $type,
+                        'status'       => $status,
+                        'submitted_at' => Helpers::format_date($sponsorship->post_date),
+                    );
                 }
             }
         }
@@ -122,9 +153,14 @@ class Sponsor_Dashboard {
 
         return array(
             'sponsorships'      => $active_sponsorships,
+            'pending_sponsorships' => $pending_sponsorships,
             'students_count'    => count(array_unique($students)),
             'total_contributed' => Helpers::format_currency($total_contributed),
+            'monthly_total'     => Helpers::format_currency($monthly_total),
+            'quarterly_total'   => Helpers::format_currency($quarterly_total),
+            'yearly_total'      => Helpers::format_currency($yearly_total),
             'pending_payments'  => intval($pending_payments),
+            'pending_count'     => count($pending_sponsorships),
             'recent_payments'   => $payments_result['payments'],
         );
     }
