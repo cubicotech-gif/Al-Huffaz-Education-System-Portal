@@ -1808,7 +1808,7 @@ body.admin-bar .ahp-portal .ahp-top-header {
                 <div class="ahp-header">
                     <h1 class="ahp-title"><?php _e('Sponsor Management', 'al-huffaz-portal'); ?></h1>
                     <div class="ahp-actions">
-                        <select class="ahp-filter" id="filterSponsorStatus" onchange="loadSponsors()">
+                        <select class="ahp-filter" id="filterSponsorStatus" onchange="loadSponsors()" style="display:none;">
                             <option value=""><?php _e('All Status', 'al-huffaz-portal'); ?></option>
                             <option value="pending" selected><?php _e('Pending', 'al-huffaz-portal'); ?></option>
                             <option value="approved"><?php _e('Approved', 'al-huffaz-portal'); ?></option>
@@ -1817,52 +1817,233 @@ body.admin-bar .ahp-portal .ahp-top-header {
                     </div>
                 </div>
 
-                <div class="ahp-stats">
-                    <div class="ahp-stat">
-                        <div class="ahp-stat-icon orange"><i class="fas fa-clock"></i></div>
-                        <div>
-                            <div class="ahp-stat-label"><?php _e('Pending Approval', 'al-huffaz-portal'); ?></div>
-                            <div class="ahp-stat-value" id="pendingSponsorCount"><?php echo $pending_sponsors_count; ?></div>
-                        </div>
-                    </div>
-                    <div class="ahp-stat">
-                        <div class="ahp-stat-icon green"><i class="fas fa-check-circle"></i></div>
-                        <div>
-                            <div class="ahp-stat-label"><?php _e('Approved', 'al-huffaz-portal'); ?></div>
-                            <div class="ahp-stat-value" id="approvedSponsorCount"><?php echo $total_sponsors; ?></div>
-                        </div>
-                    </div>
-                    <div class="ahp-stat">
-                        <div class="ahp-stat-icon blue"><i class="fas fa-user-check"></i></div>
-                        <div>
-                            <div class="ahp-stat-label"><?php _e('Donation Eligible Students', 'al-huffaz-portal'); ?></div>
-                            <div class="ahp-stat-value"><?php echo $donation_eligible_count; ?></div>
-                        </div>
+                <!-- Tab Navigation -->
+                <div style="background:#fff;padding:0 20px;border-radius:8px;margin-bottom:20px;">
+                    <div style="display:flex;gap:5px;border-bottom:2px solid var(--ahp-border);">
+                        <button class="ahp-sponsor-tab active" data-tab="active" onclick="switchSponsorTab('active')" style="padding:12px 24px;background:none;border:none;border-bottom:3px solid var(--ahp-primary);color:var(--ahp-primary);font-weight:600;cursor:pointer;transition:all 0.3s;">
+                            <i class="fas fa-users"></i> <?php _e('Active Sponsors', 'al-huffaz-portal'); ?>
+                        </button>
+                        <button class="ahp-sponsor-tab" data-tab="requests" onclick="switchSponsorTab('requests')" style="padding:12px 24px;background:none;border:none;border-bottom:3px solid transparent;color:var(--ahp-text-muted);font-weight:500;cursor:pointer;transition:all 0.3s;">
+                            <i class="fas fa-inbox"></i> <?php _e('Requests', 'al-huffaz-portal'); ?>
+                            <?php if ($pending_sponsors_count > 0): ?>
+                            <span class="ahp-nav-badge danger" style="display:inline-block;margin-left:8px;"><?php echo $pending_sponsors_count; ?></span>
+                            <?php endif; ?>
+                        </button>
                     </div>
                 </div>
 
-                <div class="ahp-card">
-                    <div class="ahp-card-header">
-                        <h3 class="ahp-card-title"><i class="fas fa-hand-holding-heart"></i> <?php _e('Sponsorship Requests', 'al-huffaz-portal'); ?></h3>
+                <!-- Active Sponsors View -->
+                <div id="sponsor-tab-active" class="ahp-sponsor-tab-content" style="display:block;">
+                    <?php
+                    // Get active sponsors data grouped by sponsor
+                    global $wpdb;
+                    $active_sponsorships_query = get_posts(array(
+                        'post_type' => 'alhuffaz_sponsor',
+                        'posts_per_page' => -1,
+                        'meta_query' => array(
+                            array('key' => '_status', 'value' => 'approved'),
+                            array('key' => '_linked', 'value' => 'yes'),
+                        ),
+                    ));
+
+                    // Group by sponsor
+                    $sponsors_data = array();
+                    foreach ($active_sponsorships_query as $sponsorship) {
+                        $sponsor_user_id = get_post_meta($sponsorship->ID, '_sponsor_user_id', true);
+                        $sponsor_email = get_post_meta($sponsorship->ID, '_sponsor_email', true);
+                        $sponsor_key = $sponsor_user_id ? 'user_' . $sponsor_user_id : 'email_' . $sponsor_email;
+
+                        if (!isset($sponsors_data[$sponsor_key])) {
+                            $sponsors_data[$sponsor_key] = array(
+                                'sponsor_name' => get_post_meta($sponsorship->ID, '_sponsor_name', true),
+                                'sponsor_email' => $sponsor_email,
+                                'sponsor_phone' => get_post_meta($sponsorship->ID, '_sponsor_phone', true),
+                                'sponsor_country' => get_post_meta($sponsorship->ID, '_sponsor_country', true),
+                                'sponsor_user_id' => $sponsor_user_id,
+                                'total_amount' => 0,
+                                'students' => array(),
+                                'sponsorship_count' => 0,
+                            );
+                        }
+
+                        $student_id = get_post_meta($sponsorship->ID, '_student_id', true);
+                        $student = get_post($student_id);
+                        $amount = floatval(get_post_meta($sponsorship->ID, '_amount', true));
+
+                        if ($student) {
+                            $student_photo = get_post_meta($student_id, 'photo', true);
+                            if (!$student_photo) $student_photo = plugins_url('assets/images/default-student.jpg', ALHUFFAZ_PLUGIN_FILE);
+
+                            $sponsors_data[$sponsor_key]['students'][] = array(
+                                'student_id' => $student_id,
+                                'student_name' => $student->post_title,
+                                'student_photo' => $student_photo,
+                                'grade_level' => get_post_meta($student_id, 'grade_level', true),
+                                'amount' => $amount,
+                                'sponsorship_type' => get_post_meta($sponsorship->ID, '_sponsorship_type', true),
+                                'sponsorship_id' => $sponsorship->ID,
+                                'linked_date' => $sponsorship->post_date,
+                            );
+                        }
+
+                        $sponsors_data[$sponsor_key]['total_amount'] += $amount;
+                        $sponsors_data[$sponsor_key]['sponsorship_count']++;
+                    }
+
+                    $active_sponsors = array_values($sponsors_data);
+                    ?>
+
+                    <?php if (empty($active_sponsors)): ?>
+                    <div class="ahp-card">
+                        <div class="ahp-card-body" style="text-align:center;padding:60px 20px;color:var(--ahp-text-muted);">
+                            <i class="fas fa-hand-holding-heart" style="font-size:48px;opacity:0.3;margin-bottom:16px;"></i>
+                            <h3 style="margin:0 0 8px 0;"><?php _e('No Active Sponsors Yet', 'al-huffaz-portal'); ?></h3>
+                            <p style="margin:0;"><?php _e('Active sponsors will appear here once their sponsorships are approved and linked to students.', 'al-huffaz-portal'); ?></p>
+                        </div>
                     </div>
-                    <div class="ahp-card-body" style="padding:0;">
-                        <div class="ahp-table-wrap">
-                            <table class="ahp-table">
-                                <thead>
-                                    <tr>
-                                        <th><?php _e('Sponsor', 'al-huffaz-portal'); ?></th>
-                                        <th><?php _e('Student', 'al-huffaz-portal'); ?></th>
-                                        <th><?php _e('Amount', 'al-huffaz-portal'); ?></th>
-                                        <th><?php _e('Type', 'al-huffaz-portal'); ?></th>
-                                        <th><?php _e('Status', 'al-huffaz-portal'); ?></th>
-                                        <th><?php _e('Date', 'al-huffaz-portal'); ?></th>
-                                        <th><?php _e('Actions', 'al-huffaz-portal'); ?></th>
-                                    </tr>
-                                </thead>
-                                <tbody id="sponsorsTableBody">
-                                    <tr><td colspan="7" class="ahp-loading"><div class="ahp-spinner"></div></td></tr>
-                                </tbody>
-                            </table>
+                    <?php else: ?>
+
+                    <div style="display:grid;gap:20px;">
+                        <?php foreach ($active_sponsors as $sponsor): ?>
+                        <div class="ahp-card" style="overflow:hidden;">
+                            <!-- Sponsor Header -->
+                            <div style="background:linear-gradient(135deg, #667eea 0%, #764ba2 100%);color:#fff;padding:24px;">
+                                <div style="display:flex;justify-content:space-between;align-items:start;flex-wrap:wrap;gap:16px;">
+                                    <div>
+                                        <h3 style="margin:0 0 8px 0;font-size:22px;display:flex;align-items:center;gap:10px;">
+                                            <i class="fas fa-user-circle"></i>
+                                            <?php echo esc_html($sponsor['sponsor_name']); ?>
+                                        </h3>
+                                        <div style="opacity:0.9;font-size:14px;display:flex;flex-wrap:wrap;gap:16px;">
+                                            <?php if ($sponsor['sponsor_email']): ?>
+                                            <span><i class="fas fa-envelope"></i> <?php echo esc_html($sponsor['sponsor_email']); ?></span>
+                                            <?php endif; ?>
+                                            <?php if ($sponsor['sponsor_phone']): ?>
+                                            <span><i class="fas fa-phone"></i> <?php echo esc_html($sponsor['sponsor_phone']); ?></span>
+                                            <?php endif; ?>
+                                            <?php if ($sponsor['sponsor_country']): ?>
+                                            <span><i class="fas fa-globe"></i> <?php echo esc_html($sponsor['sponsor_country']); ?></span>
+                                            <?php endif; ?>
+                                        </div>
+                                    </div>
+                                    <div style="text-align:right;">
+                                        <div style="font-size:28px;font-weight:700;line-height:1;">
+                                            $<?php echo number_format($sponsor['total_amount'], 2); ?>
+                                        </div>
+                                        <div style="opacity:0.9;font-size:13px;margin-top:4px;">
+                                            <?php echo sprintf(_n('%s Sponsorship', '%s Sponsorships', $sponsor['sponsorship_count'], 'al-huffaz-portal'), $sponsor['sponsorship_count']); ?>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Sponsored Students -->
+                            <div style="padding:20px;">
+                                <h4 style="margin:0 0 16px 0;color:var(--ahp-text);font-size:16px;display:flex;align-items:center;gap:8px;">
+                                    <i class="fas fa-users"></i> <?php _e('Sponsored Students', 'al-huffaz-portal'); ?>
+                                </h4>
+                                <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:16px;">
+                                    <?php foreach ($sponsor['students'] as $student): ?>
+                                    <div style="background:var(--ahp-bg);border:1px solid var(--ahp-border);border-radius:12px;overflow:hidden;transition:all 0.3s;cursor:pointer;" onmouseover="this.style.transform='translateY(-2px)';this.style.boxShadow='0 4px 12px rgba(0,0,0,0.1)';" onmouseout="this.style.transform='translateY(0)';this.style.boxShadow='none';">
+                                        <!-- Student Photo -->
+                                        <div style="position:relative;width:100%;height:180px;overflow:hidden;background:linear-gradient(135deg,#667eea,#764ba2);">
+                                            <img src="<?php echo esc_url($student['student_photo']); ?>" alt="<?php echo esc_attr($student['student_name']); ?>" style="width:100%;height:100%;object-fit:cover;">
+                                        </div>
+
+                                        <!-- Student Info -->
+                                        <div style="padding:16px;">
+                                            <h5 style="margin:0 0 8px 0;font-size:16px;color:var(--ahp-text);">
+                                                <?php echo esc_html($student['student_name']); ?>
+                                            </h5>
+                                            <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:12px;font-size:13px;color:var(--ahp-text-muted);">
+                                                <?php if ($student['grade_level']): ?>
+                                                <div><i class="fas fa-graduation-cap"></i> <?php echo esc_html($student['grade_level']); ?></div>
+                                                <?php endif; ?>
+                                                <div><i class="fas fa-dollar-sign"></i> $<?php echo number_format($student['amount'], 2); ?> <span style="opacity:0.7;">(<?php echo ucfirst($student['sponsorship_type']); ?>)</span></div>
+                                                <div><i class="fas fa-calendar"></i> <?php echo date_i18n(get_option('date_format'), strtotime($student['linked_date'])); ?></div>
+                                            </div>
+
+                                            <!-- Action Buttons -->
+                                            <div style="display:flex;gap:8px;flex-wrap:wrap;">
+                                                <button onclick="viewStudent(<?php echo $student['student_id']; ?>)" class="ahp-btn ahp-btn-sm" style="flex:1;font-size:12px;padding:6px 12px;background:var(--ahp-primary);color:#fff;border:none;border-radius:6px;cursor:pointer;">
+                                                    <i class="fas fa-eye"></i> <?php _e('View', 'al-huffaz-portal'); ?>
+                                                </button>
+                                                <button onclick="editStudent(<?php echo $student['student_id']; ?>)" class="ahp-btn ahp-btn-sm" style="flex:1;font-size:12px;padding:6px 12px;background:#10b981;color:#fff;border:none;border-radius:6px;cursor:pointer;">
+                                                    <i class="fas fa-edit"></i> <?php _e('Edit', 'al-huffaz-portal'); ?>
+                                                </button>
+                                                <button onclick="if(confirm('<?php _e('Are you sure you want to unlink this sponsorship?', 'al-huffaz-portal'); ?>')) unlinkSponsorship(<?php echo $student['sponsorship_id']; ?>)" class="ahp-btn ahp-btn-sm" style="font-size:12px;padding:6px 12px;background:#ef4444;color:#fff;border:none;border-radius:6px;cursor:pointer;">
+                                                    <i class="fas fa-unlink"></i>
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <?php endforeach; ?>
+                                </div>
+                            </div>
+                        </div>
+                        <?php endforeach; ?>
+                    </div>
+
+                    <?php endif; ?>
+                </div>
+
+                <!-- Requests View -->
+                <div id="sponsor-tab-requests" class="ahp-sponsor-tab-content" style="display:none;">
+                    <div class="ahp-stats">
+                        <div class="ahp-stat">
+                            <div class="ahp-stat-icon orange"><i class="fas fa-clock"></i></div>
+                            <div>
+                                <div class="ahp-stat-label"><?php _e('Pending Approval', 'al-huffaz-portal'); ?></div>
+                                <div class="ahp-stat-value" id="pendingSponsorCount"><?php echo $pending_sponsors_count; ?></div>
+                            </div>
+                        </div>
+                        <div class="ahp-stat">
+                            <div class="ahp-stat-icon green"><i class="fas fa-check-circle"></i></div>
+                            <div>
+                                <div class="ahp-stat-label"><?php _e('Approved', 'al-huffaz-portal'); ?></div>
+                                <div class="ahp-stat-value" id="approvedSponsorCount"><?php echo $total_sponsors; ?></div>
+                            </div>
+                        </div>
+                        <div class="ahp-stat">
+                            <div class="ahp-stat-icon blue"><i class="fas fa-user-check"></i></div>
+                            <div>
+                                <div class="ahp-stat-label"><?php _e('Donation Eligible Students', 'al-huffaz-portal'); ?></div>
+                                <div class="ahp-stat-value"><?php echo $donation_eligible_count; ?></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="ahp-card">
+                        <div class="ahp-card-header">
+                            <h3 class="ahp-card-title"><i class="fas fa-hand-holding-heart"></i> <?php _e('Sponsorship Requests', 'al-huffaz-portal'); ?></h3>
+                            <div style="margin-top:8px;">
+                                <select class="ahp-filter" id="filterSponsorStatusMain" onchange="loadSponsors()" style="display:inline-block;">
+                                    <option value=""><?php _e('All Status', 'al-huffaz-portal'); ?></option>
+                                    <option value="pending" selected><?php _e('Pending', 'al-huffaz-portal'); ?></option>
+                                    <option value="approved"><?php _e('Approved', 'al-huffaz-portal'); ?></option>
+                                    <option value="rejected"><?php _e('Rejected', 'al-huffaz-portal'); ?></option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="ahp-card-body" style="padding:0;">
+                            <div class="ahp-table-wrap">
+                                <table class="ahp-table">
+                                    <thead>
+                                        <tr>
+                                            <th><?php _e('Sponsor', 'al-huffaz-portal'); ?></th>
+                                            <th><?php _e('Student', 'al-huffaz-portal'); ?></th>
+                                            <th><?php _e('Amount', 'al-huffaz-portal'); ?></th>
+                                            <th><?php _e('Type', 'al-huffaz-portal'); ?></th>
+                                            <th><?php _e('Status', 'al-huffaz-portal'); ?></th>
+                                            <th><?php _e('Date', 'al-huffaz-portal'); ?></th>
+                                            <th><?php _e('Actions', 'al-huffaz-portal'); ?></th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="sponsorsTableBody">
+                                        <tr><td colspan="7" class="ahp-loading"><div class="ahp-spinner"></div></td></tr>
+                                    </tbody>
+                                </table>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -2441,8 +2622,37 @@ document.addEventListener('DOMContentLoaded', function() {
     // ==================== SPONSORS MANAGEMENT ====================
     let currentSponsorId = null;
 
+    // Tab Switching for Sponsors
+    window.switchSponsorTab = function(tab) {
+        // Update tab buttons
+        document.querySelectorAll('.ahp-sponsor-tab').forEach(btn => {
+            if (btn.dataset.tab === tab) {
+                btn.classList.add('active');
+                btn.style.borderBottom = '3px solid var(--ahp-primary)';
+                btn.style.color = 'var(--ahp-primary)';
+                btn.style.fontWeight = '600';
+            } else {
+                btn.classList.remove('active');
+                btn.style.borderBottom = '3px solid transparent';
+                btn.style.color = 'var(--ahp-text-muted)';
+                btn.style.fontWeight = '500';
+            }
+        });
+
+        // Update tab content
+        document.querySelectorAll('.ahp-sponsor-tab-content').forEach(content => {
+            content.style.display = 'none';
+        });
+        document.getElementById('sponsor-tab-' + tab).style.display = 'block';
+
+        // Load requests if switching to requests tab
+        if (tab === 'requests') {
+            loadSponsors();
+        }
+    };
+
     window.loadSponsors = function() {
-        const status = document.getElementById('filterSponsorStatus')?.value || '';
+        const status = document.getElementById('filterSponsorStatusMain')?.value || document.getElementById('filterSponsorStatus')?.value || '';
         document.getElementById('sponsorsTableBody').innerHTML = '<tr><td colspan="7" class="ahp-loading"><div class="ahp-spinner"></div></td></tr>';
 
         fetch(ajaxUrl, {
@@ -2576,6 +2786,24 @@ document.addEventListener('DOMContentLoaded', function() {
                 loadSponsors();
             } else {
                 showToast(data.data?.message || '<?php _e('Error linking sponsor', 'al-huffaz-portal'); ?>', 'error');
+            }
+        });
+    };
+
+    window.unlinkSponsorship = function(id) {
+        fetch(ajaxUrl, {
+            method: 'POST',
+            headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+            body: new URLSearchParams({action: 'alhuffaz_unlink_sponsor', nonce, sponsorship_id: id})
+        })
+        .then(r => r.json())
+        .then(data => {
+            if (data.success) {
+                showToast('<?php _e('Sponsorship unlinked successfully!', 'al-huffaz-portal'); ?>', 'success');
+                // Reload the page to refresh the active sponsors view
+                location.reload();
+            } else {
+                showToast(data.data?.message || '<?php _e('Error unlinking sponsorship', 'al-huffaz-portal'); ?>', 'error');
             }
         });
     };
