@@ -210,6 +210,10 @@ class Payment_Manager {
                         Helpers::format_currency($payment['amount'])
                     )
                 );
+
+                // CRITICAL: Clear sponsor dashboard cache for instant update
+                wp_cache_delete('sponsor_dashboard_' . $payment['sponsor_id'], 'alhuffaz');
+                wp_cache_flush();
             }
         }
 

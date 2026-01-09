@@ -1274,9 +1274,22 @@ Please verify the payment in the admin portal.', 'al-huffaz-portal'),
         header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
         header('Pragma: no-cache');
 
+        // Build dashboard redirect URL with success parameters
+        $dashboard_page = get_page_by_path('sponsor-dashboard');
+        $redirect_url = home_url('/sponsor-dashboard/'); // Fallback
+
+        if ($dashboard_page) {
+            $redirect_url = add_query_arg(array(
+                'payment_submitted' => 'success',
+                'open_tab' => 'payments',
+                'sponsorship_id' => $sponsorship_id
+            ), get_permalink($dashboard_page->ID));
+        }
+
         wp_send_json_success(array(
-            'message' => __('Payment proof submitted successfully! The school will verify your payment and notify you once approved.', 'al-huffaz-portal'),
+            'message' => __('Payment proof submitted successfully! Redirecting to your dashboard...', 'al-huffaz-portal'),
             'sponsorship_id' => $sponsorship_id,
+            'redirect_url' => $redirect_url,
         ));
     }
 
