@@ -3,13 +3,8 @@
  * Sponsor Dashboard Template
  * Al-Huffaz Education System Portal
  *
- * Complete sponsor portal with sidebar navigation:
- * - Dashboard with stats
- * - My Profile
- * - My Sponsored Students
- * - Available Students to Sponsor
- * - Make Payment
- * - Payment History
+ * Modern Top-Navigation Design
+ * Inspired by Stripe, Linear, Notion dashboards
  */
 
 use AlHuffaz\Frontend\Sponsor_Dashboard;
@@ -22,61 +17,62 @@ if (!defined('ABSPATH')) exit;
 if (!is_user_logged_in()) {
     ?>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <style>
-    .ahp-sponsor-login {
-        min-height: 80vh;
+    .sp-login-page {
+        min-height: 100vh;
         display: flex;
         align-items: center;
         justify-content: center;
         padding: 40px 20px;
-        font-family: 'Poppins', sans-serif;
-        background: linear-gradient(135deg, #f0f8ff 0%, #e6f3ff 100%);
+        font-family: 'Inter', sans-serif;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
     }
-    .ahp-login-card {
+    .sp-login-card {
         background: white;
         border-radius: 24px;
-        box-shadow: 0 20px 60px rgba(0, 128, 255, 0.15);
+        box-shadow: 0 25px 50px rgba(0, 0, 0, 0.25);
         padding: 48px;
         max-width: 420px;
         width: 100%;
         text-align: center;
     }
-    .ahp-login-header i { font-size: 72px; color: #0080ff; margin-bottom: 20px; display: block; }
-    .ahp-login-header h2 { margin: 0 0 12px 0; font-size: 28px; font-weight: 700; color: #001a33; }
-    .ahp-login-header p { margin: 0 0 32px 0; color: #64748b; }
-    .ahp-login-form label { display: block; font-weight: 600; color: #001a33; margin-bottom: 8px; font-size: 14px; text-align: left; }
-    .ahp-login-form input[type="text"], .ahp-login-form input[type="password"] {
-        width: 100%; padding: 14px 16px; border: 2px solid #cce6ff; border-radius: 12px;
-        font-size: 15px; margin-bottom: 20px; font-family: 'Poppins', sans-serif; box-sizing: border-box;
+    .sp-login-header i { font-size: 64px; background: linear-gradient(135deg, #667eea, #764ba2); -webkit-background-clip: text; -webkit-text-fill-color: transparent; margin-bottom: 20px; display: block; }
+    .sp-login-header h2 { margin: 0 0 8px 0; font-size: 28px; font-weight: 700; color: #1a1a2e; }
+    .sp-login-header p { margin: 0 0 32px 0; color: #6b7280; font-size: 15px; }
+    .sp-login-form label { display: block; font-weight: 600; color: #374151; margin-bottom: 8px; font-size: 14px; text-align: left; }
+    .sp-login-form input[type="text"], .sp-login-form input[type="password"] {
+        width: 100%; padding: 14px 16px; border: 2px solid #e5e7eb; border-radius: 12px;
+        font-size: 15px; margin-bottom: 20px; font-family: 'Inter', sans-serif; box-sizing: border-box; transition: all 0.2s;
     }
-    .ahp-login-form input:focus { outline: none; border-color: #0080ff; }
-    .ahp-login-form input[type="submit"] {
-        width: 100%; padding: 16px; background: linear-gradient(135deg, #0080ff, #004d99); color: white;
+    .sp-login-form input:focus { outline: none; border-color: #667eea; box-shadow: 0 0 0 4px rgba(102, 126, 234, 0.1); }
+    .sp-login-form input[type="submit"] {
+        width: 100%; padding: 16px; background: linear-gradient(135deg, #667eea, #764ba2); color: white;
         border: none; border-radius: 12px; font-size: 16px; font-weight: 600; cursor: pointer;
-        font-family: 'Poppins', sans-serif; transition: transform 0.3s, box-shadow 0.3s;
+        font-family: 'Inter', sans-serif; transition: transform 0.2s, box-shadow 0.2s;
     }
-    .ahp-login-form input[type="submit"]:hover { transform: translateY(-2px); box-shadow: 0 8px 25px rgba(0, 128, 255, 0.3); }
-    .ahp-login-footer { margin-top: 32px; padding-top: 24px; border-top: 2px solid #f0f8ff; }
-    .ahp-login-footer p { margin: 0 0 16px 0; color: #64748b; }
-    .ahp-btn { display: inline-flex; align-items: center; gap: 8px; padding: 14px 28px; border-radius: 12px;
-        font-weight: 600; font-size: 15px; text-decoration: none; background: linear-gradient(135deg, #0080ff, #004d99); color: white; }
+    .sp-login-form input[type="submit"]:hover { transform: translateY(-2px); box-shadow: 0 8px 25px rgba(102, 126, 234, 0.4); }
+    .sp-login-footer { margin-top: 32px; padding-top: 24px; border-top: 1px solid #e5e7eb; }
+    .sp-login-footer p { margin: 0 0 16px 0; color: #6b7280; font-size: 14px; }
+    .sp-login-btn { display: inline-flex; align-items: center; gap: 8px; padding: 14px 28px; border-radius: 12px;
+        font-weight: 600; font-size: 15px; text-decoration: none; background: #f3f4f6; color: #374151; transition: all 0.2s; }
+    .sp-login-btn:hover { background: #e5e7eb; }
     </style>
-    <div class="ahp-sponsor-login">
-        <div class="ahp-login-card">
-            <div class="ahp-login-header">
+    <div class="sp-login-page">
+        <div class="sp-login-card">
+            <div class="sp-login-header">
                 <i class="fas fa-hand-holding-heart"></i>
                 <h2><?php _e('Sponsor Portal', 'al-huffaz-portal'); ?></h2>
                 <p><?php _e('Login to access your sponsor dashboard', 'al-huffaz-portal'); ?></p>
             </div>
-            <div class="ahp-login-form">
-                <?php wp_login_form(array('redirect' => get_permalink(), 'form_id' => 'ahp-sponsor-login-form',
+            <div class="sp-login-form">
+                <?php wp_login_form(array('redirect' => get_permalink(), 'form_id' => 'sp-login-form',
                     'label_username' => __('Email or Username', 'al-huffaz-portal'), 'label_password' => __('Password', 'al-huffaz-portal'),
-                    'label_remember' => __('Remember Me', 'al-huffaz-portal'), 'label_log_in' => __('Login', 'al-huffaz-portal'))); ?>
+                    'label_remember' => __('Remember Me', 'al-huffaz-portal'), 'label_log_in' => __('Sign In', 'al-huffaz-portal'))); ?>
             </div>
-            <div class="ahp-login-footer">
+            <div class="sp-login-footer">
                 <p><?php _e('Not a sponsor yet?', 'al-huffaz-portal'); ?></p>
-                <a href="<?php echo home_url('/become-a-sponsor'); ?>" class="ahp-btn">
+                <a href="<?php echo home_url('/become-a-sponsor'); ?>" class="sp-login-btn">
                     <i class="fas fa-heart"></i> <?php _e('Become a Sponsor', 'al-huffaz-portal'); ?>
                 </a>
             </div>
@@ -98,16 +94,12 @@ $sponsor_post = get_posts(array(
 ));
 $sponsor_id = !empty($sponsor_post) ? $sponsor_post[0]->ID : 0;
 
-// User approval status - if user can log in, they're approved at WP/UM level
-// The sponsor role or ability to login means they're an approved user
-$is_user_approved = true; // If they're logged in, they've been approved by WP/UM
-
-// Check Ultimate Member approval status if UM is active
+// User approval status
+$is_user_approved = true;
 if (function_exists('um_user') && function_exists('um_is_user_approved')) {
     $is_user_approved = um_is_user_approved($user_id);
 }
 
-// User is approved if: they're logged in AND (UM says approved OR UM not installed)
 $sponsor_status = $is_user_approved ? 'approved' : 'pending';
 $sponsor_phone = $sponsor_id ? get_post_meta($sponsor_id, '_sponsor_phone', true) : get_user_meta($user_id, 'phone', true);
 $sponsor_country = $sponsor_id ? get_post_meta($sponsor_id, '_sponsor_country', true) : get_user_meta($user_id, 'country', true);
@@ -130,46 +122,39 @@ $available_students = get_posts(array(
     ),
 ));
 
-// Get pending sponsorship requests
-$pending_requests = get_posts(array(
-    'post_type' => 'alhuffaz_sponsor',
-    'posts_per_page' => -1,
-    'meta_query' => array(
-        array('key' => '_sponsor_user_id', 'value' => $user_id),
-        array('key' => '_status', 'value' => 'pending'),
-    ),
-));
-
 $portal_url = get_permalink();
 $nonce = wp_create_nonce('alhuffaz_public_nonce');
 ?>
 
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
 
 <style>
 /* ============================================
-   SPONSOR PORTAL - CLEAN STABLE DESIGN
-   Complete CSS with WordPress Theme Isolation
+   SPONSOR PORTAL - MODERN TOP NAV DESIGN
+   Inspired by Stripe, Linear, Notion
    ============================================ */
 
-/* CSS Variables - Scoped to .sp-portal */
+/* CSS Variables */
 .sp-portal {
-    --sp-primary: #0080ff;
-    --sp-primary-dark: #004d99;
+    --sp-primary: #6366f1;
+    --sp-primary-dark: #4f46e5;
+    --sp-primary-light: #eef2ff;
     --sp-success: #10b981;
+    --sp-success-light: #d1fae5;
     --sp-warning: #f59e0b;
+    --sp-warning-light: #fef3c7;
     --sp-danger: #ef4444;
-    --sp-text: #1e293b;
-    --sp-text-muted: #64748b;
-    --sp-border: #e2e8f0;
-    --sp-bg: #f8fafc;
-    --sp-sidebar: #0f172a;
+    --sp-danger-light: #fee2e2;
+    --sp-text: #111827;
+    --sp-text-secondary: #6b7280;
+    --sp-border: #e5e7eb;
+    --sp-bg: #f9fafb;
     --sp-card: #ffffff;
-    --sp-sidebar-width: 260px;
+    --sp-header-bg: #ffffff;
 }
 
-/* CSS Reset - Prevent WordPress theme bleeding */
+/* CSS Reset */
 .sp-portal,
 .sp-portal *,
 .sp-portal *::before,
@@ -177,593 +162,561 @@ $nonce = wp_create_nonce('alhuffaz_public_nonce');
     box-sizing: border-box !important;
     margin: 0;
     padding: 0;
-    border: 0;
-    font-size: 100%;
-    vertical-align: baseline;
 }
 
-/* Reset specific elements */
-.sp-portal article, .sp-portal aside, .sp-portal details, .sp-portal figcaption,
-.sp-portal figure, .sp-portal footer, .sp-portal header, .sp-portal hgroup,
-.sp-portal menu, .sp-portal nav, .sp-portal section {
-    display: block;
-}
+.sp-portal a { text-decoration: none; color: inherit; }
+.sp-portal ul, .sp-portal ol { list-style: none; }
+.sp-portal button, .sp-portal input, .sp-portal select, .sp-portal textarea { font-family: inherit; }
 
-.sp-portal ol, .sp-portal ul {
-    list-style: none;
-}
-
-.sp-portal table {
-    border-collapse: collapse;
-    border-spacing: 0;
-}
-
-.sp-portal a {
-    text-decoration: none;
-    color: inherit;
-}
-
-.sp-portal button, .sp-portal input, .sp-portal select, .sp-portal textarea {
-    font-family: inherit;
-    font-size: inherit;
-    line-height: inherit;
-}
-
-/* Main Portal Container */
+/* Main Container */
 .sp-portal {
-    font-family: 'Poppins', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif !important;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif !important;
     background: var(--sp-bg) !important;
     min-height: 100vh !important;
     color: var(--sp-text) !important;
     line-height: 1.5 !important;
     font-size: 14px !important;
     -webkit-font-smoothing: antialiased;
-    -moz-osx-font-smoothing: grayscale;
-    position: relative;
-    width: 100%;
 }
 
-/* Account for WordPress admin bar */
-body.admin-bar .sp-portal .sp-sidebar {
+/* ==================== TOP HEADER ==================== */
+.sp-header {
+    background: var(--sp-header-bg) !important;
+    border-bottom: 1px solid var(--sp-border) !important;
+    position: sticky !important;
+    top: 0 !important;
+    z-index: 100 !important;
+}
+
+body.admin-bar .sp-portal .sp-header {
     top: 32px !important;
-    height: calc(100vh - 32px) !important;
 }
 @media screen and (max-width: 782px) {
-    body.admin-bar .sp-portal .sp-sidebar {
+    body.admin-bar .sp-portal .sp-header {
         top: 46px !important;
-        height: calc(100vh - 46px) !important;
     }
 }
 
-/* Ensure proper stacking context */
-.sp-portal .sp-wrapper {
-    position: relative;
-    z-index: 1;
+.sp-header-inner {
+    max-width: 1400px !important;
+    margin: 0 auto !important;
+    padding: 0 24px !important;
 }
 
-/* Layout - Fixed Sidebar */
-.sp-portal .sp-wrapper {
-    display: flex !important;
-    min-height: 100vh !important;
-    width: 100% !important;
-    position: relative !important;
-}
-.sp-portal .sp-sidebar {
-    width: var(--sp-sidebar-width) !important;
-    min-width: var(--sp-sidebar-width) !important;
-    max-width: var(--sp-sidebar-width) !important;
-    background: linear-gradient(180deg, var(--sp-sidebar) 0%, #1e293b 100%) !important;
-    color: #fff !important;
-    position: fixed !important;
-    top: 0 !important;
-    left: 0 !important;
-    height: 100vh !important;
-    overflow-y: auto !important;
-    overflow-x: hidden !important;
-    z-index: 1000 !important;
-    transition: transform 0.3s ease !important;
-}
-.sp-portal .sp-sidebar::-webkit-scrollbar { width: 6px; }
-.sp-portal .sp-sidebar::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.2); border-radius: 3px; }
-.sp-portal .sp-main {
-    flex: 1 !important;
-    margin-left: var(--sp-sidebar-width) !important;
-    padding: 24px !important;
-    min-height: 100vh !important;
-    width: calc(100% - var(--sp-sidebar-width)) !important;
-    max-width: calc(100% - var(--sp-sidebar-width)) !important;
-    overflow-x: hidden !important;
-    background: var(--sp-bg) !important;
-}
-
-/* Mobile Menu Toggle */
-.sp-portal .sp-menu-toggle {
-    display: none !important;
-    position: fixed !important;
-    top: 16px !important;
-    left: 16px !important;
-    z-index: 1001 !important;
-    width: 44px !important;
-    height: 44px !important;
-    border-radius: 12px !important;
-    background: var(--sp-sidebar) !important;
-    color: white !important;
-    border: none !important;
-    font-size: 20px !important;
-    cursor: pointer !important;
-    align-items: center !important;
-    justify-content: center !important;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.15) !important;
-}
-.sp-portal .sp-overlay {
-    display: none !important;
-    position: fixed !important;
-    top: 0 !important;
-    left: 0 !important;
-    width: 100% !important;
-    height: 100% !important;
-    background: rgba(0,0,0,0.5) !important;
-    z-index: 999 !important;
-}
-.sp-portal .sp-overlay.open {
-    display: block !important;
-}
-
-/* Sidebar */
-.sp-portal .sp-sidebar-header {
-    padding: 20px 16px !important;
-    border-bottom: 1px solid rgba(255,255,255,0.1) !important;
-    text-align: center !important;
-}
-.sp-portal .sp-logo {
+.sp-header-top {
     display: flex !important;
     align-items: center !important;
-    justify-content: center !important;
-    gap: 10px !important;
-    font-size: 17px !important;
-    font-weight: 700 !important;
-    color: #fff !important;
-}
-.sp-portal .sp-logo i { font-size: 24px !important; color: var(--sp-primary) !important; }
-.sp-portal .sp-user-card {
-    padding: 16px 12px !important;
-    margin: 12px !important;
-    background: rgba(255,255,255,0.05) !important;
-    border-radius: 12px !important;
-    text-align: center !important;
-}
-.sp-portal .sp-avatar {
-    width: 64px !important;
+    justify-content: space-between !important;
     height: 64px !important;
+}
+
+.sp-logo {
+    display: flex !important;
+    align-items: center !important;
+    gap: 12px !important;
+    font-size: 18px !important;
+    font-weight: 700 !important;
+    color: var(--sp-text) !important;
+}
+
+.sp-logo i {
+    font-size: 24px !important;
+    color: var(--sp-primary) !important;
+}
+
+.sp-user-menu {
+    display: flex !important;
+    align-items: center !important;
+    gap: 16px !important;
+}
+
+.sp-user-info {
+    display: flex !important;
+    align-items: center !important;
+    gap: 12px !important;
+    padding: 8px 16px !important;
+    background: var(--sp-bg) !important;
+    border-radius: 100px !important;
+    cursor: pointer !important;
+    transition: all 0.2s !important;
+}
+
+.sp-user-info:hover {
+    background: var(--sp-border) !important;
+}
+
+.sp-avatar {
+    width: 36px !important;
+    height: 36px !important;
     border-radius: 50% !important;
     background: linear-gradient(135deg, var(--sp-primary), var(--sp-primary-dark)) !important;
     display: flex !important;
     align-items: center !important;
     justify-content: center !important;
-    font-size: 26px !important;
-    font-weight: 800 !important;
-    margin: 0 auto 10px !important;
-    border: 3px solid rgba(255,255,255,0.2) !important;
-    color: #fff !important;
+    font-size: 14px !important;
+    font-weight: 700 !important;
+    color: white !important;
 }
-.sp-portal .sp-user-name { font-size: 15px !important; font-weight: 600 !important; margin-bottom: 6px !important; white-space: nowrap !important; overflow: hidden !important; text-overflow: ellipsis !important; color: #fff !important; }
-.sp-portal .sp-user-status {
+
+.sp-user-name {
+    font-weight: 600 !important;
+    font-size: 14px !important;
+}
+
+.sp-status-badge {
     display: inline-flex !important;
     align-items: center !important;
-    gap: 5px !important;
-    padding: 3px 10px !important;
-    border-radius: 20px !important;
+    gap: 4px !important;
+    padding: 4px 10px !important;
+    border-radius: 100px !important;
     font-size: 11px !important;
     font-weight: 600 !important;
 }
-.sp-portal .sp-user-status.sp-status-approved { background: rgba(16, 185, 129, 0.2) !important; color: #34d399 !important; }
-.sp-portal .sp-user-status.sp-status-pending { background: rgba(245, 158, 11, 0.2) !important; color: #fbbf24 !important; }
-.sp-portal .sp-nav { padding: 12px 0 !important; }
-.sp-portal .sp-nav-item {
+
+.sp-status-badge.approved {
+    background: var(--sp-success-light) !important;
+    color: #065f46 !important;
+}
+
+.sp-status-badge.pending {
+    background: var(--sp-warning-light) !important;
+    color: #92400e !important;
+}
+
+.sp-logout-btn {
     display: flex !important;
     align-items: center !important;
-    gap: 12px !important;
-    padding: 12px 20px !important;
-    color: rgba(255,255,255,0.7) !important;
-    text-decoration: none !important;
-    font-weight: 500 !important;
-    font-size: 14px !important;
-    transition: all 0.2s ease !important;
-    cursor: pointer !important;
-    border-left: 3px solid transparent !important;
+    gap: 6px !important;
+    padding: 8px 16px !important;
     background: transparent !important;
+    border: 1px solid var(--sp-border) !important;
+    border-radius: 8px !important;
+    font-size: 13px !important;
+    font-weight: 500 !important;
+    color: var(--sp-text-secondary) !important;
+    cursor: pointer !important;
+    transition: all 0.2s !important;
 }
-.sp-portal .sp-nav-item:hover, .sp-portal .sp-nav-item.active {
-    background: rgba(0, 128, 255, 0.15) !important;
-    color: #fff !important;
-    border-left-color: var(--sp-primary) !important;
+
+.sp-logout-btn:hover {
+    background: var(--sp-danger-light) !important;
+    border-color: var(--sp-danger) !important;
+    color: var(--sp-danger) !important;
 }
-.sp-portal .sp-nav-item i { width: 18px !important; text-align: center !important; font-size: 15px !important; }
-.sp-portal .sp-nav-badge {
-    margin-left: auto !important;
+
+/* ==================== NAVIGATION TABS ==================== */
+.sp-nav {
+    display: flex !important;
+    gap: 4px !important;
+    padding-bottom: 0 !important;
+    overflow-x: auto !important;
+    scrollbar-width: none !important;
+}
+
+.sp-nav::-webkit-scrollbar { display: none; }
+
+.sp-nav-item {
+    display: flex !important;
+    align-items: center !important;
+    gap: 8px !important;
+    padding: 12px 16px !important;
+    font-size: 14px !important;
+    font-weight: 500 !important;
+    color: var(--sp-text-secondary) !important;
+    border-bottom: 2px solid transparent !important;
+    cursor: pointer !important;
+    transition: all 0.2s !important;
+    white-space: nowrap !important;
+    background: transparent !important;
+    border-top: none !important;
+    border-left: none !important;
+    border-right: none !important;
+}
+
+.sp-nav-item:hover {
+    color: var(--sp-text) !important;
+    background: var(--sp-bg) !important;
+}
+
+.sp-nav-item.active {
+    color: var(--sp-primary) !important;
+    border-bottom-color: var(--sp-primary) !important;
+}
+
+.sp-nav-item i {
+    font-size: 16px !important;
+}
+
+.sp-nav-badge {
     background: var(--sp-primary) !important;
     color: white !important;
     padding: 2px 8px !important;
-    border-radius: 20px !important;
+    border-radius: 100px !important;
     font-size: 11px !important;
     font-weight: 700 !important;
-    min-width: 22px !important;
-    text-align: center !important;
 }
-.sp-portal .sp-nav-badge.warning { background: var(--sp-warning) !important; }
 
-/* Main Content */
-.sp-portal .sp-header {
+.sp-nav-badge.warning {
+    background: var(--sp-warning) !important;
+}
+
+/* Mobile Menu Toggle */
+.sp-menu-toggle {
+    display: none !important;
+    align-items: center !important;
+    justify-content: center !important;
+    width: 40px !important;
+    height: 40px !important;
+    background: var(--sp-bg) !important;
+    border: none !important;
+    border-radius: 8px !important;
+    font-size: 20px !important;
+    color: var(--sp-text) !important;
+    cursor: pointer !important;
+}
+
+/* ==================== MAIN CONTENT ==================== */
+.sp-main {
+    max-width: 1400px !important;
+    margin: 0 auto !important;
+    padding: 32px 24px !important;
+}
+
+/* Panels */
+.sp-panel {
+    display: none !important;
+}
+
+.sp-panel.active {
+    display: block !important;
+    animation: spFadeIn 0.3s ease !important;
+}
+
+@keyframes spFadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+/* Page Title */
+.sp-page-title {
+    font-size: 28px !important;
+    font-weight: 700 !important;
+    color: var(--sp-text) !important;
+    margin: 0 0 8px 0 !important;
+}
+
+.sp-page-subtitle {
+    font-size: 15px !important;
+    color: var(--sp-text-secondary) !important;
+    margin: 0 0 24px 0 !important;
+}
+
+/* ==================== STATS GRID ==================== */
+.sp-stats {
+    display: grid !important;
+    grid-template-columns: repeat(4, 1fr) !important;
+    gap: 20px !important;
+    margin-bottom: 32px !important;
+}
+
+.sp-stat {
+    background: var(--sp-card) !important;
+    border-radius: 16px !important;
+    padding: 24px !important;
+    border: 1px solid var(--sp-border) !important;
+    transition: all 0.2s !important;
+}
+
+.sp-stat:hover {
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05) !important;
+    transform: translateY(-2px) !important;
+}
+
+.sp-stat-header {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    margin-bottom: 12px !important;
+}
+
+.sp-stat-icon {
+    width: 48px !important;
+    height: 48px !important;
+    border-radius: 12px !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    font-size: 20px !important;
+}
+
+.sp-stat-icon.blue { background: #dbeafe !important; color: #1e40af !important; }
+.sp-stat-icon.green { background: #d1fae5 !important; color: #065f46 !important; }
+.sp-stat-icon.orange { background: #fef3c7 !important; color: #92400e !important; }
+.sp-stat-icon.purple { background: #ede9fe !important; color: #5b21b6 !important; }
+
+.sp-stat-value {
+    font-size: 32px !important;
+    font-weight: 700 !important;
+    color: var(--sp-text) !important;
+    margin-bottom: 4px !important;
+}
+
+.sp-stat-label {
+    font-size: 13px !important;
+    color: var(--sp-text-secondary) !important;
+}
+
+/* ==================== CARDS ==================== */
+.sp-card {
+    background: var(--sp-card) !important;
+    border-radius: 16px !important;
+    border: 1px solid var(--sp-border) !important;
+    margin-bottom: 24px !important;
+    overflow: hidden !important;
+}
+
+.sp-card-header {
+    padding: 20px 24px !important;
+    border-bottom: 1px solid var(--sp-border) !important;
     display: flex !important;
     justify-content: space-between !important;
     align-items: center !important;
-    margin-bottom: 24px !important;
-    flex-wrap: wrap !important;
-    gap: 12px !important;
-    padding-bottom: 16px !important;
-    border-bottom: 1px solid var(--sp-border) !important;
 }
-.sp-portal .sp-title { font-size: 24px !important; font-weight: 700 !important; margin: 0 !important; color: var(--sp-text) !important; }
-.sp-portal .sp-panel { display: none !important; }
-.sp-portal .sp-panel.active { display: block !important; animation: spFadeIn 0.3s ease !important; }
-@keyframes spFadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
 
-/* Stats */
-.sp-portal .sp-stats {
-    display: grid !important;
-    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)) !important;
-    gap: 16px !important;
-    margin-bottom: 24px !important;
+.sp-card-title {
+    font-size: 16px !important;
+    font-weight: 600 !important;
+    margin: 0 !important;
+    display: flex !important;
+    align-items: center !important;
+    gap: 10px !important;
+    color: var(--sp-text) !important;
 }
-.sp-portal .sp-stat {
+
+.sp-card-title i {
+    color: var(--sp-primary) !important;
+}
+
+.sp-card-body {
+    padding: 24px !important;
+}
+
+/* ==================== STUDENT CARDS GRID ==================== */
+.sp-students-grid {
+    display: grid !important;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)) !important;
+    gap: 24px !important;
+}
+
+.sp-student-card {
     background: var(--sp-card) !important;
-    border-radius: 12px !important;
+    border-radius: 16px !important;
+    border: 1px solid var(--sp-border) !important;
+    overflow: hidden !important;
+    transition: all 0.3s !important;
+}
+
+.sp-student-card:hover {
+    box-shadow: 0 8px 24px rgba(99, 102, 241, 0.15) !important;
+    transform: translateY(-4px) !important;
+    border-color: var(--sp-primary) !important;
+}
+
+.sp-student-header {
     padding: 20px !important;
     display: flex !important;
     align-items: center !important;
     gap: 16px !important;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.04) !important;
-    border: 1px solid var(--sp-border) !important;
-    transition: box-shadow 0.2s ease !important;
-}
-.sp-portal .sp-stat:hover { box-shadow: 0 4px 16px rgba(0,0,0,0.08) !important; }
-.sp-portal .sp-stat-icon {
-    width: 52px !important;
-    height: 52px !important;
-    border-radius: 12px !important;
-    display: flex !important;
-    align-items: center !important;
-    justify-content: center !important;
-    font-size: 22px !important;
-    flex-shrink: 0 !important;
-}
-.sp-portal .sp-stat-icon.blue { background: #dbeafe !important; color: #1e40af !important; }
-.sp-portal .sp-stat-icon.green { background: #d1fae5 !important; color: #065f46 !important; }
-.sp-portal .sp-stat-icon.orange { background: #fef3c7 !important; color: #92400e !important; }
-.sp-portal .sp-stat-icon.purple { background: #ede9fe !important; color: #5b21b6 !important; }
-.sp-portal .sp-stat-label { font-size: 13px !important; color: var(--sp-text-muted) !important; margin-bottom: 2px !important; }
-.sp-portal .sp-stat-value { font-size: 24px !important; font-weight: 700 !important; color: var(--sp-text) !important; }
-
-/* Cards */
-.sp-portal .sp-card {
-    background: var(--sp-card) !important;
-    border-radius: 12px !important;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.04) !important;
-    border: 1px solid var(--sp-border) !important;
-    margin-bottom: 20px !important;
-    overflow: hidden !important;
-}
-.sp-portal .sp-card-header {
-    padding: 16px 20px !important;
-    border-bottom: 1px solid var(--sp-border) !important;
-    display: flex !important;
-    justify-content: space-between !important;
-    align-items: center !important;
-    background: var(--sp-bg) !important;
-}
-.sp-portal .sp-card-title { font-size: 16px !important; font-weight: 600 !important; margin: 0 !important; display: flex !important; align-items: center !important; gap: 8px !important; color: var(--sp-text) !important; }
-.sp-portal .sp-card-title i { color: var(--sp-primary) !important; font-size: 16px !important; }
-.sp-portal .sp-card-body { padding: 20px !important; }
-
-/* Student Grid */
-.sp-portal .sp-students-grid {
-    display: grid !important;
-    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)) !important;
-    gap: 20px !important;
-}
-.sp-portal .sp-student-card {
-    background: var(--sp-card) !important;
-    border-radius: 12px !important;
-    overflow: hidden !important;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.04) !important;
-    border: 1px solid var(--sp-border) !important;
-    transition: transform 0.2s ease, box-shadow 0.2s ease !important;
-}
-.sp-portal .sp-student-card:hover {
-    transform: translateY(-2px) !important;
-    box-shadow: 0 8px 24px rgba(0,128,255,0.12) !important;
-}
-.sp-portal .sp-student-header {
-    padding: 16px !important;
-    background: linear-gradient(135deg, #f8fafc, #fff) !important;
-    display: flex !important;
-    align-items: center !important;
-    gap: 14px !important;
     border-bottom: 1px solid var(--sp-border) !important;
 }
-.sp-portal .sp-student-photo {
-    width: 56px !important;
-    height: 56px !important;
+
+.sp-student-photo {
+    width: 64px !important;
+    height: 64px !important;
     border-radius: 50% !important;
     object-fit: cover !important;
-    border: 2px solid white !important;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.1) !important;
     flex-shrink: 0 !important;
+    border: 3px solid var(--sp-primary-light) !important;
 }
-.sp-portal .sp-student-placeholder {
-    width: 56px !important;
-    height: 56px !important;
+
+.sp-student-placeholder {
+    width: 64px !important;
+    height: 64px !important;
     border-radius: 50% !important;
     background: linear-gradient(135deg, var(--sp-primary), var(--sp-primary-dark)) !important;
     color: white !important;
     display: flex !important;
     align-items: center !important;
     justify-content: center !important;
-    font-size: 22px !important;
+    font-size: 24px !important;
     font-weight: 700 !important;
     flex-shrink: 0 !important;
 }
-.sp-portal .sp-student-info { min-width: 0 !important; flex: 1 !important; }
-.sp-portal .sp-student-info h3 { margin: 0 0 6px 0 !important; font-size: 15px !important; font-weight: 600 !important; white-space: nowrap !important; overflow: hidden !important; text-overflow: ellipsis !important; color: var(--sp-text) !important; }
-.sp-portal .sp-student-badges { display: flex !important; gap: 6px !important; flex-wrap: wrap !important; }
-.sp-portal .sp-badge {
-    padding: 3px 10px !important;
-    border-radius: 20px !important;
-    font-size: 10px !important;
+
+.sp-student-info {
+    flex: 1 !important;
+    min-width: 0 !important;
+}
+
+.sp-student-info h3 {
+    margin: 0 0 8px 0 !important;
+    font-size: 16px !important;
+    font-weight: 600 !important;
+    color: var(--sp-text) !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+}
+
+.sp-student-badges {
+    display: flex !important;
+    gap: 8px !important;
+    flex-wrap: wrap !important;
+}
+
+.sp-badge {
+    padding: 4px 10px !important;
+    border-radius: 100px !important;
+    font-size: 11px !important;
     font-weight: 600 !important;
 }
-.sp-portal .sp-badge-grade { background: var(--sp-primary) !important; color: white !important; }
-.sp-portal .sp-badge-category { background: #d1fae5 !important; color: #065f46 !important; }
-.sp-portal .sp-student-body { padding: 16px !important; }
-.sp-portal .sp-fee-grid {
+
+.sp-badge-grade { background: var(--sp-primary-light) !important; color: var(--sp-primary-dark) !important; }
+.sp-badge-category { background: var(--sp-success-light) !important; color: #065f46 !important; }
+
+.sp-student-body {
+    padding: 20px !important;
+}
+
+.sp-fee-grid {
     display: grid !important;
     grid-template-columns: repeat(3, 1fr) !important;
-    gap: 10px !important;
-    margin-bottom: 12px !important;
+    gap: 12px !important;
+    margin-bottom: 16px !important;
 }
-.sp-portal .sp-fee-item {
+
+.sp-fee-item {
     text-align: center !important;
-    padding: 10px 8px !important;
+    padding: 12px !important;
     background: var(--sp-bg) !important;
     border-radius: 10px !important;
 }
-.sp-portal .sp-fee-label { font-size: 10px !important; color: var(--sp-text-muted) !important; margin-bottom: 2px !important; }
-.sp-portal .sp-fee-value { font-size: 14px !important; font-weight: 600 !important; color: var(--sp-text) !important; }
-.sp-portal .sp-student-footer {
-    padding: 12px 16px !important;
+
+.sp-fee-label {
+    font-size: 11px !important;
+    color: var(--sp-text-secondary) !important;
+    margin-bottom: 4px !important;
+}
+
+.sp-fee-value {
+    font-size: 15px !important;
+    font-weight: 600 !important;
+    color: var(--sp-text) !important;
+}
+
+.sp-student-footer {
+    padding: 16px 20px !important;
     background: var(--sp-bg) !important;
     border-top: 1px solid var(--sp-border) !important;
 }
 
-/* Buttons */
-.sp-portal .sp-btn {
+/* ==================== BUTTONS ==================== */
+.sp-btn {
     display: inline-flex !important;
     align-items: center !important;
     justify-content: center !important;
-    gap: 6px !important;
-    padding: 10px 20px !important;
-    border-radius: 8px !important;
+    gap: 8px !important;
+    padding: 12px 20px !important;
+    border-radius: 10px !important;
     font-weight: 600 !important;
-    font-size: 13px !important;
-    text-decoration: none !important;
+    font-size: 14px !important;
     cursor: pointer !important;
-    transition: all 0.2s ease !important;
+    transition: all 0.2s !important;
     border: none !important;
-    font-family: 'Poppins', sans-serif !important;
+    font-family: 'Inter', sans-serif !important;
     white-space: nowrap !important;
-    line-height: 1.4 !important;
 }
-.sp-portal .sp-btn-primary {
-    background: linear-gradient(135deg, var(--sp-primary), var(--sp-primary-dark)) !important;
+
+.sp-btn-primary {
+    background: var(--sp-primary) !important;
     color: white !important;
 }
-.sp-portal .sp-btn-primary:hover { background: linear-gradient(135deg, #0073e6, #003d80) !important; }
-.sp-portal .sp-btn-success { background: var(--sp-success) !important; color: white !important; }
-.sp-portal .sp-btn-success:hover { background: #0d9668 !important; }
-.sp-portal .sp-btn-secondary { background: white !important; color: var(--sp-text) !important; border: 1px solid var(--sp-border) !important; }
-.sp-portal .sp-btn-secondary:hover { background: var(--sp-bg) !important; border-color: #cbd5e1 !important; }
-.sp-portal .sp-btn-outline { background: transparent !important; color: var(--sp-primary) !important; border: 2px solid var(--sp-primary) !important; }
-.sp-portal .sp-btn-outline:hover { background: rgba(0,128,255,0.1) !important; }
-.sp-portal .sp-btn:hover { transform: translateY(-1px) !important; box-shadow: 0 2px 8px rgba(0,0,0,0.12) !important; }
-.sp-portal .sp-btn-block { width: 100% !important; }
-.sp-portal .sp-btn-sm { padding: 8px 14px !important; font-size: 12px !important; }
 
-/* Payment Plan Buttons */
-.sp-portal .sp-plan-title {
-    font-size: 13px !important;
-    font-weight: 600 !important;
-    color: var(--sp-text) !important;
-    margin: 0 0 10px 0 !important;
-    text-align: center !important;
-}
-.sp-portal .sp-plan-grid {
-    display: grid !important;
-    grid-template-columns: repeat(2, 1fr) !important;
-    gap: 8px !important;
-}
-.sp-portal .sp-plan-btn {
-    display: flex !important;
-    flex-direction: column !important;
-    align-items: center !important;
-    padding: 12px 10px !important;
-    background: var(--sp-bg) !important;
-    border: 2px solid var(--sp-border) !important;
-    border-radius: 10px !important;
-    cursor: pointer !important;
-    transition: all 0.2s ease !important;
-    font-family: 'Poppins', sans-serif !important;
-    position: relative !important;
-}
-.sp-portal .sp-plan-btn:hover {
-    border-color: var(--sp-primary) !important;
-    background: #f0f7ff !important;
+.sp-btn-primary:hover {
+    background: var(--sp-primary-dark) !important;
     transform: translateY(-1px) !important;
+    box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3) !important;
 }
-.sp-portal .sp-plan-btn.sp-plan-featured {
-    background: linear-gradient(135deg, #e0f2ff, #cce6ff) !important;
-    border-color: var(--sp-primary) !important;
+
+.sp-btn-secondary {
+    background: var(--sp-bg) !important;
+    color: var(--sp-text) !important;
+    border: 1px solid var(--sp-border) !important;
 }
-.sp-portal .sp-plan-badge {
-    position: absolute !important;
-    top: -8px !important;
-    right: -8px !important;
+
+.sp-btn-secondary:hover {
+    background: var(--sp-border) !important;
+}
+
+.sp-btn-success {
     background: var(--sp-success) !important;
     color: white !important;
-    font-size: 9px !important;
-    font-weight: 700 !important;
-    padding: 3px 6px !important;
-    border-radius: 20px !important;
 }
-.sp-portal .sp-plan-duration {
-    font-size: 12px !important;
-    font-weight: 600 !important;
-    color: var(--sp-text) !important;
-    margin-bottom: 2px !important;
+
+.sp-btn-success:hover {
+    background: #059669 !important;
 }
-.sp-portal .sp-plan-amount {
-    font-size: 15px !important;
-    font-weight: 700 !important;
-    color: var(--sp-primary) !important;
+
+.sp-btn-block {
+    width: 100% !important;
 }
-.sp-portal .sp-plan-note {
-    font-size: 9px !important;
-    color: var(--sp-text-muted) !important;
+
+.sp-btn-sm {
+    padding: 8px 14px !important;
+    font-size: 13px !important;
+}
+
+/* ==================== ALERTS ==================== */
+.sp-alert {
+    padding: 16px 20px !important;
+    border-radius: 12px !important;
+    margin-bottom: 24px !important;
+    display: flex !important;
+    align-items: flex-start !important;
+    gap: 12px !important;
+}
+
+.sp-alert-warning {
+    background: var(--sp-warning-light) !important;
+    color: #92400e !important;
+    border: 1px solid #fde68a !important;
+}
+
+.sp-alert-success {
+    background: var(--sp-success-light) !important;
+    color: #065f46 !important;
+    border: 1px solid #a7f3d0 !important;
+}
+
+.sp-alert i {
+    font-size: 20px !important;
+    flex-shrink: 0 !important;
     margin-top: 2px !important;
 }
 
-/* Payment Proof Summary */
-.sp-portal .sp-proof-summary {
-    display: grid !important;
-    gap: 12px !important;
-}
-.sp-portal .sp-proof-item {
-    display: flex !important;
-    justify-content: space-between !important;
-    align-items: center !important;
-    padding: 12px 16px !important;
-    background: var(--sp-bg) !important;
-    border-radius: 10px !important;
-}
-.sp-portal .sp-proof-label {
-    font-size: 14px !important;
-    color: var(--sp-text-muted) !important;
-}
-.sp-portal .sp-proof-value {
-    font-size: 15px !important;
-    font-weight: 600 !important;
-    color: var(--sp-text) !important;
-}
-.sp-portal .sp-proof-total {
-    background: linear-gradient(135deg, #e0f2ff, #cce6ff) !important;
-    border: 2px solid var(--sp-primary) !important;
-}
-.sp-portal .sp-proof-total .sp-proof-value {
-    font-size: 20px !important;
-    color: var(--sp-primary) !important;
-}
-.sp-portal .sp-form-hint {
+.sp-alert-content strong {
     display: block !important;
-    font-size: 12px !important;
-    color: var(--sp-text-muted) !important;
-    margin-top: 6px !important;
+    margin-bottom: 4px !important;
 }
 
-/* Student Profile View */
-.sp-portal .sp-profile-view { padding: 0 !important; }
-.sp-portal .sp-profile-header {
-    display: flex !important;
-    align-items: center !important;
-    gap: 24px !important;
-    padding: 24px !important;
-    background: linear-gradient(135deg, var(--sp-primary), var(--sp-primary-dark)) !important;
-    border-radius: 16px !important;
-    color: white !important;
-}
-.sp-portal .sp-profile-photo img, .sp-portal .sp-profile-placeholder {
-    width: 100px !important;
-    height: 100px !important;
-    border-radius: 50% !important;
-    object-fit: cover !important;
-    border: 4px solid rgba(255,255,255,0.3) !important;
-}
-.sp-portal .sp-profile-placeholder {
-    display: flex !important;
-    align-items: center !important;
-    justify-content: center !important;
-    background: rgba(255,255,255,0.2) !important;
-    font-size: 40px !important;
-    font-weight: 700 !important;
-    color: white !important;
-}
-.sp-portal .sp-profile-info h2 {
-    margin: 0 0 12px 0 !important;
-    font-size: 24px !important;
-    font-weight: 700 !important;
-    color: white !important;
-}
-.sp-portal .sp-profile-badges { display: flex !important; gap: 8px !important; }
-.sp-portal .sp-profile-badges .sp-badge { background: rgba(255,255,255,0.2) !important; color: white !important; }
-.sp-portal .sp-subjects-grid {
-    display: grid !important;
-    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)) !important;
-    gap: 12px !important;
-}
-.sp-portal .sp-subject-item {
-    display: flex !important;
-    justify-content: space-between !important;
-    align-items: center !important;
-    padding: 14px 16px !important;
-    background: var(--sp-bg) !important;
-    border-radius: 10px !important;
-    border-left: 4px solid var(--sp-primary) !important;
-}
-.sp-portal .sp-subject-name { font-weight: 600 !important; color: var(--sp-text) !important; }
-.sp-portal .sp-subject-score { display: flex !important; align-items: center !important; gap: 8px !important; }
-.sp-portal .sp-subject-percentage { font-weight: 700 !important; color: var(--sp-text) !important; }
-.sp-portal .sp-subject-grade {
-    padding: 4px 8px !important;
-    border-radius: 6px !important;
-    font-size: 12px !important;
-    font-weight: 700 !important;
-}
-.sp-portal .grade-a { background: #d1fae5 !important; color: #065f46 !important; }
-.sp-portal .grade-b { background: #dbeafe !important; color: #1e40af !important; }
-.sp-portal .grade-c { background: #fef3c7 !important; color: #92400e !important; }
-.sp-portal .grade-d { background: #fed7aa !important; color: #c2410c !important; }
-.sp-portal .grade-f { background: #fee2e2 !important; color: #b91c1c !important; }
-.sp-portal .sp-goals-list {
-    list-style: none !important;
-    padding: 0 !important;
-    margin: 0 !important;
-}
-.sp-portal .sp-goals-list li {
-    display: flex !important;
-    align-items: center !important;
-    gap: 12px !important;
-    padding: 12px 0 !important;
-    border-bottom: 1px solid var(--sp-border) !important;
-    color: var(--sp-text) !important;
-}
-.sp-portal .sp-goals-list li:last-child { border-bottom: none !important; }
-.sp-portal .sp-goals-list li i { color: var(--sp-success) !important; }
-
-/* Profile */
-.sp-portal .sp-profile-grid {
+/* ==================== PROFILE GRID ==================== */
+.sp-profile-grid {
     display: grid !important;
     grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)) !important;
     gap: 16px !important;
 }
-.sp-portal .sp-profile-item {
+
+.sp-profile-item {
     display: flex !important;
     align-items: center !important;
     gap: 16px !important;
@@ -771,7 +724,8 @@ body.admin-bar .sp-portal .sp-sidebar {
     background: var(--sp-bg) !important;
     border-radius: 12px !important;
 }
-.sp-portal .sp-profile-icon {
+
+.sp-profile-icon {
     width: 48px !important;
     height: 48px !important;
     border-radius: 12px !important;
@@ -780,74 +734,274 @@ body.admin-bar .sp-portal .sp-sidebar {
     align-items: center !important;
     justify-content: center !important;
     color: var(--sp-primary) !important;
-    font-size: 20px !important;
+    font-size: 18px !important;
     box-shadow: 0 2px 8px rgba(0,0,0,0.05) !important;
+    flex-shrink: 0 !important;
 }
-.sp-portal .sp-profile-label { font-size: 12px !important; color: var(--sp-text-muted) !important; }
-.sp-portal .sp-profile-value { font-size: 15px !important; font-weight: 600 !important; color: var(--sp-text) !important; }
 
-/* Table */
-.sp-portal .sp-table-wrap { overflow-x: auto !important; }
-.sp-portal .sp-table { width: 100% !important; border-collapse: collapse !important; }
-.sp-portal .sp-table th, .sp-portal .sp-table td { padding: 14px 16px !important; text-align: left !important; border-bottom: 1px solid var(--sp-border) !important; }
-.sp-portal .sp-table thead th { background: var(--sp-bg) !important; font-weight: 700 !important; font-size: 12px !important; text-transform: uppercase !important; letter-spacing: 0.5px !important; color: var(--sp-text-muted) !important; }
-.sp-portal .sp-table tbody tr:hover { background: var(--sp-bg) !important; }
-.sp-portal .sp-status {
+.sp-profile-label {
+    font-size: 12px !important;
+    color: var(--sp-text-secondary) !important;
+    margin-bottom: 2px !important;
+}
+
+.sp-profile-value {
+    font-size: 15px !important;
+    font-weight: 600 !important;
+    color: var(--sp-text) !important;
+}
+
+/* ==================== TABLES ==================== */
+.sp-table-wrap {
+    overflow-x: auto !important;
+}
+
+.sp-table {
+    width: 100% !important;
+    border-collapse: collapse !important;
+}
+
+.sp-table th,
+.sp-table td {
+    padding: 14px 16px !important;
+    text-align: left !important;
+    border-bottom: 1px solid var(--sp-border) !important;
+}
+
+.sp-table thead th {
+    background: var(--sp-bg) !important;
+    font-weight: 600 !important;
+    font-size: 12px !important;
+    text-transform: uppercase !important;
+    letter-spacing: 0.5px !important;
+    color: var(--sp-text-secondary) !important;
+}
+
+.sp-table tbody tr:hover {
+    background: var(--sp-bg) !important;
+}
+
+.sp-status {
     display: inline-flex !important;
     align-items: center !important;
     gap: 6px !important;
-    padding: 6px 14px !important;
-    border-radius: 20px !important;
+    padding: 6px 12px !important;
+    border-radius: 100px !important;
     font-size: 12px !important;
     font-weight: 600 !important;
 }
-.sp-portal .sp-status.sp-status-approved { background: #d1fae5 !important; color: #065f46 !important; }
-.sp-portal .sp-status.sp-status-pending { background: #fef3c7 !important; color: #92400e !important; }
-.sp-portal .sp-status.sp-status-rejected { background: #fee2e2 !important; color: #991b1b !important; }
 
-/* Payment Form */
-.sp-portal .sp-form-group { margin-bottom: 16px !important; }
-.sp-portal .sp-form-label { display: block !important; font-weight: 600 !important; margin-bottom: 6px !important; font-size: 13px !important; color: var(--sp-text) !important; }
-.sp-portal .sp-form-input, .sp-portal .sp-form-select {
-    width: 100% !important;
-    padding: 12px 14px !important;
-    border: 1px solid var(--sp-border) !important;
-    border-radius: 8px !important;
+.sp-status.approved { background: var(--sp-success-light) !important; color: #065f46 !important; }
+.sp-status.pending { background: var(--sp-warning-light) !important; color: #92400e !important; }
+.sp-status.rejected { background: var(--sp-danger-light) !important; color: #991b1b !important; }
+
+/* ==================== FORMS ==================== */
+.sp-form-group {
+    margin-bottom: 20px !important;
+}
+
+.sp-form-label {
+    display: block !important;
+    font-weight: 600 !important;
+    margin-bottom: 8px !important;
     font-size: 14px !important;
-    font-family: 'Poppins', sans-serif !important;
-    transition: border-color 0.2s ease, box-shadow 0.2s ease !important;
+    color: var(--sp-text) !important;
+}
+
+.sp-form-input,
+.sp-form-select {
+    width: 100% !important;
+    padding: 12px 16px !important;
+    border: 2px solid var(--sp-border) !important;
+    border-radius: 10px !important;
+    font-size: 14px !important;
+    font-family: 'Inter', sans-serif !important;
+    transition: all 0.2s !important;
     background: white !important;
     color: var(--sp-text) !important;
 }
-.sp-portal .sp-form-input:focus, .sp-portal .sp-form-select:focus { outline: none !important; border-color: var(--sp-primary) !important; box-shadow: 0 0 0 3px rgba(0,128,255,0.1) !important; }
-.sp-portal .sp-form-row { display: grid !important; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)) !important; gap: 14px !important; }
 
-/* Empty State */
-.sp-portal .sp-empty {
+.sp-form-input:focus,
+.sp-form-select:focus {
+    outline: none !important;
+    border-color: var(--sp-primary) !important;
+    box-shadow: 0 0 0 4px var(--sp-primary-light) !important;
+}
+
+.sp-form-row {
+    display: grid !important;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)) !important;
+    gap: 16px !important;
+}
+
+/* ==================== EMPTY STATE ==================== */
+.sp-empty {
     text-align: center !important;
     padding: 60px 20px !important;
-    color: var(--sp-text-muted) !important;
+    color: var(--sp-text-secondary) !important;
 }
-.sp-portal .sp-empty i { font-size: 64px !important; opacity: 0.3 !important; margin-bottom: 16px !important; display: block !important; }
-.sp-portal .sp-empty h3 { margin: 0 0 8px 0 !important; color: var(--sp-text) !important; }
-.sp-portal .sp-empty p { margin: 0 0 20px 0 !important; }
 
-/* Alerts */
-.sp-portal .sp-alert {
-    padding: 16px 20px !important;
+.sp-empty i {
+    font-size: 64px !important;
+    opacity: 0.3 !important;
+    margin-bottom: 16px !important;
+    display: block !important;
+}
+
+.sp-empty h3 {
+    margin: 0 0 8px 0 !important;
+    font-size: 18px !important;
+    color: var(--sp-text) !important;
+}
+
+.sp-empty p {
+    margin: 0 0 20px 0 !important;
+}
+
+/* ==================== PAYMENT PLANS ==================== */
+.sp-plan-title {
+    font-size: 14px !important;
+    font-weight: 600 !important;
+    color: var(--sp-text) !important;
+    margin: 0 0 12px 0 !important;
+    text-align: center !important;
+}
+
+.sp-plan-grid {
+    display: grid !important;
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 10px !important;
+}
+
+.sp-plan-btn {
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
+    padding: 16px 12px !important;
+    background: var(--sp-bg) !important;
+    border: 2px solid var(--sp-border) !important;
     border-radius: 12px !important;
-    margin-bottom: 20px !important;
+    cursor: pointer !important;
+    transition: all 0.2s !important;
+    font-family: 'Inter', sans-serif !important;
+    position: relative !important;
+}
+
+.sp-plan-btn:hover {
+    border-color: var(--sp-primary) !important;
+    background: var(--sp-primary-light) !important;
+}
+
+.sp-plan-btn.featured {
+    background: var(--sp-primary-light) !important;
+    border-color: var(--sp-primary) !important;
+}
+
+.sp-plan-badge {
+    position: absolute !important;
+    top: -8px !important;
+    right: -8px !important;
+    background: var(--sp-success) !important;
+    color: white !important;
+    font-size: 9px !important;
+    font-weight: 700 !important;
+    padding: 3px 8px !important;
+    border-radius: 100px !important;
+}
+
+.sp-plan-duration {
+    font-size: 13px !important;
+    font-weight: 600 !important;
+    color: var(--sp-text) !important;
+    margin-bottom: 4px !important;
+}
+
+.sp-plan-amount {
+    font-size: 18px !important;
+    font-weight: 700 !important;
+    color: var(--sp-primary) !important;
+}
+
+/* ==================== MODAL ==================== */
+.sp-modal {
+    display: none !important;
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    width: 100% !important;
+    height: 100% !important;
+    background: rgba(0, 0, 0, 0.5) !important;
+    z-index: 1000 !important;
+    align-items: center !important;
+    justify-content: center !important;
+    padding: 20px !important;
+}
+
+.sp-modal.open {
+    display: flex !important;
+}
+
+.sp-modal-content {
+    background: white !important;
+    border-radius: 20px !important;
+    max-width: 520px !important;
+    width: 100% !important;
+    max-height: 90vh !important;
+    overflow-y: auto !important;
+    box-shadow: 0 25px 50px rgba(0, 0, 0, 0.25) !important;
+}
+
+.sp-modal-header {
+    padding: 20px 24px !important;
+    border-bottom: 1px solid var(--sp-border) !important;
+    display: flex !important;
+    justify-content: space-between !important;
+    align-items: center !important;
+}
+
+.sp-modal-header h3 {
+    margin: 0 !important;
+    font-size: 18px !important;
+    font-weight: 600 !important;
     display: flex !important;
     align-items: center !important;
-    gap: 12px !important;
+    gap: 10px !important;
+    color: var(--sp-text) !important;
 }
-.sp-portal .sp-alert-warning { background: #fef3c7 !important; color: #92400e !important; border: 1px solid #fde68a !important; }
-.sp-portal .sp-alert-success { background: #d1fae5 !important; color: #065f46 !important; border: 1px solid #a7f3d0 !important; }
-.sp-portal .sp-alert-info { background: #dbeafe !important; color: #1e40af !important; border: 1px solid #bfdbfe !important; }
-.sp-portal .sp-alert-danger { background: #fee2e2 !important; color: #991b1b !important; border: 1px solid #fecaca !important; }
 
-/* Toast */
-.sp-portal .sp-toast {
+.sp-modal-header h3 i {
+    color: var(--sp-primary) !important;
+}
+
+.sp-modal-close {
+    background: none !important;
+    border: none !important;
+    font-size: 24px !important;
+    cursor: pointer !important;
+    color: var(--sp-text-secondary) !important;
+    padding: 4px !important;
+    line-height: 1 !important;
+    transition: color 0.2s !important;
+}
+
+.sp-modal-close:hover {
+    color: var(--sp-danger) !important;
+}
+
+.sp-modal-body {
+    padding: 24px !important;
+}
+
+.sp-modal-footer {
+    padding: 16px 24px !important;
+    border-top: 1px solid var(--sp-border) !important;
+    display: flex !important;
+    gap: 12px !important;
+    justify-content: flex-end !important;
+}
+
+/* ==================== TOAST ==================== */
+.sp-toast {
     position: fixed !important;
     bottom: 24px !important;
     right: 24px !important;
@@ -858,1158 +1012,775 @@ body.admin-bar .sp-portal .sp-sidebar {
     font-weight: 500 !important;
     z-index: 9999 !important;
     display: none !important;
-    box-shadow: 0 8px 30px rgba(0,0,0,0.2) !important;
+    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.2) !important;
+    animation: spSlideUp 0.3s ease !important;
 }
-.sp-portal .sp-toast.success { background: var(--sp-success) !important; }
-.sp-portal .sp-toast.error { background: var(--sp-danger) !important; }
 
-/* Modal */
-.sp-portal .sp-modal {
-    display: none !important;
-    position: fixed !important;
-    top: 0 !important;
-    left: 0 !important;
-    width: 100% !important;
-    height: 100% !important;
-    background: rgba(0,0,0,0.5) !important;
-    z-index: 2000 !important;
-    align-items: center !important;
-    justify-content: center !important;
-    padding: 20px !important;
-}
-.sp-portal .sp-modal-content {
-    background: white !important;
-    border-radius: 16px !important;
-    max-width: 480px !important;
-    width: 100% !important;
-    max-height: 85vh !important;
-    overflow-y: auto !important;
-    box-shadow: 0 20px 60px rgba(0,0,0,0.2) !important;
-}
-.sp-portal .sp-modal-header {
-    padding: 18px 20px !important;
-    border-bottom: 1px solid var(--sp-border) !important;
-    display: flex !important;
-    justify-content: space-between !important;
-    align-items: center !important;
-    background: var(--sp-bg) !important;
-}
-.sp-portal .sp-modal-header h3 { margin: 0 !important; font-size: 17px !important; font-weight: 600 !important; display: flex !important; align-items: center !important; gap: 8px !important; color: var(--sp-text) !important; }
-.sp-portal .sp-modal-header h3 i { color: var(--sp-primary) !important; }
-.sp-portal .sp-modal-close { background: none !important; border: none !important; font-size: 22px !important; cursor: pointer !important; color: var(--sp-text-muted) !important; line-height: 1 !important; padding: 4px !important; transition: color 0.2s ease !important; }
-.sp-portal .sp-modal-close:hover { color: var(--sp-danger) !important; }
-.sp-portal .sp-modal-body { padding: 20px !important; }
-.sp-portal .sp-modal-footer { padding: 14px 20px !important; border-top: 1px solid var(--sp-border) !important; display: flex !important; gap: 10px !important; justify-content: flex-end !important; background: var(--sp-bg) !important; }
+.sp-toast.success { background: var(--sp-success) !important; }
+.sp-toast.error { background: var(--sp-danger) !important; }
 
-/* Responsive */
+@keyframes spSlideUp {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+/* ==================== RESPONSIVE ==================== */
 @media (max-width: 1024px) {
-    .sp-portal { --sp-sidebar-width: 240px; }
+    .sp-stats {
+        grid-template-columns: repeat(2, 1fr) !important;
+    }
 }
+
 @media (max-width: 768px) {
-    .sp-portal { --sp-sidebar-width: 260px; }
-    .sp-portal .sp-menu-toggle { display: flex !important; }
-    .sp-portal .sp-sidebar {
-        transform: translateX(-100%) !important;
+    .sp-header-inner {
+        padding: 0 16px !important;
     }
-    .sp-portal .sp-sidebar.open {
-        transform: translateX(0) !important;
+
+    .sp-menu-toggle {
+        display: flex !important;
     }
-    .sp-portal .sp-main {
-        margin-left: 0 !important;
-        width: 100% !important;
-        max-width: 100% !important;
-        padding: 70px 16px 24px !important;
+
+    .sp-nav {
+        display: none !important;
+        position: absolute !important;
+        top: 100% !important;
+        left: 0 !important;
+        right: 0 !important;
+        background: white !important;
+        flex-direction: column !important;
+        padding: 16px !important;
+        border-bottom: 1px solid var(--sp-border) !important;
+        box-shadow: 0 8px 16px rgba(0, 0, 0, 0.1) !important;
     }
-    .sp-portal .sp-stats { grid-template-columns: 1fr 1fr !important; }
-    .sp-portal .sp-students-grid { grid-template-columns: 1fr !important; }
-    .sp-portal .sp-header { flex-direction: column !important; align-items: flex-start !important; }
-    .sp-portal .sp-title { font-size: 22px !important; }
-    .sp-portal .sp-profile-grid { grid-template-columns: 1fr !important; }
+
+    .sp-nav.open {
+        display: flex !important;
+    }
+
+    .sp-nav-item {
+        border-bottom: none !important;
+        border-radius: 8px !important;
+        padding: 12px 16px !important;
+    }
+
+    .sp-nav-item.active {
+        background: var(--sp-primary-light) !important;
+    }
+
+    .sp-user-name {
+        display: none !important;
+    }
+
+    .sp-main {
+        padding: 24px 16px !important;
+    }
+
+    .sp-stats {
+        grid-template-columns: 1fr !important;
+    }
+
+    .sp-students-grid {
+        grid-template-columns: 1fr !important;
+    }
+
+    .sp-page-title {
+        font-size: 24px !important;
+    }
+
+    .sp-fee-grid {
+        grid-template-columns: 1fr !important;
+    }
+
+    .sp-plan-grid {
+        grid-template-columns: 1fr !important;
+    }
 }
+
 @media (max-width: 480px) {
-    .sp-portal .sp-stats { grid-template-columns: 1fr !important; }
-    .sp-portal .sp-plan-grid { grid-template-columns: 1fr !important; }
-    .sp-portal .sp-fee-grid { grid-template-columns: 1fr !important; }
-    .sp-portal .sp-stat { flex-direction: column !important; text-align: center !important; gap: 12px !important; }
+    .sp-stat {
+        padding: 16px !important;
+    }
+
+    .sp-stat-value {
+        font-size: 24px !important;
+    }
+
+    .sp-profile-grid {
+        grid-template-columns: 1fr !important;
+    }
 }
 </style>
 
 <div class="sp-portal">
-    <!-- Mobile Menu Toggle -->
-    <button class="sp-menu-toggle" onclick="toggleMobileMenu()">
-        <i class="fas fa-bars"></i>
-    </button>
-    <div class="sp-overlay" onclick="toggleMobileMenu()"></div>
-
-    <div class="sp-wrapper">
-        <!-- Sidebar -->
-        <aside class="sp-sidebar" id="spSidebar">
-            <div class="sp-sidebar-header">
+    <!-- ==================== HEADER ==================== -->
+    <header class="sp-header">
+        <div class="sp-header-inner">
+            <div class="sp-header-top">
                 <div class="sp-logo">
                     <i class="fas fa-graduation-cap"></i>
                     <span>Sponsor Portal</span>
                 </div>
+
+                <div class="sp-user-menu">
+                    <div class="sp-user-info">
+                        <div class="sp-avatar"><?php echo strtoupper(substr($user->display_name, 0, 1)); ?></div>
+                        <span class="sp-user-name"><?php echo esc_html($user->display_name); ?></span>
+                        <span class="sp-status-badge <?php echo $sponsor_status; ?>">
+                            <i class="fas fa-<?php echo $sponsor_status === 'approved' ? 'check-circle' : 'clock'; ?>"></i>
+                            <?php echo ucfirst($sponsor_status); ?>
+                        </span>
+                    </div>
+                    <a href="<?php echo wp_logout_url(home_url()); ?>" class="sp-logout-btn">
+                        <i class="fas fa-sign-out-alt"></i>
+                        <span>Logout</span>
+                    </a>
+                </div>
+
+                <button class="sp-menu-toggle" onclick="toggleMobileNav()">
+                    <i class="fas fa-bars"></i>
+                </button>
             </div>
 
-            <div class="sp-user-card">
-                <div class="sp-avatar"><?php echo strtoupper(substr($user->display_name, 0, 1)); ?></div>
-                <div class="sp-user-name"><?php echo esc_html($user->display_name); ?></div>
-                <span class="sp-user-status sp-status-<?php echo $sponsor_status; ?>">
-                    <i class="fas fa-<?php echo $sponsor_status === 'approved' ? 'check-circle' : 'clock'; ?>"></i>
-                    <?php echo ucfirst($sponsor_status); ?>
-                </span>
-            </div>
-
-            <nav class="sp-nav">
-                <a class="sp-nav-item active" data-panel="dashboard">
+            <!-- Navigation Tabs -->
+            <nav class="sp-nav" id="spNav">
+                <button class="sp-nav-item active" data-panel="dashboard">
                     <i class="fas fa-home"></i>
                     <span><?php _e('Dashboard', 'al-huffaz-portal'); ?></span>
-                </a>
-                <a class="sp-nav-item" data-panel="profile">
+                </button>
+                <button class="sp-nav-item" data-panel="profile">
                     <i class="fas fa-user"></i>
                     <span><?php _e('My Profile', 'al-huffaz-portal'); ?></span>
-                </a>
-                <a class="sp-nav-item" data-panel="my-students">
+                </button>
+                <button class="sp-nav-item" data-panel="my-students">
                     <i class="fas fa-user-graduate"></i>
                     <span><?php _e('My Students', 'al-huffaz-portal'); ?></span>
                     <?php if (count($data['sponsorships']) > 0): ?>
                     <span class="sp-nav-badge"><?php echo count($data['sponsorships']); ?></span>
                     <?php endif; ?>
-                </a>
-                <a class="sp-nav-item" data-panel="available-students">
+                </button>
+                <button class="sp-nav-item" data-panel="available-students">
                     <i class="fas fa-hand-holding-heart"></i>
                     <span><?php _e('Sponsor a Student', 'al-huffaz-portal'); ?></span>
                     <?php if (count($available_students) > 0): ?>
                     <span class="sp-nav-badge"><?php echo count($available_students); ?></span>
                     <?php endif; ?>
-                </a>
-                <a class="sp-nav-item" data-panel="payments">
+                </button>
+                <button class="sp-nav-item" data-panel="payments">
                     <i class="fas fa-credit-card"></i>
                     <span><?php _e('Make Payment', 'al-huffaz-portal'); ?></span>
-                </a>
-                <a class="sp-nav-item" data-panel="history">
+                </button>
+                <button class="sp-nav-item" data-panel="history">
                     <i class="fas fa-history"></i>
                     <span><?php _e('Payment History', 'al-huffaz-portal'); ?></span>
                     <?php if ($data['pending_payments'] > 0): ?>
                     <span class="sp-nav-badge warning"><?php echo $data['pending_payments']; ?></span>
                     <?php endif; ?>
-                </a>
-                <a class="sp-nav-item" href="<?php echo wp_logout_url(home_url()); ?>">
-                    <i class="fas fa-sign-out-alt"></i>
-                    <span><?php _e('Logout', 'al-huffaz-portal'); ?></span>
-                </a>
+                </button>
             </nav>
-        </aside>
+        </div>
+    </header>
 
-        <!-- Main Content -->
-        <main class="sp-main">
-            <!-- ==================== DASHBOARD PANEL ==================== -->
-            <div class="sp-panel active" id="panel-dashboard">
-                <div class="sp-header">
-                    <h1 class="sp-title"><?php printf(__('Welcome, %s!', 'al-huffaz-portal'), esc_html($user->first_name ?: $user->display_name)); ?></h1>
+    <!-- ==================== MAIN CONTENT ==================== -->
+    <main class="sp-main">
+        <!-- ==================== DASHBOARD PANEL ==================== -->
+        <div class="sp-panel active" id="panel-dashboard">
+            <h1 class="sp-page-title"><?php printf(__('Welcome back, %s!', 'al-huffaz-portal'), esc_html($user->first_name ?: $user->display_name)); ?></h1>
+            <p class="sp-page-subtitle"><?php _e('Here\'s an overview of your sponsorship activity.', 'al-huffaz-portal'); ?></p>
+
+            <?php if ($sponsor_status === 'pending'): ?>
+            <div class="sp-alert sp-alert-warning">
+                <i class="fas fa-clock"></i>
+                <div class="sp-alert-content">
+                    <strong><?php _e('Account Pending Verification', 'al-huffaz-portal'); ?></strong>
+                    <span><?php _e('Your sponsor account is being reviewed. You will be able to sponsor students once approved.', 'al-huffaz-portal'); ?></span>
                 </div>
+            </div>
+            <?php endif; ?>
 
-                <?php if ($sponsor_status === 'pending'): ?>
-                <div class="sp-alert sp-alert-warning">
-                    <i class="fas fa-clock"></i>
-                    <div>
-                        <strong><?php _e('Account Pending Verification', 'al-huffaz-portal'); ?></strong>
-                        <p style="margin:4px 0 0;"><?php _e('Your sponsor account is being reviewed. You will be able to sponsor students once approved.', 'al-huffaz-portal'); ?></p>
-                    </div>
-                </div>
-                <?php endif; ?>
-
-                <div class="sp-stats">
-                    <div class="sp-stat">
+            <div class="sp-stats">
+                <div class="sp-stat">
+                    <div class="sp-stat-header">
                         <div class="sp-stat-icon blue"><i class="fas fa-user-graduate"></i></div>
-                        <div>
-                            <div class="sp-stat-label"><?php _e('Students Sponsored', 'al-huffaz-portal'); ?></div>
-                            <div class="sp-stat-value"><?php echo intval($data['students_count']); ?></div>
-                        </div>
                     </div>
-                    <div class="sp-stat">
-                        <div class="sp-stat-icon green"><i class="fas fa-donate"></i></div>
-                        <div>
-                            <div class="sp-stat-label"><?php _e('Total Contributed', 'al-huffaz-portal'); ?></div>
-                            <div class="sp-stat-value"><?php echo esc_html($data['total_contributed']); ?></div>
-                        </div>
-                    </div>
-                    <div class="sp-stat">
-                        <div class="sp-stat-icon orange"><i class="fas fa-hourglass-half"></i></div>
-                        <div>
-                            <div class="sp-stat-label"><?php _e('Pending Payments', 'al-huffaz-portal'); ?></div>
-                            <div class="sp-stat-value"><?php echo intval($data['pending_payments']); ?></div>
-                        </div>
-                    </div>
-                    <div class="sp-stat">
-                        <div class="sp-stat-icon purple"><i class="fas fa-heart"></i></div>
-                        <div>
-                            <div class="sp-stat-label"><?php _e('Available to Sponsor', 'al-huffaz-portal'); ?></div>
-                            <div class="sp-stat-value"><?php echo count($available_students); ?></div>
-                        </div>
-                    </div>
+                    <div class="sp-stat-value"><?php echo intval($data['students_count']); ?></div>
+                    <div class="sp-stat-label"><?php _e('Students Sponsored', 'al-huffaz-portal'); ?></div>
                 </div>
-
-                <?php if (!empty($data['sponsorships'])): ?>
-                <div class="sp-card">
-                    <div class="sp-card-header">
-                        <h3 class="sp-card-title"><i class="fas fa-users"></i> <?php _e('Your Sponsored Students', 'al-huffaz-portal'); ?></h3>
-                        <button class="sp-btn sp-btn-sm sp-btn-outline" onclick="showPanel('my-students')"><?php _e('View All', 'al-huffaz-portal'); ?></button>
+                <div class="sp-stat">
+                    <div class="sp-stat-header">
+                        <div class="sp-stat-icon green"><i class="fas fa-donate"></i></div>
                     </div>
-                    <div class="sp-card-body">
-                        <div class="sp-students-grid">
-                            <?php foreach (array_slice($data['sponsorships'], 0, 3) as $s): ?>
-                            <div class="sp-student-card">
-                                <div class="sp-student-header">
-                                    <?php if (!empty($s['student_photo'])): ?>
-                                        <img src="<?php echo esc_url($s['student_photo']); ?>" class="sp-student-photo" alt="">
-                                    <?php else: ?>
-                                        <div class="sp-student-placeholder"><?php echo strtoupper(substr($s['student_name'], 0, 1)); ?></div>
-                                    <?php endif; ?>
-                                    <div class="sp-student-info">
-                                        <h3><?php echo esc_html($s['student_name']); ?></h3>
-                                        <div class="sp-student-badges">
-                                            <?php if (!empty($s['grade'])): ?><span class="sp-badge sp-badge-grade"><?php echo esc_html($s['grade']); ?></span><?php endif; ?>
-                                            <?php if (!empty($s['category'])): ?><span class="sp-badge sp-badge-category"><?php echo esc_html($s['category']); ?></span><?php endif; ?>
-                                        </div>
+                    <div class="sp-stat-value"><?php echo esc_html($data['total_contributed']); ?></div>
+                    <div class="sp-stat-label"><?php _e('Total Contributed', 'al-huffaz-portal'); ?></div>
+                </div>
+                <div class="sp-stat">
+                    <div class="sp-stat-header">
+                        <div class="sp-stat-icon orange"><i class="fas fa-hourglass-half"></i></div>
+                    </div>
+                    <div class="sp-stat-value"><?php echo intval($data['pending_payments']); ?></div>
+                    <div class="sp-stat-label"><?php _e('Pending Payments', 'al-huffaz-portal'); ?></div>
+                </div>
+                <div class="sp-stat">
+                    <div class="sp-stat-header">
+                        <div class="sp-stat-icon purple"><i class="fas fa-heart"></i></div>
+                    </div>
+                    <div class="sp-stat-value"><?php echo count($available_students); ?></div>
+                    <div class="sp-stat-label"><?php _e('Available to Sponsor', 'al-huffaz-portal'); ?></div>
+                </div>
+            </div>
+
+            <?php if (!empty($data['sponsorships'])): ?>
+            <div class="sp-card">
+                <div class="sp-card-header">
+                    <h3 class="sp-card-title"><i class="fas fa-users"></i> <?php _e('Your Sponsored Students', 'al-huffaz-portal'); ?></h3>
+                    <button class="sp-btn sp-btn-sm sp-btn-secondary" onclick="showPanel('my-students')"><?php _e('View All', 'al-huffaz-portal'); ?></button>
+                </div>
+                <div class="sp-card-body">
+                    <div class="sp-students-grid">
+                        <?php foreach (array_slice($data['sponsorships'], 0, 3) as $s): ?>
+                        <div class="sp-student-card">
+                            <div class="sp-student-header">
+                                <?php if (!empty($s['student_photo'])): ?>
+                                    <img src="<?php echo esc_url($s['student_photo']); ?>" class="sp-student-photo" alt="">
+                                <?php else: ?>
+                                    <div class="sp-student-placeholder"><?php echo strtoupper(substr($s['student_name'], 0, 1)); ?></div>
+                                <?php endif; ?>
+                                <div class="sp-student-info">
+                                    <h3><?php echo esc_html($s['student_name']); ?></h3>
+                                    <div class="sp-student-badges">
+                                        <?php if (!empty($s['grade'])): ?><span class="sp-badge sp-badge-grade"><?php echo esc_html($s['grade']); ?></span><?php endif; ?>
+                                        <?php if (!empty($s['category'])): ?><span class="sp-badge sp-badge-category"><?php echo esc_html($s['category']); ?></span><?php endif; ?>
                                     </div>
                                 </div>
-                                <div class="sp-student-footer">
-                                    <a href="<?php echo get_permalink($s['student_id']); ?>" class="sp-btn sp-btn-primary sp-btn-block sp-btn-sm">
-                                        <i class="fas fa-eye"></i> <?php _e('View Profile', 'al-huffaz-portal'); ?>
-                                    </a>
-                                </div>
                             </div>
-                            <?php endforeach; ?>
+                            <div class="sp-student-footer">
+                                <a href="<?php echo get_permalink($s['student_id']); ?>" class="sp-btn sp-btn-primary sp-btn-block sp-btn-sm">
+                                    <i class="fas fa-eye"></i> <?php _e('View Profile', 'al-huffaz-portal'); ?>
+                                </a>
+                            </div>
                         </div>
+                        <?php endforeach; ?>
                     </div>
                 </div>
-                <?php else: ?>
-                <div class="sp-card">
-                    <div class="sp-card-body">
-                        <div class="sp-empty">
-                            <i class="fas fa-heart"></i>
-                            <h3><?php _e('Start Your Sponsorship Journey', 'al-huffaz-portal'); ?></h3>
-                            <p><?php _e('Browse available students and make a difference in their education today.', 'al-huffaz-portal'); ?></p>
-                            <button class="sp-btn sp-btn-primary" onclick="showPanel('available-students')">
-                                <i class="fas fa-hand-holding-heart"></i> <?php _e('Browse Students', 'al-huffaz-portal'); ?>
-                            </button>
-                        </div>
-                    </div>
-                </div>
-                <?php endif; ?>
             </div>
-
-            <!-- ==================== PROFILE PANEL ==================== -->
-            <div class="sp-panel" id="panel-profile">
-                <div class="sp-header">
-                    <h1 class="sp-title"><?php _e('My Profile', 'al-huffaz-portal'); ?></h1>
-                </div>
-
-                <div class="sp-card">
-                    <div class="sp-card-header">
-                        <h3 class="sp-card-title"><i class="fas fa-user-circle"></i> <?php _e('Personal Information', 'al-huffaz-portal'); ?></h3>
+            <?php else: ?>
+            <div class="sp-card">
+                <div class="sp-card-body">
+                    <div class="sp-empty">
+                        <i class="fas fa-heart"></i>
+                        <h3><?php _e('Start Your Sponsorship Journey', 'al-huffaz-portal'); ?></h3>
+                        <p><?php _e('Browse available students and make a difference in their education today.', 'al-huffaz-portal'); ?></p>
+                        <button class="sp-btn sp-btn-primary" onclick="showPanel('available-students')">
+                            <i class="fas fa-hand-holding-heart"></i> <?php _e('Browse Students', 'al-huffaz-portal'); ?>
+                        </button>
                     </div>
-                    <div class="sp-card-body">
-                        <div class="sp-profile-grid">
-                            <div class="sp-profile-item">
-                                <div class="sp-profile-icon"><i class="fas fa-user"></i></div>
-                                <div>
-                                    <div class="sp-profile-label"><?php _e('Full Name', 'al-huffaz-portal'); ?></div>
-                                    <div class="sp-profile-value"><?php echo esc_html($user->display_name); ?></div>
-                                </div>
-                            </div>
-                            <div class="sp-profile-item">
-                                <div class="sp-profile-icon"><i class="fas fa-envelope"></i></div>
-                                <div>
-                                    <div class="sp-profile-label"><?php _e('Email Address', 'al-huffaz-portal'); ?></div>
-                                    <div class="sp-profile-value"><?php echo esc_html($user->user_email); ?></div>
-                                </div>
-                            </div>
-                            <div class="sp-profile-item">
-                                <div class="sp-profile-icon"><i class="fas fa-phone"></i></div>
-                                <div>
-                                    <div class="sp-profile-label"><?php _e('Phone Number', 'al-huffaz-portal'); ?></div>
-                                    <div class="sp-profile-value"><?php echo esc_html($sponsor_phone ?: '-'); ?></div>
-                                </div>
-                            </div>
-                            <div class="sp-profile-item">
-                                <div class="sp-profile-icon"><i class="fab fa-whatsapp"></i></div>
-                                <div>
-                                    <div class="sp-profile-label"><?php _e('WhatsApp', 'al-huffaz-portal'); ?></div>
-                                    <div class="sp-profile-value"><?php echo esc_html($sponsor_whatsapp ?: '-'); ?></div>
-                                </div>
-                            </div>
-                            <div class="sp-profile-item">
-                                <div class="sp-profile-icon"><i class="fas fa-globe"></i></div>
-                                <div>
-                                    <div class="sp-profile-label"><?php _e('Country', 'al-huffaz-portal'); ?></div>
-                                    <div class="sp-profile-value"><?php echo esc_html($sponsor_country ?: '-'); ?></div>
-                                </div>
-                            </div>
-                            <div class="sp-profile-item">
-                                <div class="sp-profile-icon"><i class="fas fa-calendar"></i></div>
-                                <div>
-                                    <div class="sp-profile-label"><?php _e('Member Since', 'al-huffaz-portal'); ?></div>
-                                    <div class="sp-profile-value"><?php echo esc_html($member_since); ?></div>
-                                </div>
+                </div>
+            </div>
+            <?php endif; ?>
+        </div>
+
+        <!-- ==================== PROFILE PANEL ==================== -->
+        <div class="sp-panel" id="panel-profile">
+            <h1 class="sp-page-title"><?php _e('My Profile', 'al-huffaz-portal'); ?></h1>
+            <p class="sp-page-subtitle"><?php _e('Your personal information and sponsorship summary.', 'al-huffaz-portal'); ?></p>
+
+            <div class="sp-card">
+                <div class="sp-card-header">
+                    <h3 class="sp-card-title"><i class="fas fa-user-circle"></i> <?php _e('Personal Information', 'al-huffaz-portal'); ?></h3>
+                </div>
+                <div class="sp-card-body">
+                    <div class="sp-profile-grid">
+                        <div class="sp-profile-item">
+                            <div class="sp-profile-icon"><i class="fas fa-user"></i></div>
+                            <div>
+                                <div class="sp-profile-label"><?php _e('Full Name', 'al-huffaz-portal'); ?></div>
+                                <div class="sp-profile-value"><?php echo esc_html($user->display_name); ?></div>
                             </div>
                         </div>
-                    </div>
-                </div>
-
-                <div class="sp-card">
-                    <div class="sp-card-header">
-                        <h3 class="sp-card-title"><i class="fas fa-chart-bar"></i> <?php _e('Sponsorship Summary', 'al-huffaz-portal'); ?></h3>
-                    </div>
-                    <div class="sp-card-body">
-                        <div class="sp-profile-grid">
-                            <div class="sp-profile-item">
-                                <div class="sp-profile-icon"><i class="fas fa-user-graduate"></i></div>
-                                <div>
-                                    <div class="sp-profile-label"><?php _e('Total Students Sponsored', 'al-huffaz-portal'); ?></div>
-                                    <div class="sp-profile-value"><?php echo intval($data['students_count']); ?></div>
-                                </div>
+                        <div class="sp-profile-item">
+                            <div class="sp-profile-icon"><i class="fas fa-envelope"></i></div>
+                            <div>
+                                <div class="sp-profile-label"><?php _e('Email Address', 'al-huffaz-portal'); ?></div>
+                                <div class="sp-profile-value"><?php echo esc_html($user->user_email); ?></div>
                             </div>
-                            <div class="sp-profile-item">
-                                <div class="sp-profile-icon"><i class="fas fa-donate"></i></div>
-                                <div>
-                                    <div class="sp-profile-label"><?php _e('Total Amount Contributed', 'al-huffaz-portal'); ?></div>
-                                    <div class="sp-profile-value"><?php echo esc_html($data['total_contributed']); ?></div>
-                                </div>
+                        </div>
+                        <div class="sp-profile-item">
+                            <div class="sp-profile-icon"><i class="fas fa-phone"></i></div>
+                            <div>
+                                <div class="sp-profile-label"><?php _e('Phone Number', 'al-huffaz-portal'); ?></div>
+                                <div class="sp-profile-value"><?php echo esc_html($sponsor_phone ?: '-'); ?></div>
+                            </div>
+                        </div>
+                        <div class="sp-profile-item">
+                            <div class="sp-profile-icon"><i class="fab fa-whatsapp"></i></div>
+                            <div>
+                                <div class="sp-profile-label"><?php _e('WhatsApp', 'al-huffaz-portal'); ?></div>
+                                <div class="sp-profile-value"><?php echo esc_html($sponsor_whatsapp ?: '-'); ?></div>
+                            </div>
+                        </div>
+                        <div class="sp-profile-item">
+                            <div class="sp-profile-icon"><i class="fas fa-globe"></i></div>
+                            <div>
+                                <div class="sp-profile-label"><?php _e('Country', 'al-huffaz-portal'); ?></div>
+                                <div class="sp-profile-value"><?php echo esc_html($sponsor_country ?: '-'); ?></div>
+                            </div>
+                        </div>
+                        <div class="sp-profile-item">
+                            <div class="sp-profile-icon"><i class="fas fa-calendar"></i></div>
+                            <div>
+                                <div class="sp-profile-label"><?php _e('Member Since', 'al-huffaz-portal'); ?></div>
+                                <div class="sp-profile-value"><?php echo esc_html($member_since); ?></div>
                             </div>
                         </div>
                     </div>
                 </div>
             </div>
 
-            <!-- ==================== MY STUDENTS PANEL ==================== -->
-            <div class="sp-panel" id="panel-my-students">
-                <div class="sp-header">
-                    <h1 class="sp-title"><?php _e('My Sponsored Students', 'al-huffaz-portal'); ?></h1>
+            <div class="sp-card">
+                <div class="sp-card-header">
+                    <h3 class="sp-card-title"><i class="fas fa-chart-bar"></i> <?php _e('Sponsorship Summary', 'al-huffaz-portal'); ?></h3>
                 </div>
-
-                <?php if (empty($data['sponsorships'])): ?>
-                <div class="sp-card">
-                    <div class="sp-card-body">
-                        <div class="sp-empty">
-                            <i class="fas fa-users"></i>
-                            <h3><?php _e('No Sponsored Students Yet', 'al-huffaz-portal'); ?></h3>
-                            <p><?php _e('Start sponsoring a student to see them here.', 'al-huffaz-portal'); ?></p>
-                            <button class="sp-btn sp-btn-primary" onclick="showPanel('available-students')">
-                                <i class="fas fa-hand-holding-heart"></i> <?php _e('Sponsor a Student', 'al-huffaz-portal'); ?>
-                            </button>
-                        </div>
-                    </div>
-                </div>
-                <?php else: ?>
-                <div class="sp-students-grid">
-                    <?php foreach ($data['sponsorships'] as $s): ?>
-                    <div class="sp-student-card">
-                        <div class="sp-student-header">
-                            <?php if (!empty($s['student_photo'])): ?>
-                                <img src="<?php echo esc_url($s['student_photo']); ?>" class="sp-student-photo" alt="">
-                            <?php else: ?>
-                                <div class="sp-student-placeholder"><?php echo strtoupper(substr($s['student_name'], 0, 1)); ?></div>
-                            <?php endif; ?>
-                            <div class="sp-student-info">
-                                <h3><?php echo esc_html($s['student_name']); ?></h3>
-                                <div class="sp-student-badges">
-                                    <?php if (!empty($s['grade'])): ?><span class="sp-badge sp-badge-grade"><?php echo esc_html($s['grade']); ?></span><?php endif; ?>
-                                    <?php if (!empty($s['category'])): ?><span class="sp-badge sp-badge-category"><?php echo esc_html($s['category']); ?></span><?php endif; ?>
-                                </div>
+                <div class="sp-card-body">
+                    <div class="sp-profile-grid">
+                        <div class="sp-profile-item">
+                            <div class="sp-profile-icon"><i class="fas fa-user-graduate"></i></div>
+                            <div>
+                                <div class="sp-profile-label"><?php _e('Total Students Sponsored', 'al-huffaz-portal'); ?></div>
+                                <div class="sp-profile-value"><?php echo intval($data['students_count']); ?></div>
                             </div>
                         </div>
-                        <div class="sp-student-body">
-                            <div class="sp-fee-grid">
-                                <div class="sp-fee-item">
-                                    <div class="sp-fee-label"><?php _e('Amount', 'al-huffaz-portal'); ?></div>
-                                    <div class="sp-fee-value"><?php echo Helpers::format_currency($s['amount']); ?></div>
-                                </div>
-                                <div class="sp-fee-item">
-                                    <div class="sp-fee-label"><?php _e('Plan', 'al-huffaz-portal'); ?></div>
-                                    <div class="sp-fee-value"><?php echo ucfirst($s['type']); ?></div>
-                                </div>
-                                <div class="sp-fee-item">
-                                    <div class="sp-fee-label"><?php _e('Since', 'al-huffaz-portal'); ?></div>
-                                    <div class="sp-fee-value"><?php echo esc_html($s['start_date']); ?></div>
-                                </div>
+                        <div class="sp-profile-item">
+                            <div class="sp-profile-icon"><i class="fas fa-donate"></i></div>
+                            <div>
+                                <div class="sp-profile-label"><?php _e('Total Amount Contributed', 'al-huffaz-portal'); ?></div>
+                                <div class="sp-profile-value"><?php echo esc_html($data['total_contributed']); ?></div>
                             </div>
                         </div>
-                        <div class="sp-student-footer" style="display:flex;gap:10px;">
-                            <button class="sp-btn sp-btn-secondary sp-btn-sm" style="flex:1;" onclick="viewStudentProfile(<?php echo $s['student_id']; ?>)">
-                                <i class="fas fa-eye"></i> <?php _e('View Profile', 'al-huffaz-portal'); ?>
-                            </button>
-                            <button class="sp-btn sp-btn-primary sp-btn-sm" style="flex:1;" onclick="openPaymentModal(<?php echo $s['student_id']; ?>, '<?php echo esc_js($s['student_name']); ?>', <?php echo floatval($s['amount']); ?>)">
-                                <i class="fas fa-credit-card"></i> <?php _e('Pay', 'al-huffaz-portal'); ?>
-                            </button>
-                        </div>
-                    </div>
-                    <?php endforeach; ?>
-                </div>
-                <?php endif; ?>
-            </div>
-
-            <!-- ==================== STUDENT PROFILE PANEL ==================== -->
-            <div class="sp-panel" id="panel-student-profile">
-                <div class="sp-header">
-                    <button class="sp-btn sp-btn-secondary sp-btn-sm" onclick="showPanel('my-students')" style="margin-right:16px;">
-                        <i class="fas fa-arrow-left"></i> <?php _e('Back', 'al-huffaz-portal'); ?>
-                    </button>
-                    <h1 class="sp-title"><?php _e('Student Profile', 'al-huffaz-portal'); ?></h1>
-                </div>
-
-                <div id="studentProfileContent">
-                    <div class="sp-loading" style="text-align:center;padding:60px;">
-                        <i class="fas fa-spinner fa-spin fa-2x"></i>
-                        <p style="margin-top:16px;"><?php _e('Loading student profile...', 'al-huffaz-portal'); ?></p>
                     </div>
                 </div>
             </div>
+        </div>
 
-            <!-- ==================== AVAILABLE STUDENTS PANEL ==================== -->
-            <div class="sp-panel" id="panel-available-students">
-                <div class="sp-header">
-                    <h1 class="sp-title"><?php _e('Sponsor a Student', 'al-huffaz-portal'); ?></h1>
-                </div>
+        <!-- ==================== MY STUDENTS PANEL ==================== -->
+        <div class="sp-panel" id="panel-my-students">
+            <h1 class="sp-page-title"><?php _e('My Sponsored Students', 'al-huffaz-portal'); ?></h1>
+            <p class="sp-page-subtitle"><?php _e('Students you are currently sponsoring.', 'al-huffaz-portal'); ?></p>
 
-                <?php if ($sponsor_status !== 'approved'): ?>
-                <div class="sp-alert sp-alert-warning">
-                    <i class="fas fa-exclamation-triangle"></i>
-                    <div><?php _e('Your account needs to be approved before you can sponsor students.', 'al-huffaz-portal'); ?></div>
-                </div>
-                <?php elseif (empty($available_students)): ?>
-                <div class="sp-card">
-                    <div class="sp-card-body">
-                        <div class="sp-empty">
-                            <i class="fas fa-check-circle"></i>
-                            <h3><?php _e('All Students Sponsored!', 'al-huffaz-portal'); ?></h3>
-                            <p><?php _e('All eligible students currently have sponsors. Check back later!', 'al-huffaz-portal'); ?></p>
-                        </div>
-                    </div>
-                </div>
-                <?php else: ?>
-                <div class="sp-students-grid">
-                    <?php foreach ($available_students as $student):
-                        $student_id = $student->ID;
-                        $photo_id = get_post_meta($student_id, 'student_photo', true);
-                        $photo_url = $photo_id ? wp_get_attachment_image_url($photo_id, 'medium') : '';
-                        $grade = Helpers::get_grade_label(get_post_meta($student_id, 'grade_level', true));
-                        $category = Helpers::get_islamic_category_label(get_post_meta($student_id, 'islamic_studies_category', true));
-
-                        // Fee calculations
-                        $monthly_fee = floatval(get_post_meta($student_id, 'monthly_tuition_fee', true));
-                        $course_fee = floatval(get_post_meta($student_id, 'course_fee', true));
-                        $uniform_fee = floatval(get_post_meta($student_id, 'uniform_fee', true));
-                        $annual_fee = floatval(get_post_meta($student_id, 'annual_fee', true));
-                        $admission_fee = floatval(get_post_meta($student_id, 'admission_fee', true));
-                        $one_time_total = $course_fee + $uniform_fee + $annual_fee + $admission_fee;
-
-                        // Payment plans: 1, 3, 6, 12 months
-                        $plan_1_month = $monthly_fee;
-                        $plan_3_months = $monthly_fee * 3;
-                        $plan_6_months = $monthly_fee * 6;
-                        $plan_12_months = ($monthly_fee * 12) + $one_time_total;
-                    ?>
-                    <div class="sp-student-card">
-                        <div class="sp-student-header">
-                            <?php if ($photo_url): ?>
-                                <img src="<?php echo esc_url($photo_url); ?>" class="sp-student-photo" alt="">
-                            <?php else: ?>
-                                <div class="sp-student-placeholder"><?php echo strtoupper(substr($student->post_title, 0, 1)); ?></div>
-                            <?php endif; ?>
-                            <div class="sp-student-info">
-                                <h3><?php echo esc_html($student->post_title); ?></h3>
-                                <div class="sp-student-badges">
-                                    <?php if ($grade): ?><span class="sp-badge sp-badge-grade"><?php echo esc_html($grade); ?></span><?php endif; ?>
-                                    <?php if ($category): ?><span class="sp-badge sp-badge-category"><?php echo esc_html($category); ?></span><?php endif; ?>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="sp-student-body">
-                            <p class="sp-plan-title"><?php _e('Select a Sponsorship Plan:', 'al-huffaz-portal'); ?></p>
-                            <div class="sp-plan-grid">
-                                <button class="sp-plan-btn" onclick="goToPaymentPage(<?php echo $student_id; ?>, '<?php echo esc_js($student->post_title); ?>', 1, <?php echo $plan_1_month; ?>)">
-                                    <span class="sp-plan-duration">1 <?php _e('Month', 'al-huffaz-portal'); ?></span>
-                                    <span class="sp-plan-amount"><?php echo Helpers::format_currency($plan_1_month); ?></span>
-                                </button>
-                                <button class="sp-plan-btn" onclick="goToPaymentPage(<?php echo $student_id; ?>, '<?php echo esc_js($student->post_title); ?>', 3, <?php echo $plan_3_months; ?>)">
-                                    <span class="sp-plan-duration">3 <?php _e('Months', 'al-huffaz-portal'); ?></span>
-                                    <span class="sp-plan-amount"><?php echo Helpers::format_currency($plan_3_months); ?></span>
-                                </button>
-                                <button class="sp-plan-btn" onclick="goToPaymentPage(<?php echo $student_id; ?>, '<?php echo esc_js($student->post_title); ?>', 6, <?php echo $plan_6_months; ?>)">
-                                    <span class="sp-plan-duration">6 <?php _e('Months', 'al-huffaz-portal'); ?></span>
-                                    <span class="sp-plan-amount"><?php echo Helpers::format_currency($plan_6_months); ?></span>
-                                </button>
-                                <button class="sp-plan-btn sp-plan-featured" onclick="goToPaymentPage(<?php echo $student_id; ?>, '<?php echo esc_js($student->post_title); ?>', 12, <?php echo $plan_12_months; ?>)">
-                                    <span class="sp-plan-badge"><?php _e('Best Value', 'al-huffaz-portal'); ?></span>
-                                    <span class="sp-plan-duration">12 <?php _e('Months', 'al-huffaz-portal'); ?></span>
-                                    <span class="sp-plan-amount"><?php echo Helpers::format_currency($plan_12_months); ?></span>
-                                    <span class="sp-plan-note"><?php _e('Includes one-time fees', 'al-huffaz-portal'); ?></span>
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                    <?php endforeach; ?>
-                </div>
-                <?php endif; ?>
-            </div>
-
-            <!-- ==================== PAYMENT PROOF PANEL ==================== -->
-            <div class="sp-panel" id="panel-payment-proof">
-                <div class="sp-header">
-                    <button class="sp-btn sp-btn-secondary sp-btn-sm" onclick="showPanel('available-students')" style="margin-right:16px;">
-                        <i class="fas fa-arrow-left"></i> <?php _e('Back', 'al-huffaz-portal'); ?>
-                    </button>
-                    <h1 class="sp-title"><?php _e('Submit Payment Proof', 'al-huffaz-portal'); ?></h1>
-                </div>
-
-                <div class="sp-card">
-                    <div class="sp-card-header" style="background: linear-gradient(135deg, var(--sp-primary), var(--sp-primary-dark)); color: white;">
-                        <h3 class="sp-card-title" style="color: white;"><i class="fas fa-hand-holding-heart"></i> <?php _e('Sponsorship Details', 'al-huffaz-portal'); ?></h3>
-                    </div>
-                    <div class="sp-card-body">
-                        <div class="sp-proof-summary">
-                            <div class="sp-proof-item">
-                                <span class="sp-proof-label"><?php _e('Student:', 'al-huffaz-portal'); ?></span>
-                                <span class="sp-proof-value" id="proofStudentName">-</span>
-                            </div>
-                            <div class="sp-proof-item">
-                                <span class="sp-proof-label"><?php _e('Duration:', 'al-huffaz-portal'); ?></span>
-                                <span class="sp-proof-value" id="proofPlanMonths">-</span>
-                            </div>
-                            <div class="sp-proof-item sp-proof-total">
-                                <span class="sp-proof-label"><?php _e('Total Amount:', 'al-huffaz-portal'); ?></span>
-                                <span class="sp-proof-value" id="proofAmountDisplay">-</span>
-                            </div>
-                        </div>
-
-                        <hr style="margin: 24px 0; border: none; border-top: 2px solid var(--sp-border);">
-
-                        <h4 style="margin: 0 0 20px 0; color: var(--sp-text);"><i class="fas fa-file-invoice"></i> <?php _e('Payment Information', 'al-huffaz-portal'); ?></h4>
-
-                        <form id="paymentProofForm" enctype="multipart/form-data">
-                            <input type="hidden" name="student_id" id="proofStudentId" value="">
-                            <input type="hidden" name="amount" id="proofAmount" value="">
-                            <input type="hidden" name="sponsorship_type" id="proofPlanType" value="">
-                            <input type="hidden" name="action" value="alhuffaz_submit_payment_proof">
-                            <input type="hidden" name="nonce" value="<?php echo $nonce; ?>">
-
-                            <div class="sp-form-group">
-                                <label class="sp-form-label"><?php _e('Payment Method', 'al-huffaz-portal'); ?> *</label>
-                                <select name="payment_method" id="proofPaymentMethod" class="sp-form-select" required>
-                                    <option value=""><?php _e('-- Select Payment Method --', 'al-huffaz-portal'); ?></option>
-                                    <option value="bank_transfer"><?php _e('Bank Transfer', 'al-huffaz-portal'); ?></option>
-                                    <option value="easypaisa"><?php _e('EasyPaisa', 'al-huffaz-portal'); ?></option>
-                                    <option value="jazzcash"><?php _e('JazzCash', 'al-huffaz-portal'); ?></option>
-                                    <option value="sadapay"><?php _e('SadaPay', 'al-huffaz-portal'); ?></option>
-                                    <option value="nayapay"><?php _e('NayaPay', 'al-huffaz-portal'); ?></option>
-                                    <option value="cash"><?php _e('Cash Deposit', 'al-huffaz-portal'); ?></option>
-                                </select>
-                            </div>
-
-                            <div class="sp-form-group">
-                                <label class="sp-form-label"><?php _e('Transaction ID / Reference Number', 'al-huffaz-portal'); ?> *</label>
-                                <input type="text" name="transaction_id" id="proofTransactionId" class="sp-form-input" required placeholder="<?php _e('Enter your transaction reference number', 'al-huffaz-portal'); ?>">
-                            </div>
-
-                            <div class="sp-form-group">
-                                <label class="sp-form-label"><?php _e('Payment Date', 'al-huffaz-portal'); ?> *</label>
-                                <input type="date" name="payment_date" id="proofPaymentDate" class="sp-form-input" required value="<?php echo date('Y-m-d'); ?>">
-                            </div>
-
-                            <div class="sp-form-group">
-                                <label class="sp-form-label"><?php _e('Payment Receipt / Screenshot', 'al-huffaz-portal'); ?> *</label>
-                                <input type="file" name="payment_screenshot" id="proofScreenshot" class="sp-form-input" accept="image/*" required>
-                                <small class="sp-form-hint"><?php _e('Upload a clear screenshot or photo of your payment receipt', 'al-huffaz-portal'); ?></small>
-                            </div>
-
-                            <div class="sp-form-group">
-                                <label class="sp-form-label"><?php _e('Additional Notes (Optional)', 'al-huffaz-portal'); ?></label>
-                                <textarea name="notes" id="proofNotes" class="sp-form-input" rows="3" placeholder="<?php _e('Any additional information about your payment...', 'al-huffaz-portal'); ?>"></textarea>
-                            </div>
-
-                            <div class="sp-alert sp-alert-info" style="margin-bottom:24px;">
-                                <i class="fas fa-info-circle"></i>
-                                <div>
-                                    <strong><?php _e('What happens next?', 'al-huffaz-portal'); ?></strong>
-                                    <p style="margin:8px 0 0;"><?php _e('After submitting, the school will verify your payment. Once approved, the student will be linked to your profile and you can track their progress.', 'al-huffaz-portal'); ?></p>
-                                </div>
-                            </div>
-
-                            <button type="submit" class="sp-btn sp-btn-primary sp-btn-block" id="submitProofBtn">
-                                <i class="fas fa-paper-plane"></i> <?php _e('Submit Payment Proof', 'al-huffaz-portal'); ?>
-                            </button>
-                        </form>
+            <?php if (empty($data['sponsorships'])): ?>
+            <div class="sp-card">
+                <div class="sp-card-body">
+                    <div class="sp-empty">
+                        <i class="fas fa-users"></i>
+                        <h3><?php _e('No Sponsored Students Yet', 'al-huffaz-portal'); ?></h3>
+                        <p><?php _e('Start sponsoring a student to see them here.', 'al-huffaz-portal'); ?></p>
+                        <button class="sp-btn sp-btn-primary" onclick="showPanel('available-students')">
+                            <i class="fas fa-hand-holding-heart"></i> <?php _e('Browse Students', 'al-huffaz-portal'); ?>
+                        </button>
                     </div>
                 </div>
             </div>
-
-            <!-- ==================== PAYMENTS PANEL ==================== -->
-            <div class="sp-panel" id="panel-payments">
-                <div class="sp-header">
-                    <h1 class="sp-title"><?php _e('Make a Payment', 'al-huffaz-portal'); ?></h1>
-                </div>
-
-                <?php if (empty($data['sponsorships'])): ?>
-                <div class="sp-alert sp-alert-info">
-                    <i class="fas fa-info-circle"></i>
-                    <div><?php _e('You need to sponsor a student first before making payments.', 'al-huffaz-portal'); ?></div>
-                </div>
-                <?php else: ?>
-                <div class="sp-card">
-                    <div class="sp-card-header">
-                        <h3 class="sp-card-title"><i class="fas fa-credit-card"></i> <?php _e('Payment Details', 'al-huffaz-portal'); ?></h3>
-                    </div>
-                    <div class="sp-card-body">
-                        <form id="paymentForm">
-                            <div class="sp-form-group">
-                                <label class="sp-form-label"><?php _e('Select Student', 'al-huffaz-portal'); ?> *</label>
-                                <select name="student_id" id="paymentStudent" class="sp-form-select" required onchange="updatePaymentAmount()">
-                                    <option value=""><?php _e('-- Select Student --', 'al-huffaz-portal'); ?></option>
-                                    <?php foreach ($data['sponsorships'] as $s): ?>
-                                    <option value="<?php echo $s['student_id']; ?>" data-amount="<?php echo floatval($s['amount']); ?>" data-type="<?php echo esc_attr($s['type']); ?>">
-                                        <?php echo esc_html($s['student_name']); ?> (<?php echo Helpers::format_currency($s['amount']); ?>/<?php echo $s['type']; ?>)
-                                    </option>
-                                    <?php endforeach; ?>
-                                </select>
-                            </div>
-
-                            <div class="sp-form-row">
-                                <div class="sp-form-group">
-                                    <label class="sp-form-label"><?php _e('Amount', 'al-huffaz-portal'); ?> *</label>
-                                    <input type="number" name="amount" id="paymentAmount" class="sp-form-input" required min="1" step="0.01">
-                                </div>
-                                <div class="sp-form-group">
-                                    <label class="sp-form-label"><?php _e('Payment Method', 'al-huffaz-portal'); ?> *</label>
-                                    <select name="payment_method" class="sp-form-select" required>
-                                        <option value="bank_transfer"><?php _e('Bank Transfer', 'al-huffaz-portal'); ?></option>
-                                        <option value="easypaisa"><?php _e('EasyPaisa', 'al-huffaz-portal'); ?></option>
-                                        <option value="jazzcash"><?php _e('JazzCash', 'al-huffaz-portal'); ?></option>
-                                        <option value="cash"><?php _e('Cash', 'al-huffaz-portal'); ?></option>
-                                    </select>
-                                </div>
-                            </div>
-
-                            <div class="sp-form-group">
-                                <label class="sp-form-label"><?php _e('Transaction ID / Reference', 'al-huffaz-portal'); ?></label>
-                                <input type="text" name="transaction_id" class="sp-form-input" placeholder="<?php _e('Enter transaction reference number', 'al-huffaz-portal'); ?>">
-                            </div>
-
-                            <div class="sp-form-group">
-                                <label class="sp-form-label"><?php _e('Payment Screenshot (Optional)', 'al-huffaz-portal'); ?></label>
-                                <input type="file" name="screenshot" id="paymentScreenshot" class="sp-form-input" accept="image/*">
-                            </div>
-
-                            <div class="sp-form-group">
-                                <label class="sp-form-label"><?php _e('Notes (Optional)', 'al-huffaz-portal'); ?></label>
-                                <textarea name="notes" class="sp-form-input" rows="3" placeholder="<?php _e('Any additional notes...', 'al-huffaz-portal'); ?>"></textarea>
-                            </div>
-
-                            <div class="sp-alert sp-alert-info" style="margin-bottom:20px;">
-                                <i class="fas fa-info-circle"></i>
-                                <div><?php _e('Your payment will be verified by the school administration. You will receive a confirmation once approved.', 'al-huffaz-portal'); ?></div>
-                            </div>
-
-                            <button type="submit" class="sp-btn sp-btn-primary sp-btn-block">
-                                <i class="fas fa-paper-plane"></i> <?php _e('Submit Payment', 'al-huffaz-portal'); ?>
-                            </button>
-                        </form>
-                    </div>
-                </div>
-                <?php endif; ?>
-            </div>
-
-            <!-- ==================== HISTORY PANEL ==================== -->
-            <div class="sp-panel" id="panel-history">
-                <div class="sp-header">
-                    <h1 class="sp-title"><?php _e('Payment History', 'al-huffaz-portal'); ?></h1>
-                </div>
-
-                <div class="sp-card">
-                    <div class="sp-card-body" style="padding:0;">
-                        <?php if (empty($data['recent_payments'])): ?>
-                        <div class="sp-empty" style="padding:40px;">
-                            <i class="fas fa-receipt"></i>
-                            <h3><?php _e('No Payment History', 'al-huffaz-portal'); ?></h3>
-                            <p><?php _e('Your payment records will appear here.', 'al-huffaz-portal'); ?></p>
-                        </div>
+            <?php else: ?>
+            <div class="sp-students-grid">
+                <?php foreach ($data['sponsorships'] as $s):
+                    $student_id = $s['student_id'];
+                    $monthly_fee = get_post_meta($student_id, 'monthly_tuition_fee', true);
+                    $course_fee = get_post_meta($student_id, 'course_fee', true);
+                    $total_fee = floatval($monthly_fee) + floatval($course_fee);
+                ?>
+                <div class="sp-student-card">
+                    <div class="sp-student-header">
+                        <?php if (!empty($s['student_photo'])): ?>
+                            <img src="<?php echo esc_url($s['student_photo']); ?>" class="sp-student-photo" alt="">
                         <?php else: ?>
-                        <div class="sp-table-wrap">
-                            <table class="sp-table">
-                                <thead>
-                                    <tr>
-                                        <th><?php _e('Date', 'al-huffaz-portal'); ?></th>
-                                        <th><?php _e('Student', 'al-huffaz-portal'); ?></th>
-                                        <th><?php _e('Amount', 'al-huffaz-portal'); ?></th>
-                                        <th><?php _e('Method', 'al-huffaz-portal'); ?></th>
-                                        <th><?php _e('Status', 'al-huffaz-portal'); ?></th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    <?php foreach ($data['recent_payments'] as $p): ?>
-                                    <tr>
-                                        <td><?php echo esc_html($p['payment_date_formatted'] ?? '-'); ?></td>
-                                        <td><strong><?php echo esc_html($p['student_name'] ?? '-'); ?></strong></td>
-                                        <td><strong><?php echo esc_html($p['amount_formatted'] ?? '-'); ?></strong></td>
-                                        <td><?php echo esc_html(ucfirst($p['payment_method'] ?? '-')); ?></td>
-                                        <td>
-                                            <span class="sp-status sp-status-<?php echo esc_attr($p['status'] ?? 'pending'); ?>">
-                                                <i class="fas fa-<?php echo ($p['status'] ?? '') === 'approved' ? 'check-circle' : (($p['status'] ?? '') === 'rejected' ? 'times-circle' : 'clock'); ?>"></i>
-                                                <?php echo ucfirst($p['status'] ?? 'Pending'); ?>
-                                            </span>
-                                        </td>
-                                    </tr>
-                                    <?php endforeach; ?>
-                                </tbody>
-                            </table>
-                        </div>
+                            <div class="sp-student-placeholder"><?php echo strtoupper(substr($s['student_name'], 0, 1)); ?></div>
                         <?php endif; ?>
+                        <div class="sp-student-info">
+                            <h3><?php echo esc_html($s['student_name']); ?></h3>
+                            <div class="sp-student-badges">
+                                <?php if (!empty($s['grade'])): ?><span class="sp-badge sp-badge-grade"><?php echo esc_html($s['grade']); ?></span><?php endif; ?>
+                                <?php if (!empty($s['category'])): ?><span class="sp-badge sp-badge-category"><?php echo esc_html($s['category']); ?></span><?php endif; ?>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="sp-student-body">
+                        <div class="sp-fee-grid">
+                            <div class="sp-fee-item">
+                                <div class="sp-fee-label"><?php _e('Monthly', 'al-huffaz-portal'); ?></div>
+                                <div class="sp-fee-value">PKR <?php echo number_format($monthly_fee ?: 0); ?></div>
+                            </div>
+                            <div class="sp-fee-item">
+                                <div class="sp-fee-label"><?php _e('Course', 'al-huffaz-portal'); ?></div>
+                                <div class="sp-fee-value">PKR <?php echo number_format($course_fee ?: 0); ?></div>
+                            </div>
+                            <div class="sp-fee-item">
+                                <div class="sp-fee-label"><?php _e('Total', 'al-huffaz-portal'); ?></div>
+                                <div class="sp-fee-value">PKR <?php echo number_format($total_fee); ?></div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="sp-student-footer">
+                        <a href="<?php echo get_permalink($student_id); ?>" class="sp-btn sp-btn-primary sp-btn-block sp-btn-sm">
+                            <i class="fas fa-eye"></i> <?php _e('View Full Profile', 'al-huffaz-portal'); ?>
+                        </a>
+                    </div>
+                </div>
+                <?php endforeach; ?>
+            </div>
+            <?php endif; ?>
+        </div>
+
+        <!-- ==================== AVAILABLE STUDENTS PANEL ==================== -->
+        <div class="sp-panel" id="panel-available-students">
+            <h1 class="sp-page-title"><?php _e('Available Students', 'al-huffaz-portal'); ?></h1>
+            <p class="sp-page-subtitle"><?php _e('Choose a student to sponsor and make a difference in their education.', 'al-huffaz-portal'); ?></p>
+
+            <?php if (empty($available_students)): ?>
+            <div class="sp-card">
+                <div class="sp-card-body">
+                    <div class="sp-empty">
+                        <i class="fas fa-search"></i>
+                        <h3><?php _e('No Students Available', 'al-huffaz-portal'); ?></h3>
+                        <p><?php _e('All students are currently sponsored. Check back later!', 'al-huffaz-portal'); ?></p>
                     </div>
                 </div>
             </div>
-        </main>
-    </div>
-    <div class="sp-toast" id="toast"></div>
-</div>
-
-<!-- Sponsor Student Modal -->
-<div id="sponsorModal" class="sp-modal">
-    <div class="sp-modal-content">
-        <div class="sp-modal-header">
-            <h3><i class="fas fa-hand-holding-heart"></i> <?php _e('Sponsor Student', 'al-huffaz-portal'); ?></h3>
-            <button class="sp-modal-close" onclick="closeSponsorModal()">&times;</button>
-        </div>
-        <div class="sp-modal-body">
-            <input type="hidden" id="sponsorStudentId">
-            <div style="text-align:center;margin-bottom:20px;">
-                <h3 id="sponsorStudentName" style="margin:0;"></h3>
-            </div>
-
-            <div class="sp-form-group">
-                <label class="sp-form-label"><?php _e('Select Sponsorship Plan', 'al-huffaz-portal'); ?></label>
-                <div style="display:grid;gap:12px;">
-                    <label style="display:flex;align-items:center;padding:16px;background:var(--sp-bg);border-radius:10px;cursor:pointer;border:2px solid transparent;" class="plan-option" data-plan="monthly">
-                        <input type="radio" name="sponsor_plan" value="monthly" style="margin-right:12px;" checked>
-                        <div style="flex:1;">
-                            <strong><?php _e('Monthly', 'al-huffaz-portal'); ?></strong>
-                            <p style="margin:4px 0 0;font-size:13px;color:var(--sp-text-muted);"><?php _e('Pay every month', 'al-huffaz-portal'); ?></p>
+            <?php else: ?>
+            <div class="sp-students-grid">
+                <?php foreach ($available_students as $student):
+                    $student_id = $student->ID;
+                    $photo_id = get_post_meta($student_id, 'student_photo', true);
+                    $photo_url = $photo_id ? wp_get_attachment_image_url($photo_id, 'medium') : '';
+                    $grade = get_post_meta($student_id, 'grade_level', true);
+                    $category = get_post_meta($student_id, 'islamic_studies_category', true);
+                    $monthly_fee = get_post_meta($student_id, 'monthly_tuition_fee', true);
+                    $course_fee = get_post_meta($student_id, 'course_fee', true);
+                    $total_fee = floatval($monthly_fee) + floatval($course_fee);
+                ?>
+                <div class="sp-student-card">
+                    <div class="sp-student-header">
+                        <?php if ($photo_url): ?>
+                            <img src="<?php echo esc_url($photo_url); ?>" class="sp-student-photo" alt="">
+                        <?php else: ?>
+                            <div class="sp-student-placeholder"><?php echo strtoupper(substr($student->post_title, 0, 1)); ?></div>
+                        <?php endif; ?>
+                        <div class="sp-student-info">
+                            <h3><?php echo esc_html($student->post_title); ?></h3>
+                            <div class="sp-student-badges">
+                                <?php if ($grade): ?><span class="sp-badge sp-badge-grade"><?php echo esc_html(strtoupper($grade)); ?></span><?php endif; ?>
+                                <?php if ($category): ?><span class="sp-badge sp-badge-category"><?php echo esc_html(ucfirst($category)); ?></span><?php endif; ?>
+                            </div>
                         </div>
-                        <strong id="monthlyPrice" style="color:var(--sp-primary);"></strong>
-                    </label>
-                    <label style="display:flex;align-items:center;padding:16px;background:var(--sp-bg);border-radius:10px;cursor:pointer;border:2px solid transparent;" class="plan-option" data-plan="quarterly">
-                        <input type="radio" name="sponsor_plan" value="quarterly" style="margin-right:12px;">
-                        <div style="flex:1;">
-                            <strong><?php _e('Quarterly', 'al-huffaz-portal'); ?></strong>
-                            <p style="margin:4px 0 0;font-size:13px;color:var(--sp-text-muted);"><?php _e('Pay every 3 months', 'al-huffaz-portal'); ?></p>
-                        </div>
-                        <strong id="quarterlyPrice" style="color:var(--sp-primary);"></strong>
-                    </label>
-                    <label style="display:flex;align-items:center;padding:16px;background:var(--sp-bg);border-radius:10px;cursor:pointer;border:2px solid transparent;" class="plan-option" data-plan="yearly">
-                        <input type="radio" name="sponsor_plan" value="yearly" style="margin-right:12px;">
-                        <div style="flex:1;">
-                            <strong><?php _e('Yearly', 'al-huffaz-portal'); ?></strong>
-                            <p style="margin:4px 0 0;font-size:13px;color:var(--sp-text-muted);"><?php _e('Pay annually (includes one-time fees)', 'al-huffaz-portal'); ?></p>
-                        </div>
-                        <strong id="yearlyPrice" style="color:var(--sp-primary);"></strong>
-                    </label>
-                </div>
-            </div>
-        </div>
-        <div class="sp-modal-footer">
-            <button class="sp-btn sp-btn-secondary" onclick="closeSponsorModal()"><?php _e('Cancel', 'al-huffaz-portal'); ?></button>
-            <button class="sp-btn sp-btn-primary" onclick="submitSponsorship()">
-                <i class="fas fa-heart"></i> <?php _e('Confirm & Proceed to Payment', 'al-huffaz-portal'); ?>
-            </button>
-        </div>
-    </div>
-</div>
-
-<!-- Payment Modal -->
-<div id="quickPayModal" class="sp-modal">
-    <div class="sp-modal-content">
-        <div class="sp-modal-header">
-            <h3><i class="fas fa-credit-card"></i> <?php _e('Quick Payment', 'al-huffaz-portal'); ?></h3>
-            <button class="sp-modal-close" onclick="closePaymentModal()">&times;</button>
-        </div>
-        <div class="sp-modal-body">
-            <form id="quickPayForm">
-                <input type="hidden" name="student_id" id="quickPayStudentId">
-                <div style="text-align:center;margin-bottom:20px;">
-                    <h3 id="quickPayStudentName" style="margin:0;"></h3>
-                </div>
-
-                <div class="sp-form-row">
-                    <div class="sp-form-group">
-                        <label class="sp-form-label"><?php _e('Amount', 'al-huffaz-portal'); ?> *</label>
-                        <input type="number" name="amount" id="quickPayAmount" class="sp-form-input" required min="1">
                     </div>
-                    <div class="sp-form-group">
-                        <label class="sp-form-label"><?php _e('Method', 'al-huffaz-portal'); ?> *</label>
-                        <select name="payment_method" class="sp-form-select" required>
-                            <option value="bank_transfer"><?php _e('Bank Transfer', 'al-huffaz-portal'); ?></option>
-                            <option value="easypaisa"><?php _e('EasyPaisa', 'al-huffaz-portal'); ?></option>
-                            <option value="jazzcash"><?php _e('JazzCash', 'al-huffaz-portal'); ?></option>
-                        </select>
+                    <div class="sp-student-body">
+                        <div class="sp-fee-grid">
+                            <div class="sp-fee-item">
+                                <div class="sp-fee-label"><?php _e('Monthly', 'al-huffaz-portal'); ?></div>
+                                <div class="sp-fee-value">PKR <?php echo number_format($monthly_fee ?: 0); ?></div>
+                            </div>
+                            <div class="sp-fee-item">
+                                <div class="sp-fee-label"><?php _e('Course', 'al-huffaz-portal'); ?></div>
+                                <div class="sp-fee-value">PKR <?php echo number_format($course_fee ?: 0); ?></div>
+                            </div>
+                            <div class="sp-fee-item">
+                                <div class="sp-fee-label"><?php _e('Total', 'al-huffaz-portal'); ?></div>
+                                <div class="sp-fee-value">PKR <?php echo number_format($total_fee); ?></div>
+                            </div>
+                        </div>
+                        <p class="sp-plan-title"><?php _e('Choose Sponsorship Plan', 'al-huffaz-portal'); ?></p>
+                        <div class="sp-plan-grid">
+                            <button type="button" class="sp-plan-btn" onclick="openSponsorModal(<?php echo $student_id; ?>, '<?php echo esc_js($student->post_title); ?>', 1, <?php echo $total_fee; ?>)">
+                                <span class="sp-plan-duration"><?php _e('1 Month', 'al-huffaz-portal'); ?></span>
+                                <span class="sp-plan-amount">PKR <?php echo number_format($total_fee); ?></span>
+                            </button>
+                            <button type="button" class="sp-plan-btn" onclick="openSponsorModal(<?php echo $student_id; ?>, '<?php echo esc_js($student->post_title); ?>', 3, <?php echo $total_fee * 3; ?>)">
+                                <span class="sp-plan-duration"><?php _e('3 Months', 'al-huffaz-portal'); ?></span>
+                                <span class="sp-plan-amount">PKR <?php echo number_format($total_fee * 3); ?></span>
+                            </button>
+                            <button type="button" class="sp-plan-btn" onclick="openSponsorModal(<?php echo $student_id; ?>, '<?php echo esc_js($student->post_title); ?>', 6, <?php echo $total_fee * 6; ?>)">
+                                <span class="sp-plan-duration"><?php _e('6 Months', 'al-huffaz-portal'); ?></span>
+                                <span class="sp-plan-amount">PKR <?php echo number_format($total_fee * 6); ?></span>
+                            </button>
+                            <button type="button" class="sp-plan-btn featured" onclick="openSponsorModal(<?php echo $student_id; ?>, '<?php echo esc_js($student->post_title); ?>', 12, <?php echo $total_fee * 12; ?>)">
+                                <span class="sp-plan-badge"><?php _e('Best Value', 'al-huffaz-portal'); ?></span>
+                                <span class="sp-plan-duration"><?php _e('12 Months', 'al-huffaz-portal'); ?></span>
+                                <span class="sp-plan-amount">PKR <?php echo number_format($total_fee * 12); ?></span>
+                            </button>
+                        </div>
                     </div>
                 </div>
-
-                <div class="sp-form-group">
-                    <label class="sp-form-label"><?php _e('Transaction ID', 'al-huffaz-portal'); ?></label>
-                    <input type="text" name="transaction_id" class="sp-form-input">
-                </div>
-            </form>
+                <?php endforeach; ?>
+            </div>
+            <?php endif; ?>
         </div>
-        <div class="sp-modal-footer">
-            <button class="sp-btn sp-btn-secondary" onclick="closePaymentModal()"><?php _e('Cancel', 'al-huffaz-portal'); ?></button>
-            <button class="sp-btn sp-btn-success" onclick="submitQuickPayment()">
-                <i class="fas fa-check"></i> <?php _e('Submit Payment', 'al-huffaz-portal'); ?>
-            </button>
+
+        <!-- ==================== MAKE PAYMENT PANEL ==================== -->
+        <div class="sp-panel" id="panel-payments">
+            <h1 class="sp-page-title"><?php _e('Make a Payment', 'al-huffaz-portal'); ?></h1>
+            <p class="sp-page-subtitle"><?php _e('Submit your payment proof for verification.', 'al-huffaz-portal'); ?></p>
+
+            <?php if (empty($data['sponsorships'])): ?>
+            <div class="sp-card">
+                <div class="sp-card-body">
+                    <div class="sp-empty">
+                        <i class="fas fa-credit-card"></i>
+                        <h3><?php _e('No Sponsorships Yet', 'al-huffaz-portal'); ?></h3>
+                        <p><?php _e('You need to sponsor a student before making payments.', 'al-huffaz-portal'); ?></p>
+                        <button class="sp-btn sp-btn-primary" onclick="showPanel('available-students')">
+                            <i class="fas fa-hand-holding-heart"></i> <?php _e('Browse Students', 'al-huffaz-portal'); ?>
+                        </button>
+                    </div>
+                </div>
+            </div>
+            <?php else: ?>
+            <div class="sp-card">
+                <div class="sp-card-header">
+                    <h3 class="sp-card-title"><i class="fas fa-upload"></i> <?php _e('Submit Payment Proof', 'al-huffaz-portal'); ?></h3>
+                </div>
+                <div class="sp-card-body">
+                    <form id="paymentForm" enctype="multipart/form-data">
+                        <input type="hidden" name="action" value="alhuffaz_submit_payment">
+                        <input type="hidden" name="nonce" value="<?php echo $nonce; ?>">
+
+                        <div class="sp-form-row">
+                            <div class="sp-form-group">
+                                <label class="sp-form-label"><?php _e('Select Student', 'al-huffaz-portal'); ?></label>
+                                <select name="student_id" class="sp-form-select" required>
+                                    <option value=""><?php _e('Choose a student...', 'al-huffaz-portal'); ?></option>
+                                    <?php foreach ($data['sponsorships'] as $s): ?>
+                                    <option value="<?php echo $s['student_id']; ?>"><?php echo esc_html($s['student_name']); ?></option>
+                                    <?php endforeach; ?>
+                                </select>
+                            </div>
+                            <div class="sp-form-group">
+                                <label class="sp-form-label"><?php _e('Amount (PKR)', 'al-huffaz-portal'); ?></label>
+                                <input type="number" name="amount" class="sp-form-input" placeholder="Enter amount" required>
+                            </div>
+                        </div>
+
+                        <div class="sp-form-row">
+                            <div class="sp-form-group">
+                                <label class="sp-form-label"><?php _e('Payment Method', 'al-huffaz-portal'); ?></label>
+                                <select name="payment_method" class="sp-form-select" required>
+                                    <option value=""><?php _e('Select method...', 'al-huffaz-portal'); ?></option>
+                                    <option value="bank_transfer"><?php _e('Bank Transfer', 'al-huffaz-portal'); ?></option>
+                                    <option value="easypaisa"><?php _e('Easypaisa', 'al-huffaz-portal'); ?></option>
+                                    <option value="jazzcash"><?php _e('JazzCash', 'al-huffaz-portal'); ?></option>
+                                </select>
+                            </div>
+                            <div class="sp-form-group">
+                                <label class="sp-form-label"><?php _e('Transaction Reference', 'al-huffaz-portal'); ?></label>
+                                <input type="text" name="transaction_ref" class="sp-form-input" placeholder="Transaction ID or reference">
+                            </div>
+                        </div>
+
+                        <div class="sp-form-group">
+                            <label class="sp-form-label"><?php _e('Payment Proof (Screenshot)', 'al-huffaz-portal'); ?></label>
+                            <input type="file" name="payment_proof" class="sp-form-input" accept="image/*" required>
+                        </div>
+
+                        <button type="submit" class="sp-btn sp-btn-success">
+                            <i class="fas fa-paper-plane"></i> <?php _e('Submit Payment', 'al-huffaz-portal'); ?>
+                        </button>
+                    </form>
+                </div>
+            </div>
+            <?php endif; ?>
+        </div>
+
+        <!-- ==================== PAYMENT HISTORY PANEL ==================== -->
+        <div class="sp-panel" id="panel-history">
+            <h1 class="sp-page-title"><?php _e('Payment History', 'al-huffaz-portal'); ?></h1>
+            <p class="sp-page-subtitle"><?php _e('View all your past payments and their status.', 'al-huffaz-portal'); ?></p>
+
+            <div class="sp-card">
+                <div class="sp-card-body" style="padding: 0;">
+                    <?php if (empty($data['payments'])): ?>
+                    <div class="sp-empty">
+                        <i class="fas fa-receipt"></i>
+                        <h3><?php _e('No Payment History', 'al-huffaz-portal'); ?></h3>
+                        <p><?php _e('Your payment history will appear here once you make a payment.', 'al-huffaz-portal'); ?></p>
+                    </div>
+                    <?php else: ?>
+                    <div class="sp-table-wrap">
+                        <table class="sp-table">
+                            <thead>
+                                <tr>
+                                    <th><?php _e('Date', 'al-huffaz-portal'); ?></th>
+                                    <th><?php _e('Student', 'al-huffaz-portal'); ?></th>
+                                    <th><?php _e('Amount', 'al-huffaz-portal'); ?></th>
+                                    <th><?php _e('Method', 'al-huffaz-portal'); ?></th>
+                                    <th><?php _e('Status', 'al-huffaz-portal'); ?></th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <?php foreach ($data['payments'] as $payment): ?>
+                                <tr>
+                                    <td><?php echo esc_html(date_i18n(get_option('date_format'), strtotime($payment['date']))); ?></td>
+                                    <td><?php echo esc_html($payment['student_name']); ?></td>
+                                    <td><strong>PKR <?php echo number_format($payment['amount']); ?></strong></td>
+                                    <td><?php echo esc_html(ucfirst(str_replace('_', ' ', $payment['method']))); ?></td>
+                                    <td><span class="sp-status <?php echo esc_attr($payment['status']); ?>"><?php echo esc_html(ucfirst($payment['status'])); ?></span></td>
+                                </tr>
+                                <?php endforeach; ?>
+                            </tbody>
+                        </table>
+                    </div>
+                    <?php endif; ?>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- ==================== SPONSOR MODAL ==================== -->
+    <div class="sp-modal" id="sponsorModal">
+        <div class="sp-modal-content">
+            <div class="sp-modal-header">
+                <h3><i class="fas fa-hand-holding-heart"></i> <?php _e('Confirm Sponsorship', 'al-huffaz-portal'); ?></h3>
+                <button class="sp-modal-close" onclick="closeSponsorModal()">&times;</button>
+            </div>
+            <div class="sp-modal-body">
+                <p style="margin-bottom: 20px;"><?php _e('You are about to sponsor:', 'al-huffaz-portal'); ?></p>
+                <div style="padding: 16px; background: var(--sp-bg); border-radius: 12px; margin-bottom: 20px;">
+                    <div style="font-weight: 600; font-size: 18px; margin-bottom: 8px;" id="modalStudentName"></div>
+                    <div style="color: var(--sp-text-secondary);" id="modalDuration"></div>
+                    <div style="font-size: 24px; font-weight: 700; color: var(--sp-primary); margin-top: 8px;" id="modalAmount"></div>
+                </div>
+                <form id="sponsorForm">
+                    <input type="hidden" name="action" value="alhuffaz_create_sponsorship">
+                    <input type="hidden" name="nonce" value="<?php echo $nonce; ?>">
+                    <input type="hidden" name="student_id" id="modalStudentId">
+                    <input type="hidden" name="duration" id="modalDurationVal">
+                    <input type="hidden" name="amount" id="modalAmountVal">
+                </form>
+            </div>
+            <div class="sp-modal-footer">
+                <button class="sp-btn sp-btn-secondary" onclick="closeSponsorModal()"><?php _e('Cancel', 'al-huffaz-portal'); ?></button>
+                <button class="sp-btn sp-btn-success" onclick="submitSponsorship()">
+                    <i class="fas fa-check"></i> <?php _e('Confirm Sponsorship', 'al-huffaz-portal'); ?>
+                </button>
+            </div>
         </div>
     </div>
+
+    <!-- Toast -->
+    <div class="sp-toast" id="spToast"></div>
 </div>
 
 <script>
-// Mobile menu toggle - defined outside DOMContentLoaded for immediate availability
-window.toggleMobileMenu = function() {
-    const sidebar = document.getElementById('spSidebar');
-    const overlay = document.querySelector('.sp-overlay');
-    sidebar.classList.toggle('open');
-    overlay.classList.toggle('open');
-};
+(function() {
+    'use strict';
 
-document.addEventListener('DOMContentLoaded', function() {
-    const ajaxUrl = '<?php echo admin_url('admin-ajax.php'); ?>';
-    const nonce = '<?php echo $nonce; ?>';
+    // Panel Navigation
+    const navItems = document.querySelectorAll('.sp-nav-item[data-panel]');
+    const panels = document.querySelectorAll('.sp-panel');
 
-    // Panel navigation
-    window.showPanel = function(panel) {
-        document.querySelectorAll('.sp-panel').forEach(p => p.classList.remove('active'));
-        document.querySelectorAll('.sp-nav-item').forEach(n => n.classList.remove('active'));
-        document.getElementById('panel-' + panel)?.classList.add('active');
-        document.querySelector('[data-panel="' + panel + '"]')?.classList.add('active');
-        // Close mobile menu on panel change
-        const sidebar = document.getElementById('spSidebar');
-        const overlay = document.querySelector('.sp-overlay');
-        if (sidebar && overlay) {
-            sidebar.classList.remove('open');
-            overlay.classList.remove('open');
-        }
-    };
+    navItems.forEach(item => {
+        item.addEventListener('click', function() {
+            const panelId = this.dataset.panel;
+            showPanel(panelId);
 
-    document.querySelectorAll('.sp-nav-item[data-panel]').forEach(item => {
-        item.addEventListener('click', function(e) {
-            e.preventDefault();
-            showPanel(this.dataset.panel);
+            // Close mobile nav
+            document.getElementById('spNav').classList.remove('open');
         });
     });
 
-    // Toast notification
-    window.showToast = function(msg, type = 'success') {
-        const toast = document.getElementById('toast');
-        toast.textContent = msg;
-        toast.className = 'sp-toast ' + type;
-        toast.style.display = 'block';
-        setTimeout(() => { toast.style.display = 'none'; }, 3000);
-    };
-
-    // Update payment amount when student is selected
-    window.updatePaymentAmount = function() {
-        const select = document.getElementById('paymentStudent');
-        const amountInput = document.getElementById('paymentAmount');
-        const selected = select.options[select.selectedIndex];
-        if (selected && selected.dataset.amount) {
-            amountInput.value = selected.dataset.amount;
-        }
-    };
-
-    // View student profile
-    window.viewStudentProfile = function(studentId) {
-        showPanel('student-profile');
-
-        const content = document.getElementById('studentProfileContent');
-        content.innerHTML = '<div class="sp-loading" style="text-align:center;padding:60px;"><i class="fas fa-spinner fa-spin fa-2x"></i><p style="margin-top:16px;"><?php _e('Loading student profile...', 'al-huffaz-portal'); ?></p></div>';
-
-        fetch(ajaxUrl, {
-            method: 'POST',
-            headers: {'Content-Type': 'application/x-www-form-urlencoded'},
-            body: new URLSearchParams({
-                action: 'alhuffaz_get_student_profile',
-                nonce: nonce,
-                student_id: studentId
-            })
-        })
-        .then(r => r.json())
-        .then(data => {
-            if (data.success) {
-                renderStudentProfile(data.data);
-            } else {
-                content.innerHTML = '<div class="sp-alert sp-alert-danger"><i class="fas fa-exclamation-circle"></i> ' + (data.data?.message || '<?php _e('Error loading profile', 'al-huffaz-portal'); ?>') + '</div>';
-            }
-        })
-        .catch(() => {
-            content.innerHTML = '<div class="sp-alert sp-alert-danger"><i class="fas fa-exclamation-circle"></i> <?php _e('Network error. Please try again.', 'al-huffaz-portal'); ?></div>';
+    window.showPanel = function(panelId) {
+        // Update nav
+        navItems.forEach(item => {
+            item.classList.toggle('active', item.dataset.panel === panelId);
         });
+
+        // Update panels
+        panels.forEach(panel => {
+            panel.classList.toggle('active', panel.id === 'panel-' + panelId);
+        });
+
+        // Scroll to top
+        window.scrollTo({ top: 0, behavior: 'smooth' });
     };
 
-    function renderStudentProfile(student) {
-        const content = document.getElementById('studentProfileContent');
-
-        let subjectsHtml = '';
-        if (student.subjects && student.subjects.length > 0) {
-            subjectsHtml = '<div class="sp-card" style="margin-top:20px;"><div class="sp-card-header"><h3 class="sp-card-title"><i class="fas fa-book"></i> <?php _e('Academic Progress', 'al-huffaz-portal'); ?></h3></div><div class="sp-card-body"><div class="sp-subjects-grid">';
-            student.subjects.forEach(subject => {
-                const grade = getGradeFromPercentage(subject.overall || 0);
-                subjectsHtml += `
-                    <div class="sp-subject-item">
-                        <div class="sp-subject-name">${subject.name || 'Subject'}</div>
-                        <div class="sp-subject-score">
-                            <span class="sp-subject-percentage">${subject.overall || 0}%</span>
-                            <span class="sp-subject-grade ${grade.class}">${grade.letter}</span>
-                        </div>
-                    </div>`;
-            });
-            subjectsHtml += '</div></div></div>';
-        }
-
-        let goalsHtml = '';
-        const goals = student.goals?.filter(g => g) || [];
-        if (goals.length > 0) {
-            goalsHtml = '<div class="sp-card" style="margin-top:20px;"><div class="sp-card-header"><h3 class="sp-card-title"><i class="fas fa-bullseye"></i> <?php _e('Learning Goals', 'al-huffaz-portal'); ?></h3></div><div class="sp-card-body"><ul class="sp-goals-list">';
-            goals.forEach(goal => {
-                goalsHtml += `<li><i class="fas fa-check-circle"></i> ${goal}</li>`;
-            });
-            goalsHtml += '</ul></div></div>';
-        }
-
-        content.innerHTML = `
-            <div class="sp-profile-view">
-                <div class="sp-profile-header">
-                    <div class="sp-profile-photo">
-                        ${student.photo ? `<img src="${student.photo}" alt="">` : `<div class="sp-profile-placeholder">${student.name?.charAt(0) || 'S'}</div>`}
-                    </div>
-                    <div class="sp-profile-info">
-                        <h2>${student.name}</h2>
-                        <div class="sp-profile-badges">
-                            ${student.grade ? `<span class="sp-badge sp-badge-grade">${student.grade}</span>` : ''}
-                            ${student.category ? `<span class="sp-badge sp-badge-category">${student.category}</span>` : ''}
-                        </div>
-                    </div>
-                </div>
-
-                <div class="sp-stats" style="margin-top:20px;">
-                    <div class="sp-stat">
-                        <div class="sp-stat-icon blue"><i class="fas fa-chart-line"></i></div>
-                        <div>
-                            <div class="sp-stat-label"><?php _e('Overall Progress', 'al-huffaz-portal'); ?></div>
-                            <div class="sp-stat-value">${student.overall_percentage || 0}%</div>
-                        </div>
-                    </div>
-                    <div class="sp-stat">
-                        <div class="sp-stat-icon green"><i class="fas fa-calendar-check"></i></div>
-                        <div>
-                            <div class="sp-stat-label"><?php _e('Attendance', 'al-huffaz-portal'); ?></div>
-                            <div class="sp-stat-value">${student.attendance?.percentage || 0}%</div>
-                        </div>
-                    </div>
-                    <div class="sp-stat">
-                        <div class="sp-stat-icon orange"><i class="fas fa-award"></i></div>
-                        <div>
-                            <div class="sp-stat-label"><?php _e('Overall Grade', 'al-huffaz-portal'); ?></div>
-                            <div class="sp-stat-value">${student.overall_grade || 'N/A'}</div>
-                        </div>
-                    </div>
-                </div>
-
-                ${student.teacher_comments ? `
-                <div class="sp-card" style="margin-top:20px;">
-                    <div class="sp-card-header" style="background:linear-gradient(135deg, var(--sp-success), #059669);color:white;">
-                        <h3 class="sp-card-title" style="color:white;"><i class="fas fa-comment-alt"></i> <?php _e('Teacher Comments', 'al-huffaz-portal'); ?></h3>
-                    </div>
-                    <div class="sp-card-body">
-                        <p style="font-style:italic;color:var(--sp-text);line-height:1.7;">"${student.teacher_comments}"</p>
-                    </div>
-                </div>
-                ` : ''}
-
-                ${subjectsHtml}
-                ${goalsHtml}
-            </div>
-        `;
-    }
-
-    function getGradeFromPercentage(percentage) {
-        if (percentage >= 90) return { letter: 'A+', class: 'grade-a' };
-        if (percentage >= 80) return { letter: 'A', class: 'grade-a' };
-        if (percentage >= 70) return { letter: 'B', class: 'grade-b' };
-        if (percentage >= 60) return { letter: 'C', class: 'grade-c' };
-        if (percentage >= 50) return { letter: 'D', class: 'grade-d' };
-        return { letter: 'F', class: 'grade-f' };
-    }
-
-    // Go to payment proof page with selected plan
-    window.goToPaymentPage = function(studentId, studentName, months, amount) {
-        // Store the selected plan data
-        document.getElementById('proofStudentId').value = studentId;
-        document.getElementById('proofStudentName').textContent = studentName;
-        document.getElementById('proofPlanMonths').textContent = months + ' <?php _e('Month(s)', 'al-huffaz-portal'); ?>';
-        document.getElementById('proofAmount').value = amount;
-        document.getElementById('proofAmountDisplay').textContent = formatCurrency(amount);
-        document.getElementById('proofPlanType').value = months === 1 ? 'monthly' : (months === 3 ? 'quarterly' : (months === 6 ? 'semi-annual' : 'yearly'));
-
-        // Switch to payment proof panel
-        showPanel('payment-proof');
+    // Mobile Navigation Toggle
+    window.toggleMobileNav = function() {
+        document.getElementById('spNav').classList.toggle('open');
     };
 
-    // Sponsor modal
-    let currentSponsorData = {};
-
-    window.openSponsorModal = function(studentId, studentName, monthly, quarterly, yearly) {
-        currentSponsorData = { studentId, studentName, monthly, quarterly, yearly };
-        document.getElementById('sponsorStudentId').value = studentId;
-        document.getElementById('sponsorStudentName').textContent = studentName;
-        document.getElementById('monthlyPrice').textContent = formatCurrency(monthly);
-        document.getElementById('quarterlyPrice').textContent = formatCurrency(quarterly);
-        document.getElementById('yearlyPrice').textContent = formatCurrency(yearly);
-        document.getElementById('sponsorModal').style.display = 'flex';
+    // Sponsor Modal
+    window.openSponsorModal = function(studentId, studentName, duration, amount) {
+        document.getElementById('modalStudentName').textContent = studentName;
+        document.getElementById('modalDuration').textContent = duration + ' Month' + (duration > 1 ? 's' : '') + ' Sponsorship';
+        document.getElementById('modalAmount').textContent = 'PKR ' + amount.toLocaleString();
+        document.getElementById('modalStudentId').value = studentId;
+        document.getElementById('modalDurationVal').value = duration;
+        document.getElementById('modalAmountVal').value = amount;
+        document.getElementById('sponsorModal').classList.add('open');
     };
 
     window.closeSponsorModal = function() {
-        document.getElementById('sponsorModal').style.display = 'none';
+        document.getElementById('sponsorModal').classList.remove('open');
     };
 
     window.submitSponsorship = function() {
-        const plan = document.querySelector('input[name="sponsor_plan"]:checked').value;
-        const amount = currentSponsorData[plan] || currentSponsorData.monthly;
-
-        const formData = new FormData();
-        formData.append('action', 'alhuffaz_submit_sponsorship');
-        formData.append('nonce', nonce);
-        formData.append('student_id', currentSponsorData.studentId);
-        formData.append('sponsorship_type', plan);
-        formData.append('amount', amount);
-
-        fetch(ajaxUrl, { method: 'POST', body: formData })
-        .then(r => r.json())
-        .then(data => {
-            if (data.success) {
-                showToast('<?php _e('Sponsorship request submitted! Proceeding to payment...', 'al-huffaz-portal'); ?>', 'success');
-                closeSponsorModal();
-                // Open payment modal
-                setTimeout(() => {
-                    openPaymentModal(currentSponsorData.studentId, currentSponsorData.studentName, amount);
-                }, 500);
-            } else {
-                showToast(data.data?.message || '<?php _e('Error submitting sponsorship', 'al-huffaz-portal'); ?>', 'error');
-            }
-        });
-    };
-
-    // Payment modal
-    window.openPaymentModal = function(studentId, studentName, amount) {
-        document.getElementById('quickPayStudentId').value = studentId;
-        document.getElementById('quickPayStudentName').textContent = studentName;
-        document.getElementById('quickPayAmount').value = amount;
-        document.getElementById('quickPayModal').style.display = 'flex';
-    };
-
-    window.closePaymentModal = function() {
-        document.getElementById('quickPayModal').style.display = 'none';
-    };
-
-    window.submitQuickPayment = function() {
-        const form = document.getElementById('quickPayForm');
+        const form = document.getElementById('sponsorForm');
         const formData = new FormData(form);
-        formData.append('action', 'alhuffaz_submit_payment');
-        formData.append('nonce', nonce);
 
-        fetch(ajaxUrl, { method: 'POST', body: formData })
-        .then(r => r.json())
+        fetch('<?php echo admin_url('admin-ajax.php'); ?>', {
+            method: 'POST',
+            body: formData
+        })
+        .then(response => response.json())
         .then(data => {
+            closeSponsorModal();
             if (data.success) {
-                showToast('<?php _e('Payment submitted for verification!', 'al-huffaz-portal'); ?>', 'success');
-                closePaymentModal();
+                showToast('Sponsorship created successfully!', 'success');
                 setTimeout(() => location.reload(), 1500);
             } else {
-                showToast(data.data?.message || '<?php _e('Error submitting payment', 'al-huffaz-portal'); ?>', 'error');
+                showToast(data.data || 'An error occurred', 'error');
             }
+        })
+        .catch(() => {
+            showToast('An error occurred', 'error');
         });
     };
 
-    // Payment proof form submission
-    document.getElementById('paymentProofForm')?.addEventListener('submit', function(e) {
-        e.preventDefault();
+    // Payment Form
+    const paymentForm = document.getElementById('paymentForm');
+    if (paymentForm) {
+        paymentForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            const formData = new FormData(this);
 
-        const submitBtn = document.getElementById('submitProofBtn');
-        const originalText = submitBtn.innerHTML;
-        submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> <?php _e('Submitting...', 'al-huffaz-portal'); ?>';
-        submitBtn.disabled = true;
-
-        const formData = new FormData(this);
-
-        fetch(ajaxUrl, { method: 'POST', body: formData })
-        .then(r => r.json())
-        .then(data => {
-            submitBtn.innerHTML = originalText;
-            submitBtn.disabled = false;
-
-            if (data.success) {
-                showToast('<?php _e('Payment proof submitted successfully! School will verify and notify you.', 'al-huffaz-portal'); ?>', 'success');
-                this.reset();
-                // Redirect to dashboard after 2 seconds
-                setTimeout(() => {
-                    showPanel('dashboard');
-                    showToast('<?php _e('Your sponsorship request is pending verification.', 'al-huffaz-portal'); ?>', 'info');
-                }, 2000);
-            } else {
-                showToast(data.data?.message || '<?php _e('Error submitting payment proof', 'al-huffaz-portal'); ?>', 'error');
-            }
-        })
-        .catch(error => {
-            submitBtn.innerHTML = originalText;
-            submitBtn.disabled = false;
-            showToast('<?php _e('Network error. Please try again.', 'al-huffaz-portal'); ?>', 'error');
-        });
-    });
-
-    // Main payment form
-    document.getElementById('paymentForm')?.addEventListener('submit', function(e) {
-        e.preventDefault();
-        const formData = new FormData(this);
-        formData.append('action', 'alhuffaz_submit_payment');
-        formData.append('nonce', nonce);
-
-        fetch(ajaxUrl, { method: 'POST', body: formData })
-        .then(r => r.json())
-        .then(data => {
-            if (data.success) {
-                showToast('<?php _e('Payment submitted for verification!', 'al-huffaz-portal'); ?>', 'success');
-                this.reset();
-                setTimeout(() => showPanel('history'), 1500);
-            } else {
-                showToast(data.data?.message || '<?php _e('Error submitting payment', 'al-huffaz-portal'); ?>', 'error');
-            }
-        });
-    });
-
-    // Plan selection styling
-    document.querySelectorAll('.plan-option input[type="radio"]').forEach(radio => {
-        radio.addEventListener('change', function() {
-            document.querySelectorAll('.plan-option').forEach(opt => {
-                opt.style.borderColor = 'transparent';
+            fetch('<?php echo admin_url('admin-ajax.php'); ?>', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    showToast('Payment submitted successfully!', 'success');
+                    this.reset();
+                    setTimeout(() => showPanel('history'), 1500);
+                } else {
+                    showToast(data.data || 'An error occurred', 'error');
+                }
+            })
+            .catch(() => {
+                showToast('An error occurred', 'error');
             });
-            if (this.checked) {
-                this.closest('.plan-option').style.borderColor = 'var(--sp-primary)';
-            }
         });
-    });
-
-    // Format currency helper
-    function formatCurrency(amount) {
-        return 'Rs. ' + parseFloat(amount).toLocaleString();
     }
 
-    // Initialize first plan selection
-    document.querySelector('.plan-option')?.style.setProperty('border-color', 'var(--sp-primary)');
-});
+    // Toast
+    function showToast(message, type) {
+        const toast = document.getElementById('spToast');
+        toast.textContent = message;
+        toast.className = 'sp-toast ' + type;
+        toast.style.display = 'block';
+        setTimeout(() => { toast.style.display = 'none'; }, 3000);
+    }
+    window.showToast = showToast;
+
+    // Close modal on outside click
+    document.getElementById('sponsorModal').addEventListener('click', function(e) {
+        if (e.target === this) closeSponsorModal();
+    });
+})();
 </script>

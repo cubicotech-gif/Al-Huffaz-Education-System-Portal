@@ -192,23 +192,28 @@ $nonce = wp_create_nonce('alhuffaz_student_nonce');
 
 <style>
 /* ============================================
-   AL-HUFFAZ ADMIN PORTAL - COMPLETE STYLES
-   With WordPress Theme Isolation
+   AL-HUFFAZ ADMIN PORTAL - MODERN TOP NAV DESIGN
+   Inspired by Stripe, Linear, Notion dashboards
    ============================================ */
 
 /* CSS Variables - Scoped to .ahp-portal */
 .ahp-portal {
     --ahp-primary: #0080ff;
     --ahp-primary-dark: #0056b3;
+    --ahp-primary-light: #e0f2fe;
     --ahp-success: #10b981;
+    --ahp-success-light: #d1fae5;
     --ahp-warning: #f59e0b;
+    --ahp-warning-light: #fef3c7;
     --ahp-danger: #ef4444;
+    --ahp-danger-light: #fee2e2;
     --ahp-text: #1e293b;
     --ahp-text-muted: #64748b;
     --ahp-border: #e2e8f0;
     --ahp-bg: #f8fafc;
     --ahp-sidebar: #0f172a;
     --ahp-card: #ffffff;
+    --ahp-header-bg: #ffffff;
 }
 
 /* CSS Reset - Prevent WordPress theme bleeding */
@@ -219,9 +224,6 @@ $nonce = wp_create_nonce('alhuffaz_student_nonce');
     box-sizing: border-box !important;
     margin: 0;
     padding: 0;
-    border: 0;
-    font-size: 100%;
-    vertical-align: baseline;
 }
 
 /* Reset specific elements */
@@ -265,112 +267,248 @@ $nonce = wp_create_nonce('alhuffaz_student_nonce');
     width: 100%;
 }
 
-/* Account for WordPress admin bar */
-body.admin-bar .ahp-portal .ahp-sidebar {
+/* ==================== TOP HEADER ==================== */
+.ahp-portal .ahp-header {
+    background: var(--ahp-header-bg) !important;
+    border-bottom: 1px solid var(--ahp-border) !important;
+    position: sticky !important;
+    top: 0 !important;
+    z-index: 100 !important;
+}
+
+body.admin-bar .ahp-portal .ahp-header {
     top: 32px !important;
-    height: calc(100vh - 32px) !important;
 }
 @media screen and (max-width: 782px) {
-    body.admin-bar .ahp-portal .ahp-sidebar {
+    body.admin-bar .ahp-portal .ahp-header {
         top: 46px !important;
-        height: calc(100vh - 46px) !important;
     }
 }
 
-/* Layout */
-.ahp-portal .ahp-wrapper { display: flex !important; min-height: 100vh !important; position: relative !important; }
-.ahp-portal .ahp-sidebar {
-    width: 260px !important;
-    min-width: 260px !important;
-    background: var(--ahp-sidebar) !important;
-    color: #fff !important;
-    position: fixed !important;
-    top: 0 !important;
-    left: 0 !important;
-    height: 100vh !important;
-    overflow-y: auto !important;
-    z-index: 100 !important;
+.ahp-portal .ahp-header-inner {
+    max-width: 1400px !important;
+    margin: 0 auto !important;
+    padding: 0 24px !important;
 }
+
+.ahp-portal .ahp-header-top {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    height: 64px !important;
+}
+
+/* Layout - Top Navigation Design */
+.ahp-portal .ahp-wrapper {
+    display: flex !important;
+    flex-direction: column !important;
+    min-height: 100vh !important;
+}
+
+/* Sidebar converted to horizontal nav in header */
+.ahp-portal .ahp-sidebar {
+    display: none !important;
+}
+
+/* Main content - full width */
 .ahp-portal .ahp-main {
     flex: 1 !important;
-    margin-left: 260px !important;
-    padding: 24px !important;
-    min-height: 100vh !important;
+    margin-left: 0 !important;
+    padding: 32px 24px !important;
+    max-width: 1400px !important;
+    margin: 0 auto !important;
+    width: 100% !important;
     background: var(--ahp-bg) !important;
 }
 
-/* Sidebar */
-.ahp-portal .ahp-sidebar-header {
-    padding: 20px !important;
-    border-bottom: 1px solid rgba(255,255,255,0.1) !important;
+/* ==================== TOP HEADER STYLES ==================== */
+.ahp-portal .ahp-top-header {
+    background: var(--ahp-header-bg) !important;
+    border-bottom: 1px solid var(--ahp-border) !important;
+    position: sticky !important;
+    top: 0 !important;
+    z-index: 100 !important;
 }
+
+body.admin-bar .ahp-portal .ahp-top-header {
+    top: 32px !important;
+}
+@media screen and (max-width: 782px) {
+    body.admin-bar .ahp-portal .ahp-top-header {
+        top: 46px !important;
+    }
+}
+
+.ahp-portal .ahp-header-inner {
+    max-width: 1400px !important;
+    margin: 0 auto !important;
+    padding: 0 24px !important;
+}
+
+.ahp-portal .ahp-header-top {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    height: 64px !important;
+}
+
 .ahp-portal .ahp-logo {
     display: flex !important;
     align-items: center !important;
-    gap: 10px !important;
+    gap: 12px !important;
     font-size: 18px !important;
     font-weight: 700 !important;
-    color: #fff !important;
+    color: var(--ahp-text) !important;
 }
-.ahp-portal .ahp-logo i { color: var(--ahp-primary) !important; font-size: 24px !important; }
-.ahp-portal .ahp-nav { padding: 16px 0 !important; }
-.ahp-portal .ahp-nav-item {
+.ahp-portal .ahp-logo i {
+    font-size: 24px !important;
+    color: var(--ahp-primary) !important;
+}
+
+.ahp-portal .ahp-user-menu {
+    display: flex !important;
+    align-items: center !important;
+    gap: 16px !important;
+}
+
+.ahp-portal .ahp-user-info {
     display: flex !important;
     align-items: center !important;
     gap: 12px !important;
-    padding: 12px 20px !important;
-    color: rgba(255,255,255,0.7) !important;
-    cursor: pointer !important;
-    transition: all 0.2s ease !important;
-    border-left: 3px solid transparent !important;
-    text-decoration: none !important;
-    background: transparent !important;
+    padding: 8px 16px !important;
+    background: var(--ahp-bg) !important;
+    border-radius: 100px !important;
 }
-.ahp-portal .ahp-nav-item:hover, .ahp-portal .ahp-nav-item.active {
-    background: rgba(255,255,255,0.1) !important;
-    color: #fff !important;
-    border-left-color: var(--ahp-primary) !important;
-}
-.ahp-portal .ahp-nav-item i { width: 20px !important; text-align: center !important; }
-.ahp-portal .ahp-nav-badge {
-    background: var(--ahp-danger) !important;
-    color: #fff !important;
-    font-size: 10px !important;
-    padding: 2px 6px !important;
-    border-radius: 10px !important;
-    margin-left: auto !important;
-    font-weight: 700 !important;
-    min-width: 18px !important;
-    text-align: center !important;
-}
-.ahp-portal .ahp-nav-badge.warning { background: var(--ahp-warning) !important; }
-.ahp-portal .ahp-nav-badge.success { background: var(--ahp-success) !important; }
-.ahp-portal .ahp-nav-badge.info { background: #3b82f6 !important; }
-.ahp-portal .ahp-sidebar-footer {
-    position: absolute !important;
-    bottom: 0 !important;
-    left: 0 !important;
-    right: 0 !important;
-    padding: 16px 20px !important;
-    border-top: 1px solid rgba(255,255,255,0.1) !important;
-    background: rgba(0,0,0,0.2) !important;
-}
-.ahp-portal .ahp-user { display: flex !important; align-items: center !important; gap: 10px !important; }
+
 .ahp-portal .ahp-avatar {
     width: 36px !important;
     height: 36px !important;
-    background: var(--ahp-primary) !important;
     border-radius: 50% !important;
+    background: linear-gradient(135deg, var(--ahp-primary), var(--ahp-primary-dark)) !important;
     display: flex !important;
     align-items: center !important;
     justify-content: center !important;
+    font-size: 14px !important;
     font-weight: 700 !important;
-    color: #fff !important;
+    color: white !important;
 }
-.ahp-portal .ahp-user-name { font-weight: 600 !important; font-size: 14px !important; color: #fff !important; }
-.ahp-portal .ahp-user-role { font-size: 12px !important; color: rgba(255,255,255,0.6) !important; }
 
-/* Header */
+.ahp-portal .ahp-user-name {
+    font-weight: 600 !important;
+    font-size: 14px !important;
+    color: var(--ahp-text) !important;
+}
+
+.ahp-portal .ahp-user-role {
+    font-size: 11px !important;
+    color: var(--ahp-text-muted) !important;
+    background: var(--ahp-primary-light) !important;
+    padding: 3px 10px !important;
+    border-radius: 100px !important;
+    font-weight: 600 !important;
+}
+
+.ahp-portal .ahp-logout-btn {
+    display: flex !important;
+    align-items: center !important;
+    gap: 6px !important;
+    padding: 8px 16px !important;
+    background: transparent !important;
+    border: 1px solid var(--ahp-border) !important;
+    border-radius: 8px !important;
+    font-size: 13px !important;
+    font-weight: 500 !important;
+    color: var(--ahp-text-muted) !important;
+    cursor: pointer !important;
+    transition: all 0.2s !important;
+    text-decoration: none !important;
+}
+
+.ahp-portal .ahp-logout-btn:hover {
+    background: var(--ahp-danger-light) !important;
+    border-color: var(--ahp-danger) !important;
+    color: var(--ahp-danger) !important;
+}
+
+/* ==================== HORIZONTAL TAB NAVIGATION ==================== */
+.ahp-portal .ahp-nav {
+    display: flex !important;
+    gap: 4px !important;
+    padding-bottom: 0 !important;
+    overflow-x: auto !important;
+    scrollbar-width: none !important;
+}
+
+.ahp-portal .ahp-nav::-webkit-scrollbar { display: none; }
+
+.ahp-portal .ahp-nav-item {
+    display: flex !important;
+    align-items: center !important;
+    gap: 8px !important;
+    padding: 12px 16px !important;
+    font-size: 14px !important;
+    font-weight: 500 !important;
+    color: var(--ahp-text-muted) !important;
+    border-bottom: 2px solid transparent !important;
+    cursor: pointer !important;
+    transition: all 0.2s !important;
+    white-space: nowrap !important;
+    background: transparent !important;
+    border-top: none !important;
+    border-left: none !important;
+    border-right: none !important;
+}
+
+.ahp-portal .ahp-nav-item:hover {
+    color: var(--ahp-text) !important;
+    background: var(--ahp-bg) !important;
+}
+
+.ahp-portal .ahp-nav-item.active {
+    color: var(--ahp-primary) !important;
+    border-bottom-color: var(--ahp-primary) !important;
+}
+
+.ahp-portal .ahp-nav-item i {
+    font-size: 16px !important;
+}
+
+.ahp-portal .ahp-nav-badge {
+    background: var(--ahp-primary) !important;
+    color: white !important;
+    padding: 2px 8px !important;
+    border-radius: 100px !important;
+    font-size: 11px !important;
+    font-weight: 700 !important;
+}
+
+.ahp-portal .ahp-nav-badge.warning { background: var(--ahp-warning) !important; }
+.ahp-portal .ahp-nav-badge.success { background: var(--ahp-success) !important; }
+.ahp-portal .ahp-nav-badge.info { background: #3b82f6 !important; }
+.ahp-portal .ahp-nav-badge.danger { background: var(--ahp-danger) !important; }
+
+/* Mobile Menu Toggle */
+.ahp-portal .ahp-menu-toggle {
+    display: none !important;
+    align-items: center !important;
+    justify-content: center !important;
+    width: 40px !important;
+    height: 40px !important;
+    background: var(--ahp-bg) !important;
+    border: none !important;
+    border-radius: 8px !important;
+    font-size: 20px !important;
+    color: var(--ahp-text) !important;
+    cursor: pointer !important;
+}
+
+/* Old sidebar elements - hide */
+.ahp-portal .ahp-sidebar-header,
+.ahp-portal .ahp-sidebar-footer {
+    display: none !important;
+}
+
+/* Page Header (within panels) */
 .ahp-portal .ahp-header {
     display: flex !important;
     justify-content: space-between !important;
@@ -824,94 +962,134 @@ body.admin-bar .ahp-portal .ahp-sidebar {
 /* Responsive */
 @media (max-width: 1024px) {
     .ahp-portal .ahp-menu-toggle { display: flex !important; }
-    .ahp-portal .ahp-sidebar { transform: translateX(-100%) !important; transition: transform 0.3s ease !important; }
-    .ahp-portal .ahp-sidebar.open { transform: translateX(0) !important; }
-    .ahp-portal .ahp-main { margin-left: 0 !important; padding: 70px 20px 20px !important; }
+    .ahp-portal .ahp-main { padding: 24px 20px !important; }
     .ahp-portal .ahp-form-grid { grid-template-columns: repeat(6, 1fr) !important; }
     .ahp-portal .ahp-col-3, .ahp-portal .ahp-col-4 { grid-column: span 3 !important; }
 }
 @media (max-width: 768px) {
+    .ahp-portal .ahp-header-inner { padding: 0 16px !important; }
+    .ahp-portal .ahp-menu-toggle { display: flex !important; }
+    .ahp-portal .ahp-user-menu { display: none !important; }
+
+    .ahp-portal .ahp-nav {
+        display: none !important;
+        position: absolute !important;
+        top: 100% !important;
+        left: 0 !important;
+        right: 0 !important;
+        background: white !important;
+        flex-direction: column !important;
+        padding: 16px !important;
+        border-bottom: 1px solid var(--ahp-border) !important;
+        box-shadow: 0 8px 16px rgba(0, 0, 0, 0.1) !important;
+    }
+
+    .ahp-portal .ahp-nav.open { display: flex !important; }
+
+    .ahp-portal .ahp-nav-item {
+        border-bottom: none !important;
+        border-radius: 8px !important;
+        padding: 12px 16px !important;
+    }
+
+    .ahp-portal .ahp-nav-item.active {
+        background: var(--ahp-primary-light) !important;
+    }
+
+    .ahp-portal .ahp-main { padding: 24px 16px !important; }
     .ahp-portal .ahp-form-grid { grid-template-columns: 1fr !important; }
     .ahp-portal .ahp-col-3, .ahp-portal .ahp-col-4, .ahp-portal .ahp-col-6 { grid-column: span 1 !important; }
     .ahp-portal .ahp-marks-row { grid-template-columns: repeat(2, 1fr) !important; }
-    .ahp-portal .ahp-stats { grid-template-columns: 1fr 1fr !important; }
+    .ahp-portal .ahp-stats { grid-template-columns: 1fr !important; }
     .ahp-portal .ahp-progress { flex-wrap: wrap !important; }
     .ahp-portal .ahp-step-line { display: none !important; }
+    .ahp-portal .ahp-title { font-size: 20px !important; }
+}
+@media (max-width: 480px) {
+    .ahp-portal .ahp-stats { grid-template-columns: 1fr !important; }
+    .ahp-portal .ahp-marks-row { grid-template-columns: 1fr !important; }
 }
 </style>
 
 <div class="ahp-portal">
-    <div class="ahp-wrapper">
-        <!-- Sidebar -->
-        <aside class="ahp-sidebar" id="sidebar">
-            <div class="ahp-sidebar-header">
+    <!-- ==================== TOP HEADER ==================== -->
+    <header class="ahp-top-header">
+        <div class="ahp-header-inner">
+            <div class="ahp-header-top">
                 <div class="ahp-logo">
                     <i class="fas fa-graduation-cap"></i>
-                    <span>Al-Huffaz Portal</span>
+                    <span>School Admin Portal</span>
                 </div>
+
+                <div class="ahp-user-menu">
+                    <div class="ahp-user-info">
+                        <div class="ahp-avatar"><?php echo strtoupper(substr($current_user->display_name, 0, 1)); ?></div>
+                        <span class="ahp-user-name"><?php echo esc_html($current_user->display_name); ?></span>
+                        <span class="ahp-user-role"><?php echo esc_html(ucfirst($current_user->roles[0] ?? 'User')); ?></span>
+                    </div>
+                    <?php if ($is_admin): ?>
+                    <a href="<?php echo admin_url(); ?>" class="ahp-logout-btn" target="_blank">
+                        <i class="fas fa-cog"></i>
+                        <span>WP Admin</span>
+                    </a>
+                    <?php endif; ?>
+                    <a href="<?php echo wp_logout_url(home_url()); ?>" class="ahp-logout-btn">
+                        <i class="fas fa-sign-out-alt"></i>
+                        <span>Logout</span>
+                    </a>
+                </div>
+
+                <button class="ahp-menu-toggle" onclick="toggleMobileNav()">
+                    <i class="fas fa-bars"></i>
+                </button>
             </div>
-            <nav class="ahp-nav">
-                <a class="ahp-nav-item active" data-panel="dashboard">
+
+            <!-- Navigation Tabs -->
+            <nav class="ahp-nav" id="ahpNav">
+                <button class="ahp-nav-item active" data-panel="dashboard">
                     <i class="fas fa-home"></i>
                     <span><?php _e('Dashboard', 'al-huffaz-portal'); ?></span>
-                </a>
-                <a class="ahp-nav-item" data-panel="students">
+                </button>
+                <button class="ahp-nav-item" data-panel="students">
                     <i class="fas fa-users"></i>
                     <span><?php _e('Students', 'al-huffaz-portal'); ?></span>
-                </a>
-                <a class="ahp-nav-item" data-panel="add-student">
+                </button>
+                <button class="ahp-nav-item" data-panel="add-student">
                     <i class="fas fa-user-plus"></i>
                     <span><?php _e('Add Student', 'al-huffaz-portal'); ?></span>
-                </a>
+                </button>
                 <?php if ($can_manage_sponsors): ?>
-                <a class="ahp-nav-item" data-panel="sponsors">
+                <button class="ahp-nav-item" data-panel="sponsors">
                     <i class="fas fa-hand-holding-heart"></i>
                     <span><?php _e('Sponsors', 'al-huffaz-portal'); ?></span>
                     <?php if ($pending_sponsors_count > 0): ?>
-                    <span class="ahp-nav-badge"><?php echo $pending_sponsors_count; ?></span>
+                    <span class="ahp-nav-badge danger"><?php echo $pending_sponsors_count; ?></span>
                     <?php endif; ?>
-                </a>
+                </button>
                 <?php endif; ?>
                 <?php if ($can_manage_payments): ?>
-                <a class="ahp-nav-item" data-panel="payments">
+                <button class="ahp-nav-item" data-panel="payments">
                     <i class="fas fa-credit-card"></i>
                     <span><?php _e('Payments', 'al-huffaz-portal'); ?></span>
                     <?php if ($pending_payments_count > 0): ?>
                     <span class="ahp-nav-badge warning"><?php echo $pending_payments_count; ?></span>
                     <?php endif; ?>
-                </a>
+                </button>
                 <?php endif; ?>
                 <?php if ($can_manage_staff): ?>
-                <a class="ahp-nav-item" data-panel="staff">
+                <button class="ahp-nav-item" data-panel="staff">
                     <i class="fas fa-user-shield"></i>
-                    <span><?php _e('Staff Management', 'al-huffaz-portal'); ?></span>
+                    <span><?php _e('Staff', 'al-huffaz-portal'); ?></span>
                     <?php if ($staff_count > 0): ?>
                     <span class="ahp-nav-badge info"><?php echo $staff_count; ?></span>
                     <?php endif; ?>
-                </a>
+                </button>
                 <?php endif; ?>
-                <?php if ($is_admin): ?>
-                <a class="ahp-nav-item" href="<?php echo admin_url(); ?>" target="_blank">
-                    <i class="fas fa-cog"></i>
-                    <span><?php _e('WP Admin', 'al-huffaz-portal'); ?></span>
-                </a>
-                <?php endif; ?>
-                <a class="ahp-nav-item" href="<?php echo wp_logout_url(home_url()); ?>">
-                    <i class="fas fa-sign-out-alt"></i>
-                    <span><?php _e('Logout', 'al-huffaz-portal'); ?></span>
-                </a>
             </nav>
-            <div class="ahp-sidebar-footer">
-                <div class="ahp-user">
-                    <div class="ahp-avatar"><?php echo strtoupper(substr($current_user->display_name, 0, 1)); ?></div>
-                    <div>
-                        <div class="ahp-user-name"><?php echo esc_html($current_user->display_name); ?></div>
-                        <div class="ahp-user-role"><?php echo esc_html(ucfirst($current_user->roles[0] ?? 'User')); ?></div>
-                    </div>
-                </div>
-            </div>
-        </aside>
+        </div>
+    </header>
 
+    <div class="ahp-wrapper">
         <!-- Main Content -->
         <main class="ahp-main">
             <!-- ==================== DASHBOARD PANEL ==================== -->
@@ -1841,6 +2019,12 @@ body.admin-bar .ahp-portal .ahp-sidebar {
 </div>
 
 <script>
+// Mobile Navigation Toggle
+window.toggleMobileNav = function() {
+    const nav = document.getElementById('ahpNav');
+    nav.classList.toggle('open');
+};
+
 document.addEventListener('DOMContentLoaded', function() {
     const ajaxUrl = '<?php echo admin_url('admin-ajax.php'); ?>';
     const nonce = '<?php echo $nonce; ?>';
@@ -1860,6 +2044,13 @@ document.addEventListener('DOMContentLoaded', function() {
         if (panel === 'sponsors') loadSponsors();
         if (panel === 'payments') loadPayments();
         if (panel === 'staff') loadStaff();
+
+        // Close mobile nav when panel is selected
+        const nav = document.getElementById('ahpNav');
+        nav?.classList.remove('open');
+
+        // Scroll to top
+        window.scrollTo({ top: 0, behavior: 'smooth' });
     };
 
     document.querySelectorAll('.ahp-nav-item[data-panel]').forEach(item => {
