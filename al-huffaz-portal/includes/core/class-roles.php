@@ -27,6 +27,9 @@ class Roles {
      */
     public function __construct() {
         add_action('init', array($this, 'add_capabilities'));
+
+        // Extend session timeout for portal users (teachers/admins working 30-40 mins on forms)
+        add_filter('auth_cookie_expiration', array($this, 'extend_session_timeout'), 10, 3);
     }
 
     /**
@@ -349,5 +352,53 @@ class Roles {
         }
 
         return array_unique($student_ids);
+    }
+
+    /**
+     * Extend session timeout for portal users
+     *
+     * Default WordPress timeout:
+     * - Without "Remember Me": 2 days
+     * - With "Remember Me": 14 days
+     *
+     * Extended for school portal:
+     * - Without "Remember Me": 7 days (168 hours) - Teachers can work comfortably
+     * - With "Remember Me": 30 days (720 hours) - Long-term convenience
+     *
+     * This ensures teachers/admins working 30-40 minutes on student forms
+     * won't lose their session or data.
+     *
+     * @param int $length Cookie expiration length in seconds
+     * @param int $user_id User ID
+     * @param bool $remember Whether "Remember Me" was checked
+     * @return int Extended expiration time
+     */
+    public function extend_session_timeout($length, $user_id, $remember) {
+        // Only extend for portal users (not regular subscribers or customers)
+        $user = get_user_by('id', $user_id);
+
+        if (!$user) {
+            return $length;
+        }
+
+        $portal_roles = array('alhuffaz_admin', 'alhuffaz_staff', 'alhuffaz_teacher', 'alhuffaz_sponsor', 'administrator');
+        $user_roles = (array) $user->roles;
+
+        // Check if user has any portal role
+        $is_portal_user = !empty(array_intersect($portal_roles, $user_roles));
+
+        if (!$is_portal_user) {
+            return $length; // Default timeout for non-portal users
+        }
+
+        // Extended timeouts for portal users
+        if ($remember) {
+            // "Remember Me" checked: 30 days (720 hours)
+            return 30 * DAY_IN_SECONDS;
+        } else {
+            // "Remember Me" NOT checked: 7 days (168 hours)
+            // This gives teachers plenty of time to work on forms without worry
+            return 7 * DAY_IN_SECONDS;
+        }
     }
 }
