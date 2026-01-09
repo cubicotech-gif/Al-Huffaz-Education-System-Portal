@@ -13,6 +13,12 @@ use AlHuffaz\Core\Roles;
 
 if (!defined('ABSPATH')) exit;
 
+// CRITICAL: Disable all caching for sponsor dashboard
+header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
+header('Cache-Control: post-check=0, pre-check=0', false);
+header('Pragma: no-cache');
+header('Expires: 0');
+
 // Check if user is logged in
 if (!is_user_logged_in()) {
     ?>
@@ -302,6 +308,181 @@ body.admin-bar .sp-portal .sp-header {
     background: var(--sp-danger-light) !important;
     border-color: var(--sp-danger) !important;
     color: var(--sp-danger) !important;
+}
+
+/* ==================== NOTIFICATIONS ==================== */
+.sp-notification-bell {
+    position: relative !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    width: 40px !important;
+    height: 40px !important;
+    background: transparent !important;
+    border: 1px solid var(--sp-border) !important;
+    border-radius: 8px !important;
+    color: var(--sp-text-secondary) !important;
+    cursor: pointer !important;
+    transition: all 0.2s !important;
+}
+
+.sp-notification-bell:hover {
+    background: var(--sp-bg) !important;
+    color: var(--sp-primary) !important;
+}
+
+.sp-notification-bell i {
+    font-size: 18px !important;
+}
+
+.sp-notification-badge {
+    position: absolute !important;
+    top: -4px !important;
+    right: -4px !important;
+    min-width: 20px !important;
+    height: 20px !important;
+    padding: 0 6px !important;
+    background: var(--sp-danger) !important;
+    color: white !important;
+    font-size: 11px !important;
+    font-weight: 600 !important;
+    border-radius: 10px !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+}
+
+.sp-notification-panel {
+    position: absolute !important;
+    top: 70px !important;
+    right: 24px !important;
+    width: 420px !important;
+    max-height: 500px !important;
+    background: white !important;
+    border-radius: 12px !important;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.12) !important;
+    z-index: 9999 !important;
+    overflow: hidden !important;
+}
+
+.sp-notification-header {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    padding: 16px 20px !important;
+    border-bottom: 1px solid var(--sp-border) !important;
+}
+
+.sp-notification-header h3 {
+    margin: 0 !important;
+    font-size: 16px !important;
+    font-weight: 700 !important;
+    color: var(--sp-text) !important;
+}
+
+.sp-mark-all-read {
+    display: flex !important;
+    align-items: center !important;
+    gap: 6px !important;
+    padding: 6px 12px !important;
+    background: transparent !important;
+    border: none !important;
+    border-radius: 6px !important;
+    font-size: 12px !important;
+    font-weight: 500 !important;
+    color: var(--sp-primary) !important;
+    cursor: pointer !important;
+    transition: all 0.2s !important;
+}
+
+.sp-mark-all-read:hover {
+    background: var(--sp-primary-light) !important;
+}
+
+.sp-notification-list {
+    max-height: 420px !important;
+    overflow-y: auto !important;
+}
+
+.sp-notification-loading {
+    padding: 40px 20px !important;
+    text-align: center !important;
+    color: var(--sp-text-secondary) !important;
+    font-size: 14px !important;
+}
+
+.sp-notification-empty {
+    padding: 40px 20px !important;
+    text-align: center !important;
+    color: var(--sp-text-secondary) !important;
+    font-size: 14px !important;
+}
+
+.sp-notification-item {
+    display: flex !important;
+    gap: 12px !important;
+    padding: 16px 20px !important;
+    border-bottom: 1px solid var(--sp-border) !important;
+    cursor: pointer !important;
+    transition: all 0.2s !important;
+}
+
+.sp-notification-item:hover {
+    background: var(--sp-bg) !important;
+}
+
+.sp-notification-item.unread {
+    background: #eff6ff !important;
+}
+
+.sp-notification-icon {
+    flex-shrink: 0 !important;
+    width: 40px !important;
+    height: 40px !important;
+    border-radius: 8px !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    font-size: 16px !important;
+}
+
+.sp-notification-icon.success {
+    background: var(--sp-success-light) !important;
+    color: #065f46 !important;
+}
+
+.sp-notification-icon.info {
+    background: var(--sp-primary-light) !important;
+    color: var(--sp-primary-dark) !important;
+}
+
+.sp-notification-icon.warning {
+    background: var(--sp-warning-light) !important;
+    color: #92400e !important;
+}
+
+.sp-notification-content {
+    flex: 1 !important;
+    min-width: 0 !important;
+}
+
+.sp-notification-title {
+    font-size: 14px !important;
+    font-weight: 600 !important;
+    color: var(--sp-text) !important;
+    margin-bottom: 4px !important;
+}
+
+.sp-notification-message {
+    font-size: 13px !important;
+    color: var(--sp-text-secondary) !important;
+    line-height: 1.5 !important;
+    margin-bottom: 6px !important;
+}
+
+.sp-notification-time {
+    font-size: 11px !important;
+    color: var(--sp-text-muted) !important;
 }
 
 /* ==================== NAVIGATION TABS ==================== */
@@ -1156,6 +1337,12 @@ body.admin-bar .sp-portal .sp-header {
                 </div>
 
                 <div class="sp-user-menu">
+                    <!-- Notification Bell -->
+                    <button class="sp-notification-bell" onclick="toggleNotifications()" id="notificationBell">
+                        <i class="fas fa-bell"></i>
+                        <span class="sp-notification-badge" id="notificationBadge" style="display: none;">0</span>
+                    </button>
+
                     <div class="sp-user-info">
                         <div class="sp-avatar"><?php echo strtoupper(substr($user->display_name, 0, 1)); ?></div>
                         <span class="sp-user-name"><?php echo esc_html($user->display_name); ?></span>
@@ -1168,6 +1355,21 @@ body.admin-bar .sp-portal .sp-header {
                         <i class="fas fa-sign-out-alt"></i>
                         <span>Logout</span>
                     </a>
+                </div>
+
+                <!-- Notification Dropdown Panel -->
+                <div class="sp-notification-panel" id="notificationPanel" style="display: none;">
+                    <div class="sp-notification-header">
+                        <h3><?php _e('Notifications', 'al-huffaz-portal'); ?></h3>
+                        <button class="sp-mark-all-read" onclick="markAllNotificationsRead()" id="markAllReadBtn">
+                            <i class="fas fa-check-double"></i> <?php _e('Mark all read', 'al-huffaz-portal'); ?>
+                        </button>
+                    </div>
+                    <div class="sp-notification-list" id="notificationList">
+                        <div class="sp-notification-loading">
+                            <i class="fas fa-spinner fa-spin"></i> <?php _e('Loading notifications...', 'al-huffaz-portal'); ?>
+                        </div>
+                    </div>
                 </div>
 
                 <button class="sp-menu-toggle" onclick="toggleMobileNav()">
@@ -1945,31 +2147,7 @@ body.admin-bar .sp-portal .sp-header {
                 submitBtn.innerHTML = originalText;
 
                 if (data.success) {
-                    // Show prominent success message
-                    const successAlert = document.createElement('div');
-                    successAlert.className = 'sp-alert sp-alert-success';
-                    successAlert.style.position = 'fixed';
-                    successAlert.style.top = '50%';
-                    successAlert.style.left = '50%';
-                    successAlert.style.transform = 'translate(-50%, -50%)';
-                    successAlert.style.zIndex = '99999';
-                    successAlert.style.maxWidth = '500px';
-                    successAlert.style.boxShadow = '0 10px 40px rgba(0,0,0,0.3)';
-                    successAlert.innerHTML = `
-                        <i class="fas fa-check-circle"></i>
-                        <div class="sp-alert-content">
-                            <strong style="font-size: 18px;">Payment Proof Submitted Successfully!</strong>
-                            <p style="margin: 12px 0 0 0; font-size: 15px;">
-                                Your payment proof has been received. Our team will verify your payment within <strong>24-48 hours</strong>.
-                                <br><br>
-                                You will receive an email notification once your sponsorship is approved.
-                                <br><br>
-                                Thank you for your generosity!
-                            </p>
-                        </div>
-                    `;
-                    document.body.appendChild(successAlert);
-
+                    // Reset form immediately
                     this.reset();
                     pendingSponsorship = null;
 
@@ -1978,12 +2156,99 @@ body.admin-bar .sp-portal .sp-header {
                     document.getElementById('proofAmount').textContent = '-';
                     document.getElementById('proofDuration').textContent = '-';
 
-                    // Redirect to my students panel after 5 seconds
-                    setTimeout(() => {
-                        successAlert.remove();
-                        showPanel('my-students');
-                        location.reload(); // Reload to show the new sponsorship
-                    }, 5000);
+                    // Show beautiful success modal
+                    const successModal = document.createElement('div');
+                    successModal.style.cssText = `
+                        position: fixed;
+                        top: 0;
+                        left: 0;
+                        right: 0;
+                        bottom: 0;
+                        background: rgba(0,0,0,0.7);
+                        display: flex;
+                        align-items: center;
+                        justify-content: center;
+                        z-index: 999999;
+                        animation: fadeIn 0.3s ease;
+                    `;
+                    successModal.innerHTML = `
+                        <style>
+                        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+                        @keyframes slideUp { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+                        @keyframes checkmark { 0% { transform: scale(0); } 50% { transform: scale(1.2); } 100% { transform: scale(1); } }
+                        </style>
+                        <div style="
+                            background: white;
+                            border-radius: 20px;
+                            padding: 40px;
+                            max-width: 500px;
+                            width: 90%;
+                            text-align: center;
+                            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+                            animation: slideUp 0.4s ease;
+                        ">
+                            <div style="
+                                width: 80px;
+                                height: 80px;
+                                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                                border-radius: 50%;
+                                margin: 0 auto 24px;
+                                display: flex;
+                                align-items: center;
+                                justify-content: center;
+                                animation: checkmark 0.5s ease 0.2s both;
+                            ">
+                                <i class="fas fa-check" style="font-size: 40px; color: white;"></i>
+                            </div>
+                            <h2 style="font-size: 28px; font-weight: 700; margin: 0 0 16px 0; color: #2d3748;">
+                                Payment Submitted!
+                            </h2>
+                            <p style="font-size: 16px; line-height: 1.6; color: #4a5568; margin: 0 0 24px 0;">
+                                Your payment proof has been received successfully.<br>
+                                We'll verify it within <strong style="color: #667eea;">24-48 hours</strong>.<br><br>
+                                You'll receive an <strong>email notification</strong> once approved.<br><br>
+                                <span style="color: #667eea; font-size: 18px;">✨ Thank you for your generosity! ✨</span>
+                            </p>
+                            <div style="
+                                background: #f7fafc;
+                                border-radius: 12px;
+                                padding: 16px;
+                                margin-bottom: 24px;
+                            ">
+                                <div style="font-size: 14px; color: #718096; margin-bottom: 8px;">Redirecting in</div>
+                                <div id="countdown" style="font-size: 32px; font-weight: 700; color: #667eea;">3</div>
+                            </div>
+                            <button onclick="this.closest('[style*=fixed]').remove(); showPanel('my-students'); location.reload();" style="
+                                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                                color: white;
+                                border: none;
+                                padding: 14px 32px;
+                                border-radius: 12px;
+                                font-size: 16px;
+                                font-weight: 600;
+                                cursor: pointer;
+                                transition: transform 0.2s;
+                            " onmouseover="this.style.transform='scale(1.05)'" onmouseout="this.style.transform='scale(1)'">
+                                View My Sponsorships
+                            </button>
+                        </div>
+                    `;
+                    document.body.appendChild(successModal);
+
+                    // Countdown timer
+                    let countdown = 3;
+                    const countdownEl = successModal.querySelector('#countdown');
+                    const timer = setInterval(() => {
+                        countdown--;
+                        if (countdownEl) countdownEl.textContent = countdown;
+                        if (countdown <= 0) {
+                            clearInterval(timer);
+                            successModal.remove();
+                            showPanel('my-students');
+                            // Force reload with cache-busting
+                            location.href = location.href.split('?')[0] + '?t=' + Date.now();
+                        }
+                    }, 1000);
                 } else {
                     showToast(data.data?.message || data.data || 'An error occurred', 'error');
                 }
@@ -2048,5 +2313,193 @@ body.admin-bar .sp-portal .sp-header {
     document.getElementById('sponsorModal').addEventListener('click', function(e) {
         if (e.target === this) closeSponsorModal();
     });
+
+    // ==================== NOTIFICATIONS ====================
+    let notificationPanel = null;
+
+    window.toggleNotifications = function() {
+        notificationPanel = document.getElementById('notificationPanel');
+        const isVisible = notificationPanel.style.display === 'block';
+
+        if (isVisible) {
+            notificationPanel.style.display = 'none';
+        } else {
+            notificationPanel.style.display = 'block';
+            loadNotifications();
+        }
+    };
+
+    // Close notification panel when clicking outside
+    document.addEventListener('click', function(e) {
+        const bell = document.getElementById('notificationBell');
+        const panel = document.getElementById('notificationPanel');
+
+        if (panel && bell && !bell.contains(e.target) && !panel.contains(e.target)) {
+            panel.style.display = 'none';
+        }
+    });
+
+    function loadNotifications() {
+        const listElement = document.getElementById('notificationList');
+        listElement.innerHTML = '<div class="sp-notification-loading"><i class="fas fa-spinner fa-spin"></i> <?php _e('Loading notifications...', 'al-huffaz-portal'); ?></div>';
+
+        fetch('<?php echo admin_url('admin-ajax.php'); ?>', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded',
+            },
+            body: new URLSearchParams({
+                action: 'alhuffaz_get_notifications',
+                nonce: '<?php echo wp_create_nonce('alhuffaz_public_nonce'); ?>',
+                limit: 15
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                renderNotifications(data.data.notifications);
+                updateNotificationBadge(data.data.unread_count);
+            } else {
+                listElement.innerHTML = '<div class="sp-notification-empty"><i class="fas fa-bell-slash"></i><br><?php _e('Failed to load notifications', 'al-huffaz-portal'); ?></div>';
+            }
+        })
+        .catch(error => {
+            console.error('Error loading notifications:', error);
+            listElement.innerHTML = '<div class="sp-notification-empty"><i class="fas fa-exclamation-circle"></i><br><?php _e('Error loading notifications', 'al-huffaz-portal'); ?></div>';
+        });
+    }
+
+    function renderNotifications(notifications) {
+        const listElement = document.getElementById('notificationList');
+
+        if (!notifications || notifications.length === 0) {
+            listElement.innerHTML = '<div class="sp-notification-empty"><i class="fas fa-bell-slash"></i><br><?php _e('No notifications yet', 'al-huffaz-portal'); ?></div>';
+            return;
+        }
+
+        let html = '';
+        notifications.forEach(notification => {
+            const unreadClass = notification.is_read ? '' : 'unread';
+            const iconClass = notification.type || 'info';
+            const iconMap = {
+                'success': 'check-circle',
+                'info': 'info-circle',
+                'warning': 'exclamation-triangle',
+                'error': 'times-circle'
+            };
+            const icon = iconMap[notification.type] || 'bell';
+
+            html += `
+                <div class="sp-notification-item ${unreadClass}" onclick="markNotificationRead(${notification.id})">
+                    <div class="sp-notification-icon ${iconClass}">
+                        <i class="fas fa-${icon}"></i>
+                    </div>
+                    <div class="sp-notification-content">
+                        <div class="sp-notification-title">${escapeHtml(notification.title)}</div>
+                        <div class="sp-notification-message">${escapeHtml(notification.message)}</div>
+                        <div class="sp-notification-time"><i class="far fa-clock"></i> ${notification.time_ago}</div>
+                    </div>
+                </div>
+            `;
+        });
+
+        listElement.innerHTML = html;
+    }
+
+    function escapeHtml(text) {
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    }
+
+    function updateNotificationBadge(count) {
+        const badge = document.getElementById('notificationBadge');
+        if (count > 0) {
+            badge.textContent = count > 99 ? '99+' : count;
+            badge.style.display = 'flex';
+        } else {
+            badge.style.display = 'none';
+        }
+    }
+
+    window.markNotificationRead = function(notificationId) {
+        fetch('<?php echo admin_url('admin-ajax.php'); ?>', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded',
+            },
+            body: new URLSearchParams({
+                action: 'alhuffaz_mark_notification_read',
+                nonce: '<?php echo wp_create_nonce('alhuffaz_public_nonce'); ?>',
+                notification_id: notificationId
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                loadNotifications();
+            }
+        })
+        .catch(error => console.error('Error marking notification as read:', error));
+    };
+
+    window.markAllNotificationsRead = function() {
+        const btn = document.getElementById('markAllReadBtn');
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> <?php _e('Marking...', 'al-huffaz-portal'); ?>';
+
+        fetch('<?php echo admin_url('admin-ajax.php'); ?>', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded',
+            },
+            body: new URLSearchParams({
+                action: 'alhuffaz_mark_all_notifications_read',
+                nonce: '<?php echo wp_create_nonce('alhuffaz_public_nonce'); ?>'
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                loadNotifications();
+                btn.disabled = false;
+                btn.innerHTML = '<i class="fas fa-check-double"></i> <?php _e('Mark all read', 'al-huffaz-portal'); ?>';
+            }
+        })
+        .catch(error => {
+            console.error('Error marking all as read:', error);
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fas fa-check-double"></i> <?php _e('Mark all read', 'al-huffaz-portal'); ?>';
+        });
+    };
+
+    // Load notification count on page load
+    function loadNotificationCount() {
+        fetch('<?php echo admin_url('admin-ajax.php'); ?>', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded',
+            },
+            body: new URLSearchParams({
+                action: 'alhuffaz_get_notifications',
+                nonce: '<?php echo wp_create_nonce('alhuffaz_public_nonce'); ?>',
+                limit: 1,
+                unread_only: 'true'
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                updateNotificationBadge(data.data.unread_count);
+            }
+        })
+        .catch(error => console.error('Error loading notification count:', error));
+    }
+
+    // Load notification count on page load
+    loadNotificationCount();
+
+    // Refresh notification count every 30 seconds
+    setInterval(loadNotificationCount, 30000);
 })();
 </script>

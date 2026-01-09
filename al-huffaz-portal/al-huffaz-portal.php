@@ -80,6 +80,7 @@ final class Al_Huffaz_Portal {
         require_once ALHUFFAZ_PLUGIN_DIR . 'includes/core/class-assets.php';
         require_once ALHUFFAZ_PLUGIN_DIR . 'includes/core/class-ajax-handler.php';
         require_once ALHUFFAZ_PLUGIN_DIR . 'includes/core/class-helpers.php';
+        require_once ALHUFFAZ_PLUGIN_DIR . 'includes/core/class-notifications.php';
         require_once ALHUFFAZ_PLUGIN_DIR . 'includes/core/class-um-integration.php';
 
         // Admin classes
@@ -233,9 +234,27 @@ final class Al_Huffaz_Portal {
             KEY object_type (object_type)
         ) $charset_collate;";
 
+        // Notifications table
+        $sql_notifications = "CREATE TABLE {$wpdb->prefix}alhuffaz_notifications (
+            id bigint(20) NOT NULL AUTO_INCREMENT,
+            user_id bigint(20) NOT NULL,
+            title varchar(255) NOT NULL,
+            message text NOT NULL,
+            type varchar(50) DEFAULT 'info',
+            related_id bigint(20) DEFAULT NULL,
+            related_type varchar(50) DEFAULT NULL,
+            is_read tinyint(1) DEFAULT 0,
+            created_at datetime NOT NULL,
+            PRIMARY KEY (id),
+            KEY user_id (user_id),
+            KEY is_read (is_read),
+            KEY created_at (created_at)
+        ) $charset_collate;";
+
         require_once(ABSPATH . 'wp-admin/includes/upgrade.php');
         dbDelta($sql_payments);
         dbDelta($sql_logs);
+        dbDelta($sql_notifications);
     }
 
     /**
