@@ -90,9 +90,9 @@ $grades = Settings::get('grade_levels', Settings::get_default_grades());
         </form>
     </div>
 
-    <!-- Students Table -->
-    <div class="alhuffaz-card">
-        <?php if (empty($students)): ?>
+    <!-- Students Cards -->
+    <?php if (empty($students)): ?>
+        <div class="alhuffaz-card">
             <div class="alhuffaz-empty">
                 <span class="dashicons dashicons-groups"></span>
                 <h3 class="alhuffaz-empty-title"><?php _e('No students found', 'al-huffaz-portal'); ?></h3>
@@ -101,64 +101,96 @@ $grades = Settings::get('grade_levels', Settings::get_default_grades());
                     <?php _e('Add Student', 'al-huffaz-portal'); ?>
                 </a>
             </div>
-        <?php else: ?>
-            <div class="alhuffaz-table-wrapper">
-                <table class="alhuffaz-table">
-                    <thead>
-                        <tr>
-                            <th><?php _e('Student', 'al-huffaz-portal'); ?></th>
-                            <th><?php _e('GR Number', 'al-huffaz-portal'); ?></th>
-                            <th><?php _e('Grade', 'al-huffaz-portal'); ?></th>
-                            <th><?php _e('Category', 'al-huffaz-portal'); ?></th>
-                            <th><?php _e('Father', 'al-huffaz-portal'); ?></th>
-                            <th><?php _e('Monthly Fee', 'al-huffaz-portal'); ?></th>
-                            <th><?php _e('Status', 'al-huffaz-portal'); ?></th>
-                            <th><?php _e('Actions', 'al-huffaz-portal'); ?></th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <?php foreach ($students as $student): ?>
-                            <tr data-student-id="<?php echo esc_attr($student['id']); ?>">
-                                <td>
-                                    <div class="alhuffaz-student-cell">
-                                        <img src="<?php echo esc_url($student['photo']); ?>" alt="" class="alhuffaz-student-avatar">
-                                        <div class="alhuffaz-student-info">
-                                            <span class="alhuffaz-student-name"><?php echo esc_html($student['name']); ?></span>
-                                            <span class="alhuffaz-student-meta"><?php echo ucfirst($student['gender']); ?></span>
-                                        </div>
-                                    </div>
-                                </td>
-                                <td><?php echo esc_html($student['gr_number'] ?: '-'); ?></td>
-                                <td><?php echo esc_html($student['grade_label']); ?></td>
-                                <td><?php echo esc_html($student['islamic_category']); ?></td>
-                                <td><?php echo esc_html($student['father_name'] ?: '-'); ?></td>
-                                <td><?php echo esc_html($student['monthly_fee']); ?></td>
-                                <td>
-                                    <?php if ($student['is_sponsored']): ?>
-                                        <span class="alhuffaz-badge badge-success"><?php _e('Sponsored', 'al-huffaz-portal'); ?></span>
-                                    <?php else: ?>
-                                        <span class="alhuffaz-badge badge-secondary"><?php _e('Available', 'al-huffaz-portal'); ?></span>
-                                    <?php endif; ?>
-                                </td>
-                                <td>
-                                    <a href="<?php echo get_permalink($student['id']); ?>" class="alhuffaz-btn alhuffaz-btn-sm alhuffaz-btn-primary" target="_blank">
-                                        <?php _e('View', 'al-huffaz-portal'); ?>
-                                    </a>
-                                    <a href="<?php echo admin_url('admin.php?page=alhuffaz-add-student&id=' . $student['id']); ?>" class="alhuffaz-btn alhuffaz-btn-sm alhuffaz-btn-secondary">
-                                        <?php _e('Edit', 'al-huffaz-portal'); ?>
-                                    </a>
-                                    <button class="alhuffaz-btn alhuffaz-btn-sm alhuffaz-btn-danger alhuffaz-delete-student" data-id="<?php echo esc_attr($student['id']); ?>">
-                                        <?php _e('Delete', 'al-huffaz-portal'); ?>
-                                    </button>
-                                </td>
-                            </tr>
-                        <?php endforeach; ?>
-                    </tbody>
-                </table>
-            </div>
+        </div>
+    <?php else: ?>
+        <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 20px; margin-bottom: 20px;">
+            <?php foreach ($students as $student): ?>
+                <div class="alhuffaz-card" style="transition: all 0.3s; cursor: pointer;" onmouseover="this.style.transform='translateY(-4px)'; this.style.boxShadow='0 8px 16px rgba(0,0,0,0.1)';" onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='none';" data-student-id="<?php echo esc_attr($student['id']); ?>">
+                    <!-- Student Photo -->
+                    <div style="position: relative; width: 100%; height: 200px; overflow: hidden; border-radius: 8px 8px 0 0; margin: -20px -20px 15px -20px;">
+                        <img src="<?php echo esc_url($student['photo']); ?>" alt="<?php echo esc_attr($student['name']); ?>" style="width: 100%; height: 100%; object-fit: cover;">
 
-            <!-- Pagination -->
-            <?php if ($total_pages > 1): ?>
+                        <!-- Status Badge Overlay -->
+                        <div style="position: absolute; top: 10px; right: 10px;">
+                            <?php if ($student['is_sponsored']): ?>
+                                <span class="alhuffaz-badge badge-success" style="background: rgba(46, 204, 113, 0.95); color: white; padding: 6px 12px; border-radius: 20px; font-size: 11px; font-weight: bold; text-transform: uppercase;">
+                                    <span class="dashicons dashicons-yes-alt" style="font-size: 12px; vertical-align: middle;"></span>
+                                    <?php _e('Sponsored', 'al-huffaz-portal'); ?>
+                                </span>
+                            <?php else: ?>
+                                <span class="alhuffaz-badge badge-secondary" style="background: rgba(149, 165, 166, 0.95); color: white; padding: 6px 12px; border-radius: 20px; font-size: 11px; font-weight: bold; text-transform: uppercase;">
+                                    <?php _e('Available', 'al-huffaz-portal'); ?>
+                                </span>
+                            <?php endif; ?>
+                        </div>
+
+                        <!-- GR Number Badge -->
+                        <?php if ($student['gr_number']): ?>
+                            <div style="position: absolute; bottom: 10px; left: 10px; background: rgba(0, 0, 0, 0.7); color: white; padding: 4px 10px; border-radius: 4px; font-size: 12px;">
+                                <strong>GR:</strong> <?php echo esc_html($student['gr_number']); ?>
+                            </div>
+                        <?php endif; ?>
+                    </div>
+
+                    <!-- Student Info -->
+                    <div style="padding: 0 0 10px 0;">
+                        <h3 style="margin: 0 0 10px 0; font-size: 18px; font-weight: 600; color: #2c3e50;">
+                            <?php echo esc_html($student['name']); ?>
+                        </h3>
+
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 12px; font-size: 13px; color: #666;">
+                            <div style="display: flex; align-items: center; gap: 6px;">
+                                <span class="dashicons dashicons-welcome-learn-more" style="font-size: 16px; color: var(--alhuffaz-primary);"></span>
+                                <span><?php echo esc_html($student['grade_label']); ?></span>
+                            </div>
+                            <div style="display: flex; align-items: center; gap: 6px;">
+                                <span class="dashicons dashicons-admin-users" style="font-size: 16px; color: var(--alhuffaz-primary);"></span>
+                                <span><?php echo ucfirst($student['gender']); ?></span>
+                            </div>
+                            <div style="display: flex; align-items: center; gap: 6px; grid-column: 1 / -1;">
+                                <span class="dashicons dashicons-book-alt" style="font-size: 16px; color: var(--alhuffaz-primary);"></span>
+                                <span><?php echo esc_html($student['islamic_category']); ?></span>
+                            </div>
+                        </div>
+
+                        <?php if ($student['father_name']): ?>
+                            <div style="padding: 10px; background: #f8f9fa; border-radius: 6px; margin-bottom: 12px; font-size: 13px;">
+                                <strong style="color: #555;"><?php _e('Father:', 'al-huffaz-portal'); ?></strong>
+                                <span style="color: #666;"><?php echo esc_html($student['father_name']); ?></span>
+                            </div>
+                        <?php endif; ?>
+
+                        <div style="padding: 12px; background: linear-gradient(135deg, var(--alhuffaz-primary) 0%, var(--alhuffaz-secondary) 100%); border-radius: 8px; text-align: center; margin-bottom: 15px;">
+                            <div style="font-size: 12px; color: rgba(255,255,255,0.9); margin-bottom: 4px; text-transform: uppercase; font-weight: 500;">
+                                <?php _e('Monthly Fee', 'al-huffaz-portal'); ?>
+                            </div>
+                            <div style="font-size: 22px; font-weight: bold; color: white;">
+                                <?php echo esc_html($student['monthly_fee']); ?>
+                            </div>
+                        </div>
+
+                        <!-- Action Buttons -->
+                        <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+                            <a href="<?php echo get_permalink($student['id']); ?>" class="alhuffaz-btn alhuffaz-btn-sm alhuffaz-btn-primary" target="_blank" style="flex: 1; text-align: center; min-width: 80px;">
+                                <span class="dashicons dashicons-visibility" style="font-size: 14px; vertical-align: middle;"></span>
+                                <?php _e('View', 'al-huffaz-portal'); ?>
+                            </a>
+                            <a href="<?php echo admin_url('admin.php?page=alhuffaz-add-student&id=' . $student['id']); ?>" class="alhuffaz-btn alhuffaz-btn-sm alhuffaz-btn-secondary" style="flex: 1; text-align: center; min-width: 80px;">
+                                <span class="dashicons dashicons-edit" style="font-size: 14px; vertical-align: middle;"></span>
+                                <?php _e('Edit', 'al-huffaz-portal'); ?>
+                            </a>
+                            <button class="alhuffaz-btn alhuffaz-btn-sm alhuffaz-btn-danger alhuffaz-delete-student" data-id="<?php echo esc_attr($student['id']); ?>" style="padding: 6px 12px;">
+                                <span class="dashicons dashicons-trash" style="font-size: 14px;"></span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            <?php endforeach; ?>
+        </div>
+
+        <!-- Pagination -->
+        <?php if ($total_pages > 1): ?>
+            <div class="alhuffaz-card">
                 <div class="alhuffaz-pagination">
                     <?php if ($page > 1): ?>
                         <a href="<?php echo add_query_arg('paged', $page - 1); ?>" class="alhuffaz-btn alhuffaz-btn-sm alhuffaz-btn-secondary"><?php _e('Previous', 'al-huffaz-portal'); ?></a>
@@ -176,7 +208,7 @@ $grades = Settings::get('grade_levels', Settings::get_default_grades());
                         <a href="<?php echo add_query_arg('paged', $page + 1); ?>" class="alhuffaz-btn alhuffaz-btn-sm alhuffaz-btn-secondary"><?php _e('Next', 'al-huffaz-portal'); ?></a>
                     <?php endif; ?>
                 </div>
-            <?php endif; ?>
+            </div>
         <?php endif; ?>
-    </div>
+    <?php endif; ?>
 </div>
