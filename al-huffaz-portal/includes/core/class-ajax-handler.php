@@ -898,22 +898,82 @@ class Ajax_Handler {
             wp_send_json_error(array('message' => __('Invalid sponsorship ID.', 'al-huffaz-portal')));
         }
 
-        // CRITICAL FIX: Use correct meta keys without underscore prefix
+        // Get sponsorship details before rejection
+        $student_id = get_post_meta($sponsorship_id, 'student_id', true);
+        $sponsor_user_id = get_post_meta($sponsorship_id, 'sponsor_user_id', true);
+        $sponsor_email = get_post_meta($sponsorship_id, 'sponsor_email', true);
+        $student = get_post($student_id);
+        $student_name = $student ? $student->post_title : __('student', 'al-huffaz-portal');
+
+        // CRITICAL FIX: Update rejection status
         update_post_meta($sponsorship_id, 'verification_status', 'rejected');
         update_post_meta($sponsorship_id, 'rejection_reason', $reason);
         update_post_meta($sponsorship_id, 'rejected_by', get_current_user_id());
         update_post_meta($sponsorship_id, 'rejected_at', current_time('mysql'));
+        update_post_meta($sponsorship_id, 'linked', 'no');
+
+        // Make student available again
+        if ($student_id) {
+            delete_post_meta($student_id, 'already_sponsored');
+            delete_post_meta($student_id, 'sponsored_date');
+        }
+
+        // Move to trash
+        wp_update_post(array(
+            'ID' => $sponsorship_id,
+            'post_status' => 'trash'
+        ));
 
         // Sync with Ultimate Member if sponsor has user account
-        $sponsor_user_id = get_post_meta($sponsorship_id, 'sponsor_user_id', true);
         if ($sponsor_user_id) {
             UM_Integration::reject_sponsor_in_um($sponsor_user_id);
+        }
+
+        // Send notification email to sponsor
+        if ($sponsor_email) {
+            Helpers::send_notification(
+                $sponsor_email,
+                __('Sponsorship Payment Rejected', 'al-huffaz-portal'),
+                sprintf(
+                    __('We regret to inform you that your sponsorship payment for %s has been rejected.
+
+Reason: %s
+
+If you have any questions, please contact us.
+
+Thank you for your interest in supporting our students.', 'al-huffaz-portal'),
+                    $student_name,
+                    $reason ?: __('No reason provided', 'al-huffaz-portal')
+                )
+            );
+        }
+
+        // Create in-app notification for sponsor
+        if ($sponsor_user_id && class_exists('AlHuffaz\\Core\\Notifications')) {
+            Notifications::create(
+                $sponsor_user_id,
+                __('Sponsorship Rejected', 'al-huffaz-portal'),
+                sprintf(
+                    __('Your sponsorship payment for %s has been rejected. Reason: %s. Please contact the school if you have questions.', 'al-huffaz-portal'),
+                    $student_name,
+                    $reason ?: __('No reason provided', 'al-huffaz-portal')
+                ),
+                'error',
+                $sponsorship_id,
+                'sponsorship'
+            );
+        }
+
+        // Clear sponsor dashboard cache
+        if ($sponsor_user_id) {
+            wp_cache_delete('sponsor_dashboard_' . $sponsor_user_id, 'alhuffaz');
+            wp_cache_flush();
         }
 
         // Log activity
         Helpers::log_activity('reject_sponsorship', 'sponsorship', $sponsorship_id, 'Sponsorship rejected: ' . $reason);
 
-        wp_send_json_success(array('message' => __('Sponsorship rejected.', 'al-huffaz-portal')));
+        wp_send_json_success(array('message' => __('Sponsorship rejected and sponsor notified.', 'al-huffaz-portal')));
     }
 
     /**
@@ -965,18 +1025,54 @@ class Ajax_Handler {
             wp_send_json_error(array('message' => __('Invalid sponsorship ID.', 'al-huffaz-portal')));
         }
 
-        // CRITICAL FIX: Use correct meta keys without underscore prefix
+        // Get sponsorship details before unlinking
+        $student_id = get_post_meta($sponsorship_id, 'student_id', true);
+        $sponsor_user_id = get_post_meta($sponsorship_id, 'sponsor_user_id', true);
+        $sponsor_email = get_post_meta($sponsorship_id, 'sponsor_email', true);
+        $student = get_post($student_id);
+        $student_name = $student ? $student->post_title : __('student', 'al-huffaz-portal');
+
+        // CRITICAL FIX: Unlink sponsorship
         update_post_meta($sponsorship_id, 'linked', 'no');
+        update_post_meta($sponsorship_id, 'unlinked_by', get_current_user_id());
+        update_post_meta($sponsorship_id, 'unlinked_at', current_time('mysql'));
 
         // Make student available again
-        $student_id = get_post_meta($sponsorship_id, 'student_id', true);
         if ($student_id) {
             delete_post_meta($student_id, 'already_sponsored');
             delete_post_meta($student_id, 'sponsored_date');
         }
 
+        // Send notification email to sponsor
+        if ($sponsor_email) {
+            Helpers::send_notification(
+                $sponsor_email,
+                __('Sponsorship Unlinked', 'al-huffaz-portal'),
+                sprintf(
+                    __('Your sponsorship for %s has been unlinked by the school administration. The student is now available for other sponsors. If you have any questions, please contact us.
+
+Thank you for your support.', 'al-huffaz-portal'),
+                    $student_name
+                )
+            );
+        }
+
+        // Create in-app notification for sponsor
+        if ($sponsor_user_id && class_exists('AlHuffaz\\Core\\Notifications')) {
+            Notifications::create(
+                $sponsor_user_id,
+                __('Sponsorship Unlinked', 'al-huffaz-portal'),
+                sprintf(
+                    __('Your sponsorship for %s has been unlinked by the school. The student is now available for other sponsors. Please contact the school if you have questions.', 'al-huffaz-portal'),
+                    $student_name
+                ),
+                'warning',
+                $sponsorship_id,
+                'sponsorship'
+            );
+        }
+
         // Clear cache for real-time update
-        $sponsor_user_id = get_post_meta($sponsorship_id, 'sponsor_user_id', true);
         if ($sponsor_user_id) {
             wp_cache_delete('sponsor_dashboard_' . $sponsor_user_id, 'alhuffaz');
             wp_cache_flush();
@@ -986,7 +1082,7 @@ class Ajax_Handler {
         // Log activity
         Helpers::log_activity('unlink_sponsor', 'sponsorship', $sponsorship_id, 'Sponsor unlinked from student');
 
-        wp_send_json_success(array('message' => __('Sponsorship unlinked successfully.', 'al-huffaz-portal')));
+        wp_send_json_success(array('message' => __('Sponsorship unlinked and sponsor notified.', 'al-huffaz-portal')));
     }
 
     /**

@@ -168,6 +168,7 @@ class Sponsor_Dashboard {
             'quarterly_total'      => Helpers::format_currency($quarterly_total),
             'yearly_total'         => Helpers::format_currency($yearly_total),
             'pending_count'        => count($pending_sponsorships),
+            'pending_payments'     => count($pending_sponsorships), // For template compatibility
             'payment_history'      => $payment_history,
         );
     }
