@@ -23,7 +23,8 @@ $staff_count = 0;
 $student_counts = wp_count_posts('student');
 $total_students = isset($student_counts->publish) ? (int)$student_counts->publish : 0;
 
-$sponsor_counts = wp_count_posts('alhuffaz_sponsor');
+// CRITICAL FIX: Count sponsorships (not alhuffaz_sponsor post type)
+$sponsor_counts = wp_count_posts('sponsorship');
 $total_sponsors = isset($sponsor_counts->publish) ? (int)$sponsor_counts->publish : 0;
 
 // Category counts
@@ -66,12 +67,13 @@ if (post_type_exists('student')) {
     $donation_eligible_count = count($eligible_posts);
 }
 
-if (post_type_exists('alhuffaz_sponsor')) {
+// CRITICAL FIX: Query 'sponsorship' post type with correct meta key
+if (post_type_exists('sponsorship')) {
     $pending_posts = get_posts(array(
-        'post_type' => 'alhuffaz_sponsor',
-        'post_status' => 'publish',
+        'post_type' => 'sponsorship',
+        'post_status' => 'any',
         'posts_per_page' => -1,
-        'meta_key' => '_status',
+        'meta_key' => 'verification_status',
         'meta_value' => 'pending',
         'fields' => 'ids'
     ));
@@ -96,17 +98,18 @@ if (class_exists('\AlHuffaz\Core\Roles')) {
 }
 
 // Get inactive sponsors count (sponsors with no active sponsorships)
+// CRITICAL FIX: Query correct post type and meta keys
 $inactive_sponsors_count = 0;
-$all_sponsor_users = get_users(array('role' => 'alhuffaz_sponsor'));
+$all_sponsor_users = get_users(array('role' => 'sponsor'));  // Use 'sponsor' role
 foreach ($all_sponsor_users as $sponsor_user) {
     $active_sponsorships = get_posts(array(
-        'post_type' => 'alhuffaz_sponsor',
+        'post_type' => 'sponsorship',
+        'post_status' => 'publish',
         'posts_per_page' => -1,
         'meta_query' => array(
             'relation' => 'AND',
-            array('key' => '_sponsor_user_id', 'value' => $sponsor_user->ID),
-            array('key' => '_status', 'value' => 'approved'),
-            array('key' => '_linked', 'value' => 'yes'),
+            array('key' => 'sponsor_user_id', 'value' => $sponsor_user->ID),
+            array('key' => 'linked', 'value' => 'yes'),
         ),
         'fields' => 'ids',
     ));
@@ -1854,30 +1857,30 @@ body.admin-bar .ahp-portal .ahp-top-header {
                 <!-- Active Sponsors View -->
                 <div id="sponsor-tab-active" class="ahp-sponsor-tab-content" style="display:block;">
                     <?php
-                    // Get active sponsors data grouped by sponsor
+                    // CRITICAL FIX: Get active sponsors data grouped by sponsor
                     global $wpdb;
                     $active_sponsorships_query = get_posts(array(
-                        'post_type' => 'alhuffaz_sponsor',
+                        'post_type' => 'sponsorship',
+                        'post_status' => 'publish',
                         'posts_per_page' => -1,
                         'meta_query' => array(
-                            array('key' => '_status', 'value' => 'approved'),
-                            array('key' => '_linked', 'value' => 'yes'),
+                            array('key' => 'linked', 'value' => 'yes'),
                         ),
                     ));
 
                     // Group by sponsor
                     $sponsors_data = array();
                     foreach ($active_sponsorships_query as $sponsorship) {
-                        $sponsor_user_id = get_post_meta($sponsorship->ID, '_sponsor_user_id', true);
-                        $sponsor_email = get_post_meta($sponsorship->ID, '_sponsor_email', true);
+                        $sponsor_user_id = get_post_meta($sponsorship->ID, 'sponsor_user_id', true);
+                        $sponsor_email = get_post_meta($sponsorship->ID, 'sponsor_email', true);
                         $sponsor_key = $sponsor_user_id ? 'user_' . $sponsor_user_id : 'email_' . $sponsor_email;
 
                         if (!isset($sponsors_data[$sponsor_key])) {
                             $sponsors_data[$sponsor_key] = array(
-                                'sponsor_name' => get_post_meta($sponsorship->ID, '_sponsor_name', true),
+                                'sponsor_name' => get_post_meta($sponsorship->ID, 'sponsor_name', true),
                                 'sponsor_email' => $sponsor_email,
-                                'sponsor_phone' => get_post_meta($sponsorship->ID, '_sponsor_phone', true),
-                                'sponsor_country' => get_post_meta($sponsorship->ID, '_sponsor_country', true),
+                                'sponsor_phone' => get_post_meta($sponsorship->ID, 'sponsor_phone', true),
+                                'sponsor_country' => get_post_meta($sponsorship->ID, 'sponsor_country', true),
                                 'sponsor_user_id' => $sponsor_user_id,
                                 'total_amount' => 0,
                                 'students' => array(),
@@ -1885,9 +1888,9 @@ body.admin-bar .ahp-portal .ahp-top-header {
                             );
                         }
 
-                        $student_id = get_post_meta($sponsorship->ID, '_student_id', true);
+                        $student_id = get_post_meta($sponsorship->ID, 'student_id', true);
                         $student = get_post($student_id);
-                        $amount = floatval(get_post_meta($sponsorship->ID, '_amount', true));
+                        $amount = floatval(get_post_meta($sponsorship->ID, 'amount', true));
 
                         if ($student) {
                             // Get student photo using helper function
@@ -1905,7 +1908,7 @@ body.admin-bar .ahp-portal .ahp-top-header {
                                 'student_photo' => $student_photo,
                                 'grade_level' => get_post_meta($student_id, 'grade_level', true),
                                 'amount' => $amount,
-                                'sponsorship_type' => get_post_meta($sponsorship->ID, '_sponsorship_type', true),
+                                'sponsorship_type' => get_post_meta($sponsorship->ID, 'sponsorship_type', true),
                                 'sponsorship_id' => $sponsorship->ID,
                                 'linked_date' => $sponsorship->post_date,
                             );

@@ -11,7 +11,7 @@ use AlHuffaz\Core\Helpers;
 
 if (!defined('ABSPATH')) exit;
 
-// Get donation eligible students (not sponsored)
+// CRITICAL FIX: Get donation eligible students (not sponsored) using correct meta keys
 $args = array(
     'post_type' => 'student',
     'post_status' => 'publish',
@@ -25,11 +25,12 @@ $args = array(
         array(
             'relation' => 'OR',
             array(
-                'key' => '_is_sponsored',
-                'value' => 'no',
+                'key' => 'already_sponsored',
+                'value' => 'yes',
+                'compare' => '!=',
             ),
             array(
-                'key' => '_is_sponsored',
+                'key' => 'already_sponsored',
                 'compare' => 'NOT EXISTS',
             ),
         ),

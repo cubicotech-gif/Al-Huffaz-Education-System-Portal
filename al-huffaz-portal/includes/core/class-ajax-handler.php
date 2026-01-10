@@ -826,11 +826,11 @@ class Ajax_Handler {
         // Automatically link sponsor to student on approval
         update_post_meta($sponsorship_id, '_linked', 'yes');
 
-        // Mark student as sponsored
+        // CRITICAL FIX: Mark student as sponsored (use correct meta key)
         $student_id = get_post_meta($sponsorship_id, '_student_id', true);
         if ($student_id) {
-            update_post_meta($student_id, '_is_sponsored', 'yes');
-            update_post_meta($student_id, '_sponsor_id', get_post_meta($sponsorship_id, '_sponsor_user_id', true));
+            update_post_meta($student_id, 'already_sponsored', 'yes');
+            update_post_meta($student_id, 'sponsored_date', current_time('mysql'));
         }
 
         // Log activity
@@ -972,17 +972,20 @@ class Ajax_Handler {
         $per_page = isset($_POST['per_page']) ? intval($_POST['per_page']) : 20;
         $status   = isset($_POST['status']) ? sanitize_text_field($_POST['status']) : '';
 
+        // CRITICAL FIX: Use 'sponsorship' post type (matches what submit_payment_proof creates)
         $args = array(
-            'post_type'      => 'alhuffaz_sponsor',
+            'post_type'      => 'sponsorship',
             'posts_per_page' => $per_page,
             'paged'          => $page,
-            'post_status'    => 'publish',
+            'post_status'    => 'any',  // Include draft posts (newly submitted payments)
         );
 
+        // CRITICAL FIX: Map status filter to correct meta key
         if ($status) {
+            // Status can be: pending, approved, rejected, cancelled
             $args['meta_query'] = array(
                 array(
-                    'key'   => '_status',
+                    'key'   => 'verification_status',  // Changed from '_status'
                     'value' => $status,
                 ),
             );
@@ -993,19 +996,22 @@ class Ajax_Handler {
         $sponsorships = array();
 
         foreach ($query->posts as $post) {
-            $student_id = get_post_meta($post->ID, '_student_id', true);
+            // CRITICAL FIX: Use non-prefixed meta keys (matches submit_payment_proof)
+            $student_id = get_post_meta($post->ID, 'student_id', true);
             $student = get_post($student_id);
+
+            $verification_status = get_post_meta($post->ID, 'verification_status', true);
 
             $sponsorships[] = array(
                 'id'             => $post->ID,
-                'sponsor_name'   => get_post_meta($post->ID, '_sponsor_name', true),
-                'sponsor_email'  => get_post_meta($post->ID, '_sponsor_email', true),
+                'sponsor_name'   => get_post_meta($post->ID, 'sponsor_name', true),
+                'sponsor_email'  => get_post_meta($post->ID, 'sponsor_email', true),
                 'student_name'   => $student ? $student->post_title : '-',
-                'amount'         => Helpers::format_currency(get_post_meta($post->ID, '_amount', true)),
-                'type'           => get_post_meta($post->ID, '_sponsorship_type', true),
-                'status'         => get_post_meta($post->ID, '_status', true),
-                'status_badge'   => Helpers::get_status_badge(get_post_meta($post->ID, '_status', true)),
-                'linked'         => get_post_meta($post->ID, '_linked', true) === 'yes',
+                'amount'         => Helpers::format_currency(get_post_meta($post->ID, 'amount', true)),
+                'type'           => get_post_meta($post->ID, 'sponsorship_type', true),
+                'status'         => $verification_status,
+                'status_badge'   => Helpers::get_status_badge($verification_status),
+                'linked'         => get_post_meta($post->ID, 'linked', true) === 'yes',
                 'date'           => Helpers::format_date($post->post_date),
             );
         }
@@ -1601,8 +1607,8 @@ Please verify the payment in the admin portal.', 'al-huffaz-portal'),
             wp_send_json_error(array('message' => __('Invalid student selected.', 'al-huffaz-portal')));
         }
 
-        // Check if student is already sponsored
-        $is_sponsored = get_post_meta($student_id, '_is_sponsored', true);
+        // CRITICAL FIX: Check if student is already sponsored (use correct meta key)
+        $is_sponsored = get_post_meta($student_id, 'already_sponsored', true);
         if ($is_sponsored === 'yes') {
             wp_send_json_error(array('message' => __('This student is already sponsored by someone else.', 'al-huffaz-portal')));
         }
@@ -2002,19 +2008,30 @@ The student is now available for sponsorship again.', 'al-huffaz-portal'),
     public function get_available_students() {
         $this->verify_public_nonce();
 
+        // CRITICAL FIX: Query students that are donation_eligible AND not already sponsored
         $args = array(
             'post_type'      => 'student',
             'posts_per_page' => -1,
             'post_status'    => 'publish',
             'meta_query'     => array(
-                'relation' => 'OR',
+                'relation' => 'AND',
+                // Must be donation eligible
                 array(
-                    'key'     => '_is_sponsored',
-                    'value'   => 'no',
+                    'key'     => 'donation_eligible',
+                    'value'   => 'yes',
                 ),
+                // Must NOT be already sponsored
                 array(
-                    'key'     => '_is_sponsored',
-                    'compare' => 'NOT EXISTS',
+                    'relation' => 'OR',
+                    array(
+                        'key'     => 'already_sponsored',
+                        'value'   => 'yes',
+                        'compare' => '!=',
+                    ),
+                    array(
+                        'key'     => 'already_sponsored',
+                        'compare' => 'NOT EXISTS',
+                    ),
                 ),
             ),
         );
@@ -2024,13 +2041,28 @@ The student is now available for sponsorship again.', 'al-huffaz-portal'),
         $students = array();
 
         foreach ($query->posts as $post) {
+            // Get all fee components for proper calculation
+            $monthly_tuition = floatval(get_post_meta($post->ID, 'monthly_tuition_fee', true)) ?: 0;
+            $course_fee = floatval(get_post_meta($post->ID, 'course_fee', true)) ?: 0;
+            $uniform_fee = floatval(get_post_meta($post->ID, 'uniform_fee', true)) ?: 0;
+            $annual_fee = floatval(get_post_meta($post->ID, 'annual_fee', true)) ?: 0;
+            $admission_fee = floatval(get_post_meta($post->ID, 'admission_fee', true)) ?: 0;
+
+            // Calculate one-time fees total
+            $one_time_fees = $course_fee + $uniform_fee + $annual_fee + $admission_fee;
+
             $students[] = array(
-                'id'         => $post->ID,
-                'name'       => $post->post_title,
-                'grade'      => Helpers::get_grade_label(get_post_meta($post->ID, '_grade_level', true)),
-                'category'   => Helpers::get_islamic_category_label(get_post_meta($post->ID, '_islamic_category', true)),
-                'photo'      => Helpers::get_student_photo($post->ID, 'medium'),
-                'monthly_fee'=> get_post_meta($post->ID, '_monthly_fee', true),
+                'id'              => $post->ID,
+                'name'            => $post->post_title,
+                'grade'           => Helpers::get_grade_label(get_post_meta($post->ID, 'grade_level', true)),
+                'category'        => Helpers::get_islamic_category_label(get_post_meta($post->ID, 'islamic_studies_category', true)),
+                'photo'           => Helpers::get_student_photo($post->ID, 'medium'),
+                'monthly_fee'     => $monthly_tuition,
+                'course_fee'      => $course_fee,
+                'uniform_fee'     => $uniform_fee,
+                'annual_fee'      => $annual_fee,
+                'admission_fee'   => $admission_fee,
+                'one_time_total'  => $one_time_fees,
             );
         }
 
@@ -2093,7 +2125,7 @@ The student is now available for sponsorship again.', 'al-huffaz-portal'),
                     'Gender'         => get_post_meta($student->ID, '_gender', true),
                     'Father Name'    => get_post_meta($student->ID, '_father_name', true),
                     'Phone'          => get_post_meta($student->ID, '_guardian_phone', true),
-                    'Is Sponsored'   => get_post_meta($student->ID, '_is_sponsored', true),
+                    'Is Sponsored'   => get_post_meta($student->ID, 'already_sponsored', true),
                 );
             }
         }
@@ -2660,6 +2692,7 @@ If you have any questions, please contact us.', 'al-huffaz-portal'),
         }
 
         // Count available students
+        // CRITICAL FIX: Query available students using correct meta keys
         $available_students = get_posts(array(
             'post_type' => 'student',
             'posts_per_page' => -1,
@@ -2668,8 +2701,8 @@ If you have any questions, please contact us.', 'al-huffaz-portal'),
                 array('key' => 'donation_eligible', 'value' => 'yes'),
                 array(
                     'relation' => 'OR',
-                    array('key' => '_is_sponsored', 'value' => 'no'),
-                    array('key' => '_is_sponsored', 'compare' => 'NOT EXISTS'),
+                    array('key' => 'already_sponsored', 'value' => 'yes', 'compare' => '!='),
+                    array('key' => 'already_sponsored', 'compare' => 'NOT EXISTS'),
                 ),
             ),
             'fields' => 'ids',
