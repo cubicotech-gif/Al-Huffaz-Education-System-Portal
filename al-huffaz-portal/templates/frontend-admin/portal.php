@@ -1131,6 +1131,10 @@ body.admin-bar .ahp-portal .ahp-top-header {
                     <?php endif; ?>
                 </button>
                 <?php endif; ?>
+                <button class="ahp-nav-item" data-panel="history">
+                    <i class="fas fa-history"></i>
+                    <span><?php _e('History & Recovery', 'al-huffaz-portal'); ?></span>
+                </button>
             </nav>
         </div>
     </header>
@@ -2286,6 +2290,62 @@ body.admin-bar .ahp-portal .ahp-top-header {
             </div>
             <?php endif; ?>
 
+            <!-- ==================== HISTORY & RECOVERY PANEL ==================== -->
+            <div class="ahp-panel" id="panel-history">
+                <div class="ahp-header">
+                    <h1 class="ahp-title"><?php _e('Activity History & Recovery', 'al-huffaz-portal'); ?></h1>
+                    <p style="color:var(--ahp-text-muted);margin:8px 0 0 0;font-size:14px;">
+                        <?php _e('Track all system activities and restore deleted items.', 'al-huffaz-portal'); ?>
+                    </p>
+                </div>
+
+                <div class="ahp-card">
+                    <div class="ahp-card-header" style="display:flex;gap:12px;flex-wrap:wrap;align-items:center;">
+                        <select id="filterLogAction" class="ahp-form-select" style="width:auto;min-width:180px;" onchange="loadActivityLogs()">
+                            <option value=""><?php _e('All Actions', 'al-huffaz-portal'); ?></option>
+                            <option value="save_student"><?php _e('Student Added', 'al-huffaz-portal'); ?></option>
+                            <option value="update_student"><?php _e('Student Updated', 'al-huffaz-portal'); ?></option>
+                            <option value="delete_student"><?php _e('Student Deleted', 'al-huffaz-portal'); ?></option>
+                            <option value="approve_sponsorship"><?php _e('Sponsorship Approved', 'al-huffaz-portal'); ?></option>
+                            <option value="reject_sponsorship"><?php _e('Sponsorship Rejected', 'al-huffaz-portal'); ?></option>
+                            <option value="unlink_sponsor"><?php _e('Sponsor Unlinked', 'al-huffaz-portal'); ?></option>
+                            <option value="restore_student"><?php _e('Student Restored', 'al-huffaz-portal'); ?></option>
+                            <option value="restore_sponsorship"><?php _e('Sponsorship Restored', 'al-huffaz-portal'); ?></option>
+                        </select>
+                        <select id="filterLogType" class="ahp-form-select" style="width:auto;min-width:150px;" onchange="loadActivityLogs()">
+                            <option value=""><?php _e('All Types', 'al-huffaz-portal'); ?></option>
+                            <option value="student"><?php _e('Students', 'al-huffaz-portal'); ?></option>
+                            <option value="sponsorship"><?php _e('Sponsorships', 'al-huffaz-portal'); ?></option>
+                            <option value="user"><?php _e('Users', 'al-huffaz-portal'); ?></option>
+                            <option value="payment"><?php _e('Payments', 'al-huffaz-portal'); ?></option>
+                        </select>
+                        <button class="ahp-btn ahp-btn-secondary ahp-btn-sm" onclick="loadActivityLogs()" style="margin-left:auto;">
+                            <i class="fas fa-sync-alt"></i> <?php _e('Refresh', 'al-huffaz-portal'); ?>
+                        </button>
+                    </div>
+                    <div class="ahp-card-body" style="padding:0;">
+                        <div class="ahp-table-wrap">
+                            <table class="ahp-table">
+                                <thead>
+                                    <tr>
+                                        <th style="width:50px;"><?php _e('ID', 'al-huffaz-portal'); ?></th>
+                                        <th><?php _e('User', 'al-huffaz-portal'); ?></th>
+                                        <th><?php _e('Action', 'al-huffaz-portal'); ?></th>
+                                        <th><?php _e('Object', 'al-huffaz-portal'); ?></th>
+                                        <th><?php _e('Details', 'al-huffaz-portal'); ?></th>
+                                        <th><?php _e('Time', 'al-huffaz-portal'); ?></th>
+                                        <th><?php _e('Actions', 'al-huffaz-portal'); ?></th>
+                                    </tr>
+                                </thead>
+                                <tbody id="activityLogsTableBody">
+                                    <tr><td colspan="7" class="ahp-loading"><div class="ahp-spinner"></div></td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
         </main>
     </div>
     <div class="ahp-toast" id="toast"></div>
@@ -2365,6 +2425,7 @@ document.addEventListener('DOMContentLoaded', function() {
         if (panel === 'sponsor-users') loadSponsorUsers();
         if (panel === 'payments') loadPayments();
         if (panel === 'staff') loadStaff();
+        if (panel === 'history') loadActivityLogs();
 
         // Close mobile nav when panel is selected
         const nav = document.getElementById('ahpNav');
@@ -4355,6 +4416,146 @@ document.addEventListener('DOMContentLoaded', function() {
             showToast('<?php _e('💡 Tip: Press ? to see keyboard shortcuts', 'al-huffaz-portal'); ?>', 'info');
             sessionStorage.setItem('ahp_shortcuts_seen', 'true');
         }, 3000);
+    }
+});
+
+// Activity Logs and Recovery Functions
+window.loadActivityLogs = function() {
+    const tbody = document.getElementById('activityLogsTableBody');
+    if (!tbody) return;
+
+    tbody.innerHTML = '<tr><td colspan="7" class="ahp-loading"><div class="ahp-spinner"></div></td></tr>';
+
+    const filterAction = document.getElementById('filterLogAction')?.value || '';
+    const filterType = document.getElementById('filterLogType')?.value || '';
+
+    fetch(ajaxUrl, {
+        method: 'POST',
+        headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+        body: new URLSearchParams({
+            action: 'alhuffaz_get_activity_logs',
+            nonce: nonce,
+            filter_action: filterAction,
+            filter_type: filterType,
+            per_page: 100
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success && data.data.logs) {
+            renderActivityLogs(data.data.logs);
+        } else {
+            tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:40px;color:var(--ahp-text-muted);"><?php _e('Error loading activity logs', 'al-huffaz-portal'); ?></td></tr>';
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:40px;color:var(--ahp-text-muted);"><?php _e('Error loading activity logs', 'al-huffaz-portal'); ?></td></tr>';
+    });
+};
+
+function renderActivityLogs(logs) {
+    const tbody = document.getElementById('activityLogsTableBody');
+    if (!logs || logs.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:40px;color:var(--ahp-text-muted);"><?php _e('No activity logs found', 'al-huffaz-portal'); ?></td></tr>';
+        return;
+    }
+
+    tbody.innerHTML = logs.map(log => {
+        const actionLabel = formatActionLabel(log.action);
+        const actionColor = getActionColor(log.action);
+        const restoreBtn = log.can_restore ?
+            `<button onclick="restoreItem(${log.object_id}, '${log.object_type}', '${log.object_name}')" class="ahp-btn ahp-btn-sm ahp-btn-success" style="padding:4px 8px;font-size:12px;">
+                <i class="fas fa-undo"></i> <?php _e('Restore', 'al-huffaz-portal'); ?>
+            </button>` :
+            '<span style="color:var(--ahp-text-muted);font-size:12px;">-</span>';
+
+        return `
+            <tr>
+                <td style="color:var(--ahp-text-muted);font-size:12px;">${log.id}</td>
+                <td><strong>${log.user}</strong></td>
+                <td>
+                    <span style="display:inline-block;padding:4px 8px;background:${actionColor};color:#fff;border-radius:4px;font-size:11px;font-weight:600;">
+                        ${actionLabel}
+                    </span>
+                </td>
+                <td>
+                    <div><strong>${log.object_name}</strong></div>
+                    <div style="font-size:12px;color:var(--ahp-text-muted);">${log.object_type} #${log.object_id}</div>
+                </td>
+                <td style="font-size:13px;max-width:300px;">${log.details || '-'}</td>
+                <td style="font-size:12px;color:var(--ahp-text-muted);" title="${log.created_at}">${log.time_ago}</td>
+                <td>${restoreBtn}</td>
+            </tr>
+        `;
+    }).join('');
+}
+
+function formatActionLabel(action) {
+    const labels = {
+        'save_student': '<?php _e('Added Student', 'al-huffaz-portal'); ?>',
+        'update_student': '<?php _e('Updated Student', 'al-huffaz-portal'); ?>',
+        'delete_student': '<?php _e('Deleted Student', 'al-huffaz-portal'); ?>',
+        'approve_sponsorship': '<?php _e('Approved Sponsor', 'al-huffaz-portal'); ?>',
+        'reject_sponsorship': '<?php _e('Rejected Sponsor', 'al-huffaz-portal'); ?>',
+        'link_sponsor': '<?php _e('Linked Sponsor', 'al-huffaz-portal'); ?>',
+        'unlink_sponsor': '<?php _e('Unlinked Sponsor', 'al-huffaz-portal'); ?>',
+        'restore_student': '<?php _e('Restored Student', 'al-huffaz-portal'); ?>',
+        'restore_sponsorship': '<?php _e('Restored Sponsorship', 'al-huffaz-portal'); ?>',
+        'sponsor_user_approved': '<?php _e('Approved User', 'al-huffaz-portal'); ?>',
+        'sponsor_user_rejected': '<?php _e('Rejected User', 'al-huffaz-portal'); ?>',
+        'grant_staff': '<?php _e('Granted Staff', 'al-huffaz-portal'); ?>',
+        'revoke_staff': '<?php _e('Revoked Staff', 'al-huffaz-portal'); ?>'
+    };
+    return labels[action] || action.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+}
+
+function getActionColor(action) {
+    if (action.includes('approve') || action.includes('restore') || action.includes('grant')) return '#10b981';
+    if (action.includes('reject') || action.includes('delete') || action.includes('revoke')) return '#ef4444';
+    if (action.includes('update') || action.includes('link')) return '#3b82f6';
+    if (action.includes('unlink')) return '#f59e0b';
+    return '#6b7280';
+}
+
+window.restoreItem = function(itemId, itemType, itemName) {
+    if (!confirm(`<?php _e('Are you sure you want to restore', 'al-huffaz-portal'); ?> "${itemName}"?`)) return;
+
+    fetch(ajaxUrl, {
+        method: 'POST',
+        headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+        body: new URLSearchParams({
+            action: 'alhuffaz_restore_item',
+            nonce: nonce,
+            item_id: itemId,
+            item_type: itemType
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            showToast(data.data.message || '<?php _e('Item restored successfully', 'al-huffaz-portal'); ?>', 'success');
+            loadActivityLogs(); // Reload logs
+            refreshDashboardStats(); // Refresh stats
+        } else {
+            showToast(data.data?.message || '<?php _e('Error restoring item', 'al-huffaz-portal'); ?>', 'error');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        showToast('<?php _e('Error restoring item', 'al-huffaz-portal'); ?>', 'error');
+    });
+};
+
+// Load activity logs when history panel is shown
+document.addEventListener('DOMContentLoaded', function() {
+    const historyNav = document.querySelector('.ahp-nav-item[data-panel="history"]');
+    if (historyNav) {
+        historyNav.addEventListener('click', function() {
+            if (document.getElementById('panel-history').classList.contains('active')) {
+                loadActivityLogs();
+            }
+        });
     }
 });
 </script>
