@@ -972,17 +972,20 @@ class Ajax_Handler {
         $per_page = isset($_POST['per_page']) ? intval($_POST['per_page']) : 20;
         $status   = isset($_POST['status']) ? sanitize_text_field($_POST['status']) : '';
 
+        // CRITICAL FIX: Use 'sponsorship' post type (matches what submit_payment_proof creates)
         $args = array(
-            'post_type'      => 'alhuffaz_sponsor',
+            'post_type'      => 'sponsorship',
             'posts_per_page' => $per_page,
             'paged'          => $page,
-            'post_status'    => 'publish',
+            'post_status'    => 'any',  // Include draft posts (newly submitted payments)
         );
 
+        // CRITICAL FIX: Map status filter to correct meta key
         if ($status) {
+            // Status can be: pending, approved, rejected, cancelled
             $args['meta_query'] = array(
                 array(
-                    'key'   => '_status',
+                    'key'   => 'verification_status',  // Changed from '_status'
                     'value' => $status,
                 ),
             );
@@ -993,19 +996,22 @@ class Ajax_Handler {
         $sponsorships = array();
 
         foreach ($query->posts as $post) {
-            $student_id = get_post_meta($post->ID, '_student_id', true);
+            // CRITICAL FIX: Use non-prefixed meta keys (matches submit_payment_proof)
+            $student_id = get_post_meta($post->ID, 'student_id', true);
             $student = get_post($student_id);
+
+            $verification_status = get_post_meta($post->ID, 'verification_status', true);
 
             $sponsorships[] = array(
                 'id'             => $post->ID,
-                'sponsor_name'   => get_post_meta($post->ID, '_sponsor_name', true),
-                'sponsor_email'  => get_post_meta($post->ID, '_sponsor_email', true),
+                'sponsor_name'   => get_post_meta($post->ID, 'sponsor_name', true),
+                'sponsor_email'  => get_post_meta($post->ID, 'sponsor_email', true),
                 'student_name'   => $student ? $student->post_title : '-',
-                'amount'         => Helpers::format_currency(get_post_meta($post->ID, '_amount', true)),
-                'type'           => get_post_meta($post->ID, '_sponsorship_type', true),
-                'status'         => get_post_meta($post->ID, '_status', true),
-                'status_badge'   => Helpers::get_status_badge(get_post_meta($post->ID, '_status', true)),
-                'linked'         => get_post_meta($post->ID, '_linked', true) === 'yes',
+                'amount'         => Helpers::format_currency(get_post_meta($post->ID, 'amount', true)),
+                'type'           => get_post_meta($post->ID, 'sponsorship_type', true),
+                'status'         => $verification_status,
+                'status_badge'   => Helpers::get_status_badge($verification_status),
+                'linked'         => get_post_meta($post->ID, 'linked', true) === 'yes',
                 'date'           => Helpers::format_date($post->post_date),
             );
         }
