@@ -1032,10 +1032,17 @@ Thank you for your interest in supporting our students.', 'al-huffaz-portal'),
         $student = get_post($student_id);
         $student_name = $student ? $student->post_title : __('student', 'al-huffaz-portal');
 
-        // CRITICAL FIX: Unlink sponsorship
+        // CRITICAL FIX: Unlink sponsorship and mark as unlinked
+        update_post_meta($sponsorship_id, 'verification_status', 'unlinked');
         update_post_meta($sponsorship_id, 'linked', 'no');
         update_post_meta($sponsorship_id, 'unlinked_by', get_current_user_id());
         update_post_meta($sponsorship_id, 'unlinked_at', current_time('mysql'));
+
+        // CRITICAL FIX: Move to trash so it disappears from both admin and sponsor dashboard
+        wp_update_post(array(
+            'ID' => $sponsorship_id,
+            'post_status' => 'trash'
+        ));
 
         // Make student available again
         if ($student_id) {
