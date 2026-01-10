@@ -121,6 +121,11 @@ class Sponsor_Dashboard {
                 }
             } else {
                 // Pending sponsorship: payment proof submitted, awaiting verification
+                // CRITICAL FIX: Exclude rejected and cancelled sponsorships
+                if ($verification_status === 'rejected' || $verification_status === 'cancelled') {
+                    continue; // Skip rejected/cancelled sponsorships
+                }
+
                 $student_id = get_post_meta($sponsorship->ID, 'student_id', true);
                 $student = get_post($student_id);
 

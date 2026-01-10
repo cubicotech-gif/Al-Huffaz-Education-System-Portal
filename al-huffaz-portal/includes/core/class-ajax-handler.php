@@ -1499,6 +1499,71 @@ Thank you for your support.', 'al-huffaz-portal'),
         ));
     }
 
+    /*
+     * ========================================================================================
+     * RECURRING PAYMENT / SUBSCRIPTION SYSTEM - IMPLEMENTATION NOTES
+     * ========================================================================================
+     *
+     * CURRENT STATE:
+     * - The system currently handles one-time payment submissions per sponsorship
+     * - Each payment creates a 'sponsorship' post with duration_months (1, 3, 6, 12)
+     * - Payments are manually submitted by sponsors with proof/screenshot
+     * - School admin approves each payment submission individually
+     *
+     * SUBSCRIPTION SYSTEM REQUIREMENTS:
+     *
+     * 1. DATABASE SCHEMA CHANGES:
+     *    - Add 'is_recurring' field to sponsorship post meta (yes/no)
+     *    - Add 'next_payment_date' to track when next payment is due
+     *    - Add 'payment_period_number' to track which payment period (1st month, 2nd month, etc.)
+     *    - Add 'subscription_status' (active, paused, cancelled, completed)
+     *    - Create new post type 'payment_record' to track individual payment submissions
+     *      within a recurring sponsorship
+     *
+     * 2. PAYMENT GATEWAY INTEGRATION (RECOMMENDED):
+     *    - Integrate Stripe Subscriptions API or PayPal Recurring Payments
+     *    - Store customer_id and subscription_id from payment gateway
+     *    - Handle webhook notifications for successful/failed payments
+     *    - Automated charging vs manual recurring reminders
+     *
+     * 3. MANUAL RECURRING SYSTEM (CURRENT APPROACH):
+     *    - Send email/in-app reminders before next_payment_date
+     *    - Allow sponsors to submit payment proof for each period
+     *    - Track payment status per period (paid, pending, overdue)
+     *    - Option to pause or cancel recurring sponsorship
+     *
+     * 4. ADMIN PANEL ENHANCEMENTS:
+     *    - View all recurring sponsorships with status
+     *    - See payment history per sponsorship (all periods)
+     *    - Handle overdue payments (send reminders, mark as at-risk)
+     *    - Generate reports on recurring vs one-time sponsorships
+     *
+     * 5. SPONSOR DASHBOARD ENHANCEMENTS:
+     *    - Show upcoming payment due dates
+     *    - Quick payment submission for recurring sponsorships
+     *    - Payment reminder notifications
+     *    - Option to update payment method or amount
+     *    - Pause/resume subscription functionality
+     *
+     * 6. AUTOMATED TASKS (WP-CRON):
+     *    - Daily check for upcoming payments (7 days, 3 days, 1 day reminders)
+     *    - Mark overdue payments and send notifications
+     *    - Auto-complete subscriptions when duration is reached
+     *
+     * 7. NOTIFICATION SYSTEM:
+     *    - Payment reminder emails (7 days before, 3 days before, on due date)
+     *    - Overdue payment notifications
+     *    - Successful payment confirmations
+     *    - Subscription status changes (paused, resumed, cancelled)
+     *
+     * IMPLEMENTATION PRIORITY:
+     * Phase 1: Manual recurring with reminders (no payment gateway)
+     * Phase 2: Payment gateway integration for automated billing
+     * Phase 3: Advanced subscription management features
+     *
+     * ========================================================================================
+     */
+
     /**
      * Submit payment (public)
      */
