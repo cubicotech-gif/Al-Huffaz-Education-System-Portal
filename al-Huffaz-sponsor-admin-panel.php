@@ -134,6 +134,34 @@ function sponsor_cleanup_orphaned_markers() {
     }
 }
 
+// Helper function to build sponsor admin redirect URL
+function build_sponsor_redirect_url($sponsor_tab = '') {
+    // Get current URL from POST data if available
+    $current_url = isset($_POST['current_url']) ? esc_url_raw($_POST['current_url']) : '';
+
+    // If no current URL, use the current page
+    if (empty($current_url)) {
+        $current_url = (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? "https" : "http") . "://$_SERVER[HTTP_HOST]$_SERVER[REQUEST_URI]";
+    }
+
+    // If sponsor_tab is not provided, try to get it from POST data
+    if (empty($sponsor_tab) && isset($_POST['current_sponsor_tab'])) {
+        $sponsor_tab = sanitize_text_field($_POST['current_sponsor_tab']);
+    }
+
+    // If still empty, default to 'pending'
+    if (empty($sponsor_tab)) {
+        $sponsor_tab = 'pending';
+    }
+
+    // Build the redirect URL with proper parameters
+    return add_query_arg(array(
+        'portal_tab' => 'sponsors',
+        'sponsor_tab' => $sponsor_tab,
+        '_' => time()
+    ), strtok($current_url, '?'));
+}
+
 // Register AJAX handlers
 add_action('wp_ajax_sponsor_approve_registration', 'ajax_sponsor_approve_registration');
 add_action('wp_ajax_sponsor_reject_registration', 'ajax_sponsor_reject_registration');
@@ -164,14 +192,14 @@ function ajax_sponsor_cleanup_now() {
 // AJAX: Approve Registration
 function ajax_sponsor_approve_registration() {
     check_ajax_referer('sponsor_admin_ajax', 'nonce');
-    
+
     if (!current_user_can('administrator') && !current_user_can('school_admin')) {
         wp_send_json_error('Access denied');
     }
-    
+
     $user_id = intval($_POST['user_id']);
     update_user_meta($user_id, 'account_status', 'approved');
-    
+
     $user = get_userdata($user_id);
     if ($user) {
         wp_mail(
@@ -180,27 +208,33 @@ function ajax_sponsor_approve_registration() {
             "Dear {$user->display_name},\n\nYour sponsor account has been approved! Login at: " . home_url('/login/')
         );
     }
-    
-    wp_send_json_success('Registration approved and email sent!');
+
+    wp_send_json_success(array(
+        'message' => 'Registration approved and email sent!',
+        'redirect' => build_sponsor_redirect_url('pending')
+    ));
 }
 
 // AJAX: Reject Registration
 function ajax_sponsor_reject_registration() {
     check_ajax_referer('sponsor_admin_ajax', 'nonce');
-    
+
     if (!current_user_can('administrator') && !current_user_can('school_admin')) {
         wp_send_json_error('Access denied');
     }
-    
+
     $user_id = intval($_POST['user_id']);
     update_user_meta($user_id, 'account_status', 'rejected');
-    
+
     $user = get_userdata($user_id);
     if ($user) {
         wp_mail($user->user_email, 'Registration Update', 'Thank you for your interest.');
     }
-    
-    wp_send_json_success('Registration rejected.');
+
+    wp_send_json_success(array(
+        'message' => 'Registration rejected.',
+        'redirect' => build_sponsor_redirect_url('pending')
+    ));
 }
 
 // AJAX: Soft Delete User + Keep History
@@ -254,7 +288,7 @@ function ajax_sponsor_delete_user() {
     
     require_once(ABSPATH . 'wp-admin/includes/user.php');
     $deleted = wp_delete_user($user_id);
-    
+
     if ($deleted) {
         $student_count = count($affected_students);
         $sponsorship_count = count($user_sponsorships);
@@ -265,7 +299,10 @@ function ajax_sponsor_delete_user() {
         if ($student_count > 0) {
             $message .= $student_count . ' student(s) made visible again.';
         }
-        wp_send_json_success($message);
+        wp_send_json_success(array(
+            'message' => $message,
+            'redirect' => build_sponsor_redirect_url()
+        ));
     } else {
         wp_send_json_error('Failed to delete user');
     }
@@ -300,9 +337,12 @@ function ajax_sponsor_reset_password() {
     $message .= "If you didn't request this, please ignore this email.";
     
     $sent = wp_mail($user->user_email, 'Password Reset - Al-Huffaz', $message);
-    
+
     if ($sent) {
-        wp_send_json_success('Password reset email sent to ' . $user->user_email);
+        wp_send_json_success(array(
+            'message' => 'Password reset email sent to ' . $user->user_email,
+            'redirect' => build_sponsor_redirect_url()
+        ));
     } else {
         wp_send_json_error('Failed to send email');
     }
@@ -345,8 +385,11 @@ function ajax_sponsor_update_user() {
     update_user_meta($user_id, 'sponsor_phone', $phone);
     update_user_meta($user_id, 'sponsor_country', $country);
     update_user_meta($user_id, 'account_status', $status);
-    
-    wp_send_json_success('User updated successfully!');
+
+    wp_send_json_success(array(
+        'message' => 'User updated successfully!',
+        'redirect' => build_sponsor_redirect_url()
+    ));
 }
 
 // AJAX: Verify Payment with proper redirect
@@ -380,7 +423,7 @@ function ajax_sponsor_verify_payment() {
     $sponsor_id = get_post_meta($sponsorship_id, 'sponsor_user_id', true);
     $student = get_post($student_id);
     $sponsor = get_userdata($sponsor_id);
-    
+
     if ($sponsor && $student) {
         wp_mail(
             $sponsor->user_email,
@@ -388,41 +431,28 @@ function ajax_sponsor_verify_payment() {
             "Your sponsorship for {$student->post_title} has been confirmed! Login: " . home_url('/sponsor-dashboard/')
         );
     }
-    
-    $current_url = isset($_POST['current_url']) ? esc_url_raw($_POST['current_url']) : '';
-    
-    if ($current_url) {
-        // Parse the current URL and update the sponsor_tab parameter
-        $redirect_url = add_query_arg(array(
-            'sponsor_tab' => 'sponsorships',
-            '_' => time()
-        ), $current_url);
-    } else {
-        // Fallback to current page
-        $redirect_url = add_query_arg(array(
-            'sponsor_tab' => 'sponsorships',
-            '_' => time()
-        ));
-    }
-    
+
     wp_send_json_success(array(
         'message' => '✅ Payment verified, sponsor linked, and student marked as SPONSORED!',
-        'redirect' => $redirect_url
+        'redirect' => build_sponsor_redirect_url('sponsorships')
     ));
 }
 
 // AJAX: Reject Payment
 function ajax_sponsor_reject_payment() {
     check_ajax_referer('sponsor_admin_ajax', 'nonce');
-    
+
     if (!current_user_can('administrator') && !current_user_can('school_admin')) {
         wp_send_json_error('Access denied');
     }
-    
+
     $sponsorship_id = intval($_POST['sponsorship_id']);
     update_post_meta($sponsorship_id, 'verification_status', 'rejected');
-    
-    wp_send_json_success('Payment rejected.');
+
+    wp_send_json_success(array(
+        'message' => 'Payment rejected.',
+        'redirect' => build_sponsor_redirect_url('payments')
+    ));
 }
 
 // AJAX: Restore Deleted Sponsorship
@@ -450,8 +480,11 @@ function ajax_sponsor_restore_sponsorship() {
         update_post_meta($student_id, 'already_sponsored', 'yes');
         update_post_meta($student_id, 'sponsored_date', current_time('mysql'));
     }
-    
-    wp_send_json_success('Sponsorship restored successfully! Student is now hidden from public browse again.');
+
+    wp_send_json_success(array(
+        'message' => 'Sponsorship restored successfully! Student is now hidden from public browse again.',
+        'redirect' => build_sponsor_redirect_url('sponsorships')
+    ));
 }
 
 // AJAX: Permanently Delete Sponsorship
@@ -463,11 +496,14 @@ function ajax_sponsor_permanent_delete_sponsorship() {
     }
     
     $sponsorship_id = intval($_POST['sponsorship_id']);
-    
+
     $deleted = wp_delete_post($sponsorship_id, true);
-    
+
     if ($deleted) {
-        wp_send_json_success('Sponsorship permanently deleted from database.');
+        wp_send_json_success(array(
+            'message' => 'Sponsorship permanently deleted from database.',
+            'redirect' => build_sponsor_redirect_url('deleted')
+        ));
     } else {
         wp_send_json_error('Failed to delete sponsorship.');
     }
@@ -1158,15 +1194,30 @@ function alhuffaz_sponsor_admin_panel_display() {
     <script>
     var sponsorAjaxNonce = '<?php echo wp_create_nonce('sponsor_admin_ajax'); ?>';
     var currentPageUrl = window.location.href;
-    
+
+    // Helper function to get current sponsor tab
+    function getCurrentSponsorTab() {
+        const urlParams = new URLSearchParams(window.location.search);
+        return urlParams.get('sponsor_tab') || 'pending';
+    }
+
+    // Helper function to construct fresh URL with all parameters
+    function buildFreshUrl(sponsorTab) {
+        const url = new URL(window.location.href);
+        // Ensure portal_tab is set to sponsors
+        url.searchParams.set('portal_tab', 'sponsors');
+        // Set the sponsor tab (use provided or current)
+        url.searchParams.set('sponsor_tab', sponsorTab || getCurrentSponsorTab());
+        // Add cache buster
+        url.searchParams.set('_', Date.now());
+        return url.toString();
+    }
+
     function sponsorSubNavigate(tab) {
         document.getElementById('loadingOverlay').classList.add('active');
-        const url = new URL(window.location.href);
-        url.searchParams.set('sponsor_tab', tab);
-        url.searchParams.set('_', Date.now());
-        window.location.href = url.toString();
+        window.location.href = buildFreshUrl(tab);
     }
-    
+
     function showMessage(message, type) {
         const msgBox = document.getElementById('ajax-message');
         msgBox.className = type;
@@ -1180,10 +1231,10 @@ function alhuffaz_sponsor_admin_panel_display() {
     
     function runCleanup(button) {
         if (!confirm('Run cleanup to fix orphaned sponsorship markers?\n\nThis will:\n• Check all students marked as sponsored\n• Remove marker if no active sponsorship exists\n• Recommended if you see sync issues')) return;
-        
+
         button.disabled = true;
         button.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Cleaning...';
-        
+
         fetch('<?php echo admin_url('admin-ajax.php'); ?>', {
             method: 'POST',
             headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
@@ -1196,7 +1247,9 @@ function alhuffaz_sponsor_admin_panel_display() {
         .then(result => {
             if (result.success) {
                 showMessage(result.data, 'success');
-                setTimeout(() => location.reload(true), 1500);
+                setTimeout(() => {
+                    window.location.href = buildFreshUrl(getCurrentSponsorTab());
+                }, 1500);
             } else {
                 showMessage(result.data, 'error');
                 button.disabled = false;
@@ -1209,11 +1262,12 @@ function alhuffaz_sponsor_admin_panel_display() {
         document.getElementById('loadingOverlay').classList.add('active');
         button.disabled = true;
         button.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Processing...';
-        
+
         data.action = action;
         data.nonce = sponsorAjaxNonce;
         data.current_url = currentPageUrl;
-        
+        data.current_sponsor_tab = getCurrentSponsorTab();
+
         fetch('<?php echo admin_url('admin-ajax.php'); ?>', {
             method: 'POST',
             headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
@@ -1222,13 +1276,17 @@ function alhuffaz_sponsor_admin_panel_display() {
         .then(response => response.json())
         .then(result => {
             if (result.success) {
+                const message = typeof result.data === 'object' ? result.data.message : result.data;
+
+                // Check if server provided a redirect URL
                 if (result.data && typeof result.data === 'object' && result.data.redirect) {
+                    // Use server-provided redirect URL
                     window.location.href = result.data.redirect;
                 } else {
-                    const message = typeof result.data === 'object' ? result.data.message : result.data;
+                    // No server redirect, reload to current tab with cache bust
                     showMessage(message, 'success');
                     setTimeout(() => {
-                        location.reload(true);
+                        window.location.href = buildFreshUrl(getCurrentSponsorTab());
                     }, 800);
                 }
             } else {
@@ -1310,15 +1368,15 @@ function alhuffaz_sponsor_admin_panel_display() {
     
     document.getElementById('editUserForm').addEventListener('submit', function(e) {
         e.preventDefault();
-        
+
         const formData = new FormData(this);
         const data = {};
         formData.forEach((value, key) => data[key] = value);
-        
+
         document.getElementById('loadingOverlay').classList.add('active');
         data.action = 'sponsor_update_user';
         data.nonce = sponsorAjaxNonce;
-        
+
         fetch('<?php echo admin_url('admin-ajax.php'); ?>', {
             method: 'POST',
             headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
@@ -1330,7 +1388,7 @@ function alhuffaz_sponsor_admin_panel_display() {
                 showMessage(result.data, 'success');
                 closeEditModal();
                 setTimeout(() => {
-                    location.reload(true);
+                    window.location.href = buildFreshUrl(getCurrentSponsorTab());
                 }, 1000);
             } else {
                 document.getElementById('loadingOverlay').classList.remove('active');
@@ -1535,58 +1593,151 @@ function render_all_sponsors() {
 
 function render_sponsorships() {
     wp_cache_flush();
-    
+
     $sponsorships = get_posts(array(
         'post_type' => 'sponsorship',
         'post_status' => 'publish',
         'posts_per_page' => -1,
-        'cache_results' => false
+        'cache_results' => false,
+        'orderby' => 'meta_value',
+        'meta_key' => 'approved_date',
+        'order' => 'DESC'
     ));
-    
+
     $sponsorships = array_filter($sponsorships, function($sp) {
         return get_post_meta($sp->ID, 'linked', true) === 'yes';
     });
-    
+
     if (empty($sponsorships)) {
         return '<div class="empty-state">
                     <i class="fas fa-link-slash"></i>
                     <h3>No Active Sponsorships</h3>
                 </div>';
     }
-    
-    $output = '<table class="sponsor-table"><thead><tr>';
-    $output .= '<th>Sponsor</th><th>Student</th><th>Type</th><th>Amount</th><th>Approved</th><th>Status</th>';
+
+    // Calculate totals for summary
+    $total_amount = 0;
+    $monthly_total = 0;
+    $quarterly_total = 0;
+    $yearly_total = 0;
+    $unique_sponsors = array();
+    $unique_students = array();
+
+    foreach ($sponsorships as $sp) {
+        $amount = floatval(get_post_meta($sp->ID, 'amount', true));
+        $type = get_post_meta($sp->ID, 'sponsorship_type', true);
+        $sponsor_id = get_post_meta($sp->ID, 'sponsor_user_id', true);
+        $student_id = get_post_meta($sp->ID, 'student_id', true);
+
+        $total_amount += $amount;
+
+        if ($type === 'monthly') $monthly_total += $amount;
+        if ($type === 'quarterly') $quarterly_total += $amount;
+        if ($type === 'yearly') $yearly_total += $amount;
+
+        if (!in_array($sponsor_id, $unique_sponsors)) $unique_sponsors[] = $sponsor_id;
+        if (!in_array($student_id, $unique_students)) $unique_students[] = $student_id;
+    }
+
+    // Summary section
+    $output = '<div style="background: linear-gradient(135deg, #ec407a, #c2185b); color: white; padding: 20px; border-radius: 12px; margin-bottom: 20px;">';
+    $output .= '<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 15px; text-align: center;">';
+    $output .= '<div><div style="font-size: 28px; font-weight: 700;">' . count($sponsorships) . '</div><div style="font-size: 12px; opacity: 0.9;">Active Sponsorships</div></div>';
+    $output .= '<div><div style="font-size: 28px; font-weight: 700;">' . count($unique_sponsors) . '</div><div style="font-size: 12px; opacity: 0.9;">Sponsors</div></div>';
+    $output .= '<div><div style="font-size: 28px; font-weight: 700;">' . count($unique_students) . '</div><div style="font-size: 12px; opacity: 0.9;">Students</div></div>';
+    $output .= '<div><div style="font-size: 28px; font-weight: 700;">PKR ' . number_format($total_amount) . '</div><div style="font-size: 12px; opacity: 0.9;">Total Amount</div></div>';
+    $output .= '</div></div>';
+
+    // Compact table
+    $output .= '<div style="overflow-x: auto;">';
+    $output .= '<table class="sponsor-table" style="font-size: 13px;"><thead><tr>';
+    $output .= '<th style="min-width: 150px;">Sponsor Details</th>';
+    $output .= '<th style="min-width: 150px;">Student Details</th>';
+    $output .= '<th style="width: 100px;">Type</th>';
+    $output .= '<th style="width: 120px;">Amount</th>';
+    $output .= '<th style="width: 110px;">Approved Date</th>';
+    $output .= '<th style="width: 110px;">Status</th>';
     $output .= '</tr></thead><tbody>';
-    
+
     foreach ($sponsorships as $sp) {
         $sponsor_id = get_post_meta($sp->ID, 'sponsor_user_id', true);
         $sponsor = get_userdata($sponsor_id);
         $student_id = get_post_meta($sp->ID, 'student_id', true);
         $student = get_post($student_id);
-        
+
         $type = get_post_meta($sp->ID, 'sponsorship_type', true);
         $amount = get_post_meta($sp->ID, 'amount', true);
         $approved = get_post_meta($sp->ID, 'approved_date', true);
         $is_hidden = get_post_meta($student_id, 'already_sponsored', true);
-        
+
+        // Get additional sponsor info
+        $sponsor_email = $sponsor ? $sponsor->user_email : 'N/A';
+        $sponsor_phone = $sponsor ? get_user_meta($sponsor_id, 'sponsor_phone', true) : '';
+        $sponsor_country = $sponsor ? get_user_meta($sponsor_id, 'sponsor_country', true) : '';
+
+        // Get additional student info
+        $gr_number = get_post_meta($student_id, 'gr_number', true);
+        $grade = get_post_meta($student_id, 'grade', true);
+
         $output .= '<tr>';
-        $output .= '<td><strong>' . esc_html($sponsor ? $sponsor->display_name : 'N/A') . '</strong></td>';
-        $output .= '<td><strong>' . esc_html($student ? $student->post_title : 'N/A') . '</strong><br><small>GR: ' . get_post_meta($student_id, 'gr_number', true) . '</small></td>';
-        $output .= '<td><span class="status-badge status-approved">' . ucfirst($type) . '</span></td>';
-        $output .= '<td><strong>PKR ' . number_format($amount) . '</strong></td>';
-        $output .= '<td>' . ($approved ? date('M d, Y', strtotime($approved)) : 'N/A') . '</td>';
+
+        // Sponsor details column
         $output .= '<td>';
-        
-        if ($is_hidden === 'yes') {
-            $output .= '<span class="status-badge" style="background: #fce7f3; color: #c2185b;"><i class="fas fa-eye-slash"></i> Hidden from Public</span>';
-        } else {
-            $output .= '<span class="status-badge status-pending"><i class="fas fa-eye"></i> Visible</span>';
+        $output .= '<div style="line-height: 1.5;">';
+        $output .= '<strong style="display: block; color: #001a33;">' . esc_html($sponsor ? $sponsor->display_name : 'N/A') . '</strong>';
+        $output .= '<small style="display: block; color: #64748b;"><i class="fas fa-envelope" style="width: 12px;"></i> ' . esc_html($sponsor_email) . '</small>';
+        if ($sponsor_phone) {
+            $output .= '<small style="display: block; color: #64748b;"><i class="fas fa-phone" style="width: 12px;"></i> ' . esc_html($sponsor_phone) . '</small>';
         }
-        
-        $output .= '</td></tr>';
+        if ($sponsor_country) {
+            $output .= '<small style="display: block; color: #64748b;"><i class="fas fa-globe" style="width: 12px;"></i> ' . esc_html($sponsor_country) . '</small>';
+        }
+        $output .= '</div>';
+        $output .= '</td>';
+
+        // Student details column
+        $output .= '<td>';
+        $output .= '<div style="line-height: 1.5;">';
+        $output .= '<strong style="display: block; color: #001a33;">' . esc_html($student ? $student->post_title : 'N/A') . '</strong>';
+        $output .= '<small style="display: block; color: #64748b;"><i class="fas fa-id-card" style="width: 12px;"></i> GR: ' . esc_html($gr_number) . '</small>';
+        if ($grade) {
+            $output .= '<small style="display: block; color: #64748b;"><i class="fas fa-graduation-cap" style="width: 12px;"></i> Grade: ' . esc_html($grade) . '</small>';
+        }
+        $output .= '</div>';
+        $output .= '</td>';
+
+        // Type column
+        $output .= '<td>';
+        $type_colors = array(
+            'monthly' => 'background: #dbeafe; color: #1e40af;',
+            'quarterly' => 'background: #fef3c7; color: #92400e;',
+            'yearly' => 'background: #d1fae5; color: #065f46;'
+        );
+        $type_style = isset($type_colors[$type]) ? $type_colors[$type] : 'background: #f3f4f6; color: #6b7280;';
+        $output .= '<span class="status-badge" style="' . $type_style . '">' . ucfirst($type) . '</span>';
+        $output .= '</td>';
+
+        // Amount column
+        $output .= '<td><strong style="color: #059669;">PKR ' . number_format($amount) . '</strong></td>';
+
+        // Approved date column
+        $output .= '<td style="font-size: 12px;">' . ($approved ? date('M d, Y', strtotime($approved)) : 'N/A') . '</td>';
+
+        // Status column
+        $output .= '<td>';
+        if ($is_hidden === 'yes') {
+            $output .= '<span class="status-badge" style="background: #fce7f3; color: #c2185b; white-space: nowrap;"><i class="fas fa-eye-slash"></i> Hidden</span>';
+        } else {
+            $output .= '<span class="status-badge status-pending" style="white-space: nowrap;"><i class="fas fa-eye"></i> Visible</span>';
+        }
+        $output .= '</td>';
+
+        $output .= '</tr>';
     }
-    
+
     $output .= '</tbody></table>';
+    $output .= '</div>';
+
     return $output;
 }
 
