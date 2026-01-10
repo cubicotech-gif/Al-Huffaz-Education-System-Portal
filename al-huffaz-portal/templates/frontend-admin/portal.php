@@ -2429,6 +2429,397 @@ document.addEventListener('DOMContentLoaded', function() {
         window.location.href = '<?php echo $portal_url; ?>?edit=' + id;
     };
 
+    window.viewStudent = function(id) {
+        // Show loading modal
+        showStudentModal('<div style="text-align:center;padding:60px;"><i class="fas fa-spinner fa-spin" style="font-size:48px;color:var(--ahp-primary);"></i><p style="margin-top:20px;font-size:16px;">Loading student profile...</p></div>');
+
+        // Fetch student data
+        fetch(ajaxUrl, {
+            method: 'POST',
+            headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+            body: new URLSearchParams({action: 'alhuffaz_get_student', nonce, student_id: id})
+        })
+        .then(r => r.json())
+        .then(data => {
+            if (data.success) {
+                renderStudentProfile(data.data);
+            } else {
+                showStudentModal('<div style="text-align:center;padding:60px;color:var(--ahp-text-muted);">Error loading student profile</div>');
+            }
+        })
+        .catch(err => {
+            showStudentModal('<div style="text-align:center;padding:60px;color:var(--ahp-text-muted);">Network error</div>');
+        });
+    };
+
+    function showStudentModal(content) {
+        // Remove existing modal
+        const existing = document.getElementById('studentProfileModal');
+        if (existing) existing.remove();
+
+        // Create modal
+        const modal = document.createElement('div');
+        modal.id = 'studentProfileModal';
+        modal.innerHTML = `
+            <div style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.6);z-index:10000;display:flex;align-items:center;justify-content:center;padding:20px;overflow-y:auto;" onclick="if(event.target===this) this.parentElement.remove()">
+                <div style="background:var(--ahp-bg);border-radius:16px;max-width:1200px;width:100%;max-height:90vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,0.4);">
+                    <div style="position:sticky;top:0;background:linear-gradient(135deg, #667eea 0%, #764ba2 100%);color:#fff;padding:24px;display:flex;justify-content:space-between;align-items:center;z-index:1;border-radius:16px 16px 0 0;">
+                        <h2 style="margin:0;font-size:24px;"><i class="fas fa-user-graduate"></i> <?php _e('Student Profile', 'al-huffaz-portal'); ?></h2>
+                        <button onclick="this.closest('#studentProfileModal').remove()" style="background:rgba(255,255,255,0.2);border:none;font-size:24px;cursor:pointer;color:#fff;padding:8px;width:40px;height:40px;display:flex;align-items:center;justify-content:center;border-radius:8px;transition:all 0.3s;" onmouseover="this.style.background='rgba(255,255,255,0.3)'" onmouseout="this.style.background='rgba(255,255,255,0.2)'">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
+                    <div id="studentProfileContent" style="padding:0;">${content}</div>
+                </div>
+            </div>
+        `;
+        document.body.appendChild(modal);
+    }
+
+    function renderStudentProfile(student) {
+        // Parse subjects if it's a string
+        const subjects = typeof student.subjects === 'string' ? JSON.parse(student.subjects) : (student.subjects || []);
+
+        // Prepare academic info
+        const academicYear = student.academic_year || 'N/A';
+        const academicTerm = student.academic_term === 'mid' ? 'Mid Term' : (student.academic_term === 'annual' ? 'Annual' : 'N/A');
+        const gradeLevel = student.grade_level || 'N/A';
+
+        // Get photo
+        let photoHTML = '';
+        if (student.student_photo) {
+            photoHTML = `<img src="${student.student_photo}" alt="${student.name}" style="width:150px;height:150px;border-radius:50%;object-fit:cover;border:5px solid #fff;box-shadow:0 4px 12px rgba(0,0,0,0.2);">`;
+        } else {
+            const initial = student.name ? student.name.charAt(0).toUpperCase() : '?';
+            photoHTML = `<div style="width:150px;height:150px;border-radius:50%;background:linear-gradient(135deg,#667eea,#764ba2);display:flex;align-items:center;justify-content:center;font-size:60px;font-weight:700;color:#fff;border:5px solid #fff;box-shadow:0 4px 12px rgba(0,0,0,0.2);">${initial}</div>`;
+        }
+
+        let content = `
+            <!-- Student Header -->
+            <div style="background:linear-gradient(135deg, #667eea 0%, #764ba2 100%);color:#fff;padding:40px 32px;text-align:center;">
+                ${photoHTML}
+                <h1 style="margin:20px 0 8px 0;font-size:32px;">${student.name}</h1>
+                <div style="font-size:16px;opacity:0.9;display:flex;justify-content:center;gap:24px;flex-wrap:wrap;margin-top:12px;">
+                    ${student.gr_number ? `<span><i class="fas fa-id-card"></i> GR: ${student.gr_number}</span>` : ''}
+                    ${student.gender ? `<span><i class="fas fa-${student.gender === 'male' ? 'mars' : 'venus'}"></i> ${student.gender.charAt(0).toUpperCase() + student.gender.slice(1)}</span>` : ''}
+                    ${gradeLevel !== 'N/A' ? `<span><i class="fas fa-graduation-cap"></i> Grade: ${gradeLevel}</span>` : ''}
+                </div>
+            </div>
+
+            <!-- Tabs -->
+            <div style="background:var(--ahp-hover);border-bottom:2px solid var(--ahp-border);display:flex;padding:0 32px;gap:8px;">
+                <button class="student-tab active" onclick="switchStudentTab('basic')" style="padding:16px 24px;background:none;border:none;border-bottom:3px solid transparent;cursor:pointer;font-size:15px;font-weight:600;color:var(--ahp-text-muted);transition:all 0.3s;">
+                    <i class="fas fa-user"></i> <?php _e('Basic Info', 'al-huffaz-portal'); ?>
+                </button>
+                <button class="student-tab" onclick="switchStudentTab('academics')" style="padding:16px 24px;background:none;border:none;border-bottom:3px solid transparent;cursor:pointer;font-size:15px;font-weight:600;color:var(--ahp-text-muted);transition:all 0.3s;">
+                    <i class="fas fa-graduation-cap"></i> <?php _e('Academic Records', 'al-huffaz-portal'); ?>
+                </button>
+                <button class="student-tab" onclick="switchStudentTab('family')" style="padding:16px 24px;background:none;border:none;border-bottom:3px solid transparent;cursor:pointer;font-size:15px;font-weight:600;color:var(--ahp-text-muted);transition:all 0.3s;">
+                    <i class="fas fa-users"></i> <?php _e('Family', 'al-huffaz-portal'); ?>
+                </button>
+            </div>
+
+            <!-- Tab Content -->
+            <div style="padding:32px;">
+                <!-- Basic Info Tab -->
+                <div id="student-tab-basic" class="student-tab-content">
+                    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:20px;">
+                        <div style="background:var(--ahp-hover);padding:20px;border-radius:10px;">
+                            <div style="font-size:13px;color:var(--ahp-text-muted);margin-bottom:6px;"><i class="fas fa-calendar"></i> Date of Birth</div>
+                            <div style="font-size:16px;font-weight:600;">${student.date_of_birth || 'N/A'}</div>
+                        </div>
+                        <div style="background:var(--ahp-hover);padding:20px;border-radius:10px;">
+                            <div style="font-size:13px;color:var(--ahp-text-muted);margin-bottom:6px;"><i class="fas fa-calendar-check"></i> Admission Date</div>
+                            <div style="font-size:16px;font-weight:600;">${student.admission_date || 'N/A'}</div>
+                        </div>
+                        <div style="background:var(--ahp-hover);padding:20px;border-radius:10px;">
+                            <div style="font-size:13px;color:var(--ahp-text-muted);margin-bottom:6px;"><i class="fas fa-book-quran"></i> Islamic Studies</div>
+                            <div style="font-size:16px;font-weight:600;">${student.islamic_studies_category || 'N/A'}</div>
+                        </div>
+                        <div style="background:var(--ahp-hover);padding:20px;border-radius:10px;">
+                            <div style="font-size:13px;color:var(--ahp-text-muted);margin-bottom:6px;"><i class="fas fa-quran"></i> Hifz Status</div>
+                            <div style="font-size:16px;font-weight:600;">${student.hifz_status || 'N/A'}</div>
+                        </div>
+                    </div>
+                    ${student.permanent_address || student.current_address ? `
+                    <div style="margin-top:24px;background:var(--ahp-hover);padding:24px;border-radius:10px;">
+                        <h3 style="margin:0 0 16px 0;font-size:18px;"><i class="fas fa-map-marker-alt"></i> <?php _e('Address', 'al-huffaz-portal'); ?></h3>
+                        ${student.permanent_address ? `<div style="margin-bottom:12px;"><strong><?php _e('Permanent:', 'al-huffaz-portal'); ?></strong> ${student.permanent_address}</div>` : ''}
+                        ${student.current_address ? `<div><strong><?php _e('Current:', 'al-huffaz-portal'); ?></strong> ${student.current_address}</div>` : ''}
+                    </div>
+                    ` : ''}
+                </div>
+
+                <!-- Academic Records Tab -->
+                <div id="student-tab-academics" class="student-tab-content" style="display:none;">
+                    ${renderAcademicRecords(student, subjects, academicYear, academicTerm, gradeLevel)}
+                </div>
+
+                <!-- Family Tab -->
+                <div id="student-tab-family" class="student-tab-content" style="display:none;">
+                    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:24px;">
+                        ${student.father_name || student.father_phone || student.father_email ? `
+                        <div style="background:var(--ahp-hover);padding:24px;border-radius:10px;">
+                            <h3 style="margin:0 0 16px 0;font-size:18px;color:var(--ahp-primary);"><i class="fas fa-male"></i> <?php _e('Father Information', 'al-huffaz-portal'); ?></h3>
+                            ${student.father_name ? `<div style="margin-bottom:12px;"><strong><?php _e('Name:', 'al-huffaz-portal'); ?></strong> ${student.father_name}</div>` : ''}
+                            ${student.father_cnic ? `<div style="margin-bottom:12px;"><strong><?php _e('CNIC:', 'al-huffaz-portal'); ?></strong> ${student.father_cnic}</div>` : ''}
+                            ${student.father_phone ? `<div style="margin-bottom:12px;"><strong><?php _e('Phone:', 'al-huffaz-portal'); ?></strong> <a href="tel:${student.father_phone}">${student.father_phone}</a></div>` : ''}
+                            ${student.father_email ? `<div><strong><?php _e('Email:', 'al-huffaz-portal'); ?></strong> <a href="mailto:${student.father_email}">${student.father_email}</a></div>` : ''}
+                        </div>
+                        ` : ''}
+                        ${student.guardian_name || student.guardian_phone ? `
+                        <div style="background:var(--ahp-hover);padding:24px;border-radius:10px;">
+                            <h3 style="margin:0 0 16px 0;font-size:18px;color:var(--ahp-primary);"><i class="fas fa-user-shield"></i> <?php _e('Guardian Information', 'al-huffaz-portal'); ?></h3>
+                            ${student.guardian_name ? `<div style="margin-bottom:12px;"><strong><?php _e('Name:', 'al-huffaz-portal'); ?></strong> ${student.guardian_name}</div>` : ''}
+                            ${student.guardian_relation ? `<div style="margin-bottom:12px;"><strong><?php _e('Relation:', 'al-huffaz-portal'); ?></strong> ${student.guardian_relation}</div>` : ''}
+                            ${student.guardian_phone ? `<div style="margin-bottom:12px;"><strong><?php _e('Phone:', 'al-huffaz-portal'); ?></strong> <a href="tel:${student.guardian_phone}">${student.guardian_phone}</a></div>` : ''}
+                            ${student.guardian_cnic ? `<div><strong><?php _e('CNIC:', 'al-huffaz-portal'); ?></strong> ${student.guardian_cnic}</div>` : ''}
+                        </div>
+                        ` : ''}
+                    </div>
+                </div>
+            </div>
+        `;
+
+        showStudentModal(content);
+    }
+
+    function renderAcademicRecords(student, subjects, academicYear, academicTerm, gradeLevel) {
+        if (!subjects || subjects.length === 0 || !subjects[0] || !subjects[0].name) {
+            return `
+                <div style="text-align:center;padding:60px 20px;color:var(--ahp-text-muted);">
+                    <i class="fas fa-clipboard-list" style="font-size:64px;opacity:0.3;margin-bottom:20px;"></i>
+                    <h3 style="margin:0 0 12px 0;"><?php _e('No Academic Records Yet', 'al-huffaz-portal'); ?></h3>
+                    <p style="margin:0;"><?php _e('Academic records will appear here once subjects and marks are added.', 'al-huffaz-portal'); ?></p>
+                </div>
+            `;
+        }
+
+        let html = `
+            <!-- Academic Period Info -->
+            <div style="background:var(--ahp-hover);padding:20px 24px;border-radius:10px;margin-bottom:24px;display:flex;gap:32px;flex-wrap:wrap;">
+                <div><strong><?php _e('Academic Year:', 'al-huffaz-portal'); ?></strong> ${academicYear}</div>
+                <div><strong><?php _e('Grade:', 'al-huffaz-portal'); ?></strong> ${gradeLevel}</div>
+                <div><strong><?php _e('Term:', 'al-huffaz-portal'); ?></strong> ${academicTerm}</div>
+            </div>
+
+            <!-- Subjects Result Cards -->
+        `;
+
+        let grandTotalObtained = 0;
+        let grandTotalMarks = 0;
+
+        subjects.forEach(subject => {
+            if (!subject || !subject.name) return;
+
+            const monthlyExams = subject.monthly_exams || [];
+            const midSemester = subject.mid_semester || {};
+            const finalSemester = subject.final_semester || {};
+
+            let subjectObtained = 0;
+            let subjectTotal = 0;
+
+            // Calculate mid semester
+            const midTotal = (parseInt(midSemester.oral_total) || 0) + (parseInt(midSemester.written_total) || 0);
+            const midObtained = (parseInt(midSemester.oral_obtained) || 0) + (parseInt(midSemester.written_obtained) || 0);
+            const midPct = midTotal > 0 ? Math.round((midObtained / midTotal) * 100) : 0;
+            if (midTotal > 0) {
+                subjectObtained += midObtained;
+                subjectTotal += midTotal;
+            }
+
+            // Calculate final semester
+            const finalTotal = (parseInt(finalSemester.oral_total) || 0) + (parseInt(finalSemester.written_total) || 0);
+            const finalObtained = (parseInt(finalSemester.oral_obtained) || 0) + (parseInt(finalSemester.written_obtained) || 0);
+            const finalPct = finalTotal > 0 ? Math.round((finalObtained / finalTotal) * 100) : 0;
+            if (finalTotal > 0) {
+                subjectObtained += finalObtained;
+                subjectTotal += finalTotal;
+            }
+
+            // Add monthly exams
+            monthlyExams.forEach(monthly => {
+                const mTotal = (parseInt(monthly.oral_total) || 0) + (parseInt(monthly.written_total) || 0);
+                const mObtained = (parseInt(monthly.oral_obtained) || 0) + (parseInt(monthly.written_obtained) || 0);
+                if (mTotal > 0) {
+                    subjectObtained += mObtained;
+                    subjectTotal += mTotal;
+                }
+            });
+
+            const subjectPct = subjectTotal > 0 ? Math.round((subjectObtained / subjectTotal) * 100) : 0;
+            const grade = getGrade(subjectPct);
+            const gradeColor = getGradeColor(subjectPct);
+
+            grandTotalObtained += subjectObtained;
+            grandTotalMarks += subjectTotal;
+
+            html += `
+                <div style="background:var(--ahp-bg);border:2px solid var(--ahp-border);border-radius:12px;margin-bottom:20px;overflow:hidden;">
+                    <!-- Subject Header -->
+                    <div style="background:linear-gradient(135deg, ${gradeColor}, ${gradeColor}dd);color:#fff;padding:16px 24px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:16px;">
+                        <h3 style="margin:0;font-size:20px;"><i class="fas fa-book"></i> ${subject.name}</h3>
+                        <div style="display:flex;gap:16px;align-items:center;">
+                            <div style="text-align:right;">
+                                <div style="font-size:24px;font-weight:700;">${subjectObtained}/${subjectTotal}</div>
+                                <div style="font-size:14px;opacity:0.9;">${subjectPct}%</div>
+                            </div>
+                            <div style="background:rgba(255,255,255,0.3);padding:8px 16px;border-radius:8px;font-size:20px;font-weight:700;">${grade}</div>
+                        </div>
+                    </div>
+
+                    <!-- Marks Table -->
+                    <div style="overflow-x:auto;">
+                        <table style="width:100%;border-collapse:collapse;font-size:13px;">
+                            <thead style="background:var(--ahp-hover);">
+                                <tr>
+                                    <th style="padding:12px;text-align:left;border-bottom:2px solid var(--ahp-border);"><?php _e('Examination', 'al-huffaz-portal'); ?></th>
+                                    <th style="padding:12px;text-align:center;border-bottom:2px solid var(--ahp-border);"><?php _e('Oral Total', 'al-huffaz-portal'); ?></th>
+                                    <th style="padding:12px;text-align:center;border-bottom:2px solid var(--ahp-border);"><?php _e('Oral Obt.', 'al-huffaz-portal'); ?></th>
+                                    <th style="padding:12px;text-align:center;border-bottom:2px solid var(--ahp-border);"><?php _e('Written Total', 'al-huffaz-portal'); ?></th>
+                                    <th style="padding:12px;text-align:center;border-bottom:2px solid var(--ahp-border);"><?php _e('Written Obt.', 'al-huffaz-portal'); ?></th>
+                                    <th style="padding:12px;text-align:center;border-bottom:2px solid var(--ahp-border);"><?php _e('Total', 'al-huffaz-portal'); ?></th>
+                                    <th style="padding:12px;text-align:center;border-bottom:2px solid var(--ahp-border);"><?php _e('Obtained', 'al-huffaz-portal'); ?></th>
+                                    <th style="padding:12px;text-align:center;border-bottom:2px solid var(--ahp-border);">%</th>
+                                    <th style="padding:12px;text-align:center;border-bottom:2px solid var(--ahp-border);"><?php _e('Grade', 'al-huffaz-portal'); ?></th>
+                                </tr>
+                            </thead>
+                            <tbody>
+            `;
+
+            // Monthly exams rows
+            if (monthlyExams && monthlyExams.length > 0) {
+                monthlyExams.forEach((monthly, idx) => {
+                    const mOralTotal = parseInt(monthly.oral_total) || 0;
+                    const mOralObt = parseInt(monthly.oral_obtained) || 0;
+                    const mWrittenTotal = parseInt(monthly.written_total) || 0;
+                    const mWrittenObt = parseInt(monthly.written_obtained) || 0;
+                    const mTotal = mOralTotal + mWrittenTotal;
+                    const mObt = mOralObt + mWrittenObt;
+                    const mPct = mTotal > 0 ? Math.round((mObt / mTotal) * 100) : 0;
+                    const mGrade = getGrade(mPct);
+
+                    html += `
+                        <tr style="border-bottom:1px solid var(--ahp-border);">
+                            <td style="padding:12px;font-weight:500;"><i class="fas fa-calendar-alt"></i> ${monthly.month_name || 'Monthly ' + (idx + 1)}</td>
+                            <td style="padding:12px;text-align:center;">${mOralTotal}</td>
+                            <td style="padding:12px;text-align:center;">${mOralObt}</td>
+                            <td style="padding:12px;text-align:center;">${mWrittenTotal}</td>
+                            <td style="padding:12px;text-align:center;">${mWrittenObt}</td>
+                            <td style="padding:12px;text-align:center;font-weight:600;">${mTotal}</td>
+                            <td style="padding:12px;text-align:center;font-weight:600;">${mObt}</td>
+                            <td style="padding:12px;text-align:center;font-weight:600;">${mPct}%</td>
+                            <td style="padding:12px;text-align:center;"><span style="padding:4px 8px;background:${getGradeColor(mPct)};color:#fff;border-radius:4px;font-weight:600;">${mGrade}</span></td>
+                        </tr>
+                    `;
+                });
+            }
+
+            // Mid semester row
+            if (midTotal > 0) {
+                html += `
+                    <tr style="background:var(--ahp-hover);border-bottom:1px solid var(--ahp-border);">
+                        <td style="padding:12px;font-weight:600;"><i class="fas fa-bookmark"></i> <?php _e('Mid Semester', 'al-huffaz-portal'); ?></td>
+                        <td style="padding:12px;text-align:center;">${midSemester.oral_total || 0}</td>
+                        <td style="padding:12px;text-align:center;">${midSemester.oral_obtained || 0}</td>
+                        <td style="padding:12px;text-align:center;">${midSemester.written_total || 0}</td>
+                        <td style="padding:12px;text-align:center;">${midSemester.written_obtained || 0}</td>
+                        <td style="padding:12px;text-align:center;font-weight:700;">${midTotal}</td>
+                        <td style="padding:12px;text-align:center;font-weight:700;">${midObtained}</td>
+                        <td style="padding:12px;text-align:center;font-weight:700;">${midPct}%</td>
+                        <td style="padding:12px;text-align:center;"><span style="padding:4px 8px;background:${getGradeColor(midPct)};color:#fff;border-radius:4px;font-weight:700;">${getGrade(midPct)}</span></td>
+                    </tr>
+                `;
+            }
+
+            // Final semester row
+            if (finalTotal > 0) {
+                html += `
+                    <tr style="background:var(--ahp-hover);border-bottom:1px solid var(--ahp-border);">
+                        <td style="padding:12px;font-weight:600;"><i class="fas fa-certificate"></i> <?php _e('Final Semester', 'al-huffaz-portal'); ?></td>
+                        <td style="padding:12px;text-align:center;">${finalSemester.oral_total || 0}</td>
+                        <td style="padding:12px;text-align:center;">${finalSemester.oral_obtained || 0}</td>
+                        <td style="padding:12px;text-align:center;">${finalSemester.written_total || 0}</td>
+                        <td style="padding:12px;text-align:center;">${finalSemester.written_obtained || 0}</td>
+                        <td style="padding:12px;text-align:center;font-weight:700;">${finalTotal}</td>
+                        <td style="padding:12px;text-align:center;font-weight:700;">${finalObtained}</td>
+                        <td style="padding:12px;text-align:center;font-weight:700;">${finalPct}%</td>
+                        <td style="padding:12px;text-align:center;"><span style="padding:4px 8px;background:${getGradeColor(finalPct)};color:#fff;border-radius:4px;font-weight:700;">${getGrade(finalPct)}</span></td>
+                    </tr>
+                `;
+            }
+
+            html += `
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            `;
+        });
+
+        // Grand Total
+        const grandPct = grandTotalMarks > 0 ? Math.round((grandTotalObtained / grandTotalMarks) * 100) : 0;
+        const grandGrade = getGrade(grandPct);
+        const grandColor = getGradeColor(grandPct);
+
+        html += `
+            <!-- Grand Total -->
+            <div style="background:linear-gradient(135deg, ${grandColor}, ${grandColor}dd);color:#fff;padding:24px;border-radius:12px;margin-top:24px;">
+                <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:16px;">
+                    <h2 style="margin:0;font-size:24px;"><i class="fas fa-trophy"></i> <?php _e('Overall Performance', 'al-huffaz-portal'); ?></h2>
+                    <div style="display:flex;gap:24px;align-items:center;">
+                        <div style="text-align:right;">
+                            <div style="font-size:14px;opacity:0.9;margin-bottom:4px;"><?php _e('Total Marks', 'al-huffaz-portal'); ?></div>
+                            <div style="font-size:32px;font-weight:700;">${grandTotalObtained}/${grandTotalMarks}</div>
+                        </div>
+                        <div style="text-align:right;">
+                            <div style="font-size:14px;opacity:0.9;margin-bottom:4px;"><?php _e('Percentage', 'al-huffaz-portal'); ?></div>
+                            <div style="font-size:32px;font-weight:700;">${grandPct}%</div>
+                        </div>
+                        <div style="background:rgba(255,255,255,0.3);padding:12px 24px;border-radius:12px;">
+                            <div style="font-size:14px;opacity:0.9;margin-bottom:4px;"><?php _e('Grade', 'al-huffaz-portal'); ?></div>
+                            <div style="font-size:32px;font-weight:700;">${grandGrade}</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+
+        return html;
+    }
+
+    function getGrade(percentage) {
+        if (percentage >= 90) return 'A+';
+        if (percentage >= 80) return 'A';
+        if (percentage >= 70) return 'B';
+        if (percentage >= 60) return 'C';
+        if (percentage >= 50) return 'D';
+        return 'F';
+    }
+
+    function getGradeColor(percentage) {
+        if (percentage >= 80) return '#10b981'; // Green
+        if (percentage >= 60) return '#3b82f6'; // Blue
+        if (percentage >= 50) return '#f59e0b'; // Orange
+        return '#ef4444'; // Red
+    }
+
+    window.switchStudentTab = function(tabName) {
+        // Update tab buttons
+        document.querySelectorAll('.student-tab').forEach(btn => {
+            btn.style.borderBottom = '3px solid transparent';
+            btn.style.color = 'var(--ahp-text-muted)';
+        });
+        event.target.style.borderBottom = '3px solid var(--ahp-primary)';
+        event.target.style.color = 'var(--ahp-primary)';
+
+        // Update tab content
+        document.querySelectorAll('.student-tab-content').forEach(content => {
+            content.style.display = 'none';
+        });
+        document.getElementById('student-tab-' + tabName).style.display = 'block';
+    };
+
     window.deleteStudent = function(id) {
         if (!confirm('Are you sure you want to delete this student?')) return;
         fetch(ajaxUrl, {
