@@ -1029,6 +1029,25 @@ body.admin-bar .ahp-portal .ahp-top-header {
     .ahp-portal .ahp-stats { grid-template-columns: 1fr !important; }
     .ahp-portal .ahp-marks-row { grid-template-columns: 1fr !important; }
 }
+/* FIX #5: Pending count badges for navigation tabs */
+.ahp-badge {
+    display: inline-block;
+    background: linear-gradient(135deg, #f56565, #fc8181);
+    color: white;
+    font-size: 11px;
+    font-weight: 700;
+    padding: 2px 7px;
+    border-radius: 12px;
+    margin-left: 6px;
+    min-width: 18px;
+    text-align: center;
+    box-shadow: 0 2px 4px rgba(245, 101, 101, 0.3);
+    animation: ahp-badge-pulse 2s ease-in-out infinite;
+}
+@keyframes ahp-badge-pulse {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.1); }
+}
 </style>
 
 <div class="ahp-portal">
@@ -2987,7 +3006,12 @@ document.addEventListener('DOMContentLoaded', function() {
             btn.innerHTML = '<i class="fas fa-save"></i> <?php echo $is_edit ? "Update" : "Enroll"; ?> Student';
             if (data.success) {
                 showToast(data.data?.message || 'Student saved!', 'success');
-                setTimeout(() => showPanel('students'), 1000);
+                // FIX #1: Refresh dashboard stats after saving student
+                refreshDashboardStats();
+                setTimeout(() => {
+                    showPanel('students');
+                    loadStudents(1); // Refresh student list
+                }, 1000);
             } else {
                 showToast(data.data?.message || 'Error saving', 'error');
             }
@@ -3007,13 +3031,92 @@ document.addEventListener('DOMContentLoaded', function() {
         updateAttendance();
     }
 
+    // ==================== DASHBOARD STATS AUTO-REFRESH ====================
+    // FIX #1: Auto-refresh dashboard stats after any action
+    window.refreshDashboardStats = function() {
+        fetch(ajaxUrl, {
+            method: 'POST',
+            headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+            body: new URLSearchParams({action: 'alhuffaz_get_dashboard_stats', nonce})
+        })
+        .then(r => r.json())
+        .then(data => {
+            if (data.success && data.data) {
+                const stats = data.data;
+                // Update dashboard stat cards (if on dashboard panel)
+                const totalStudentsEl = document.querySelector('.ahp-stat:nth-child(1) .ahp-stat-value');
+                const totalSponsorsEl = document.querySelector('.ahp-stat:nth-child(2) .ahp-stat-value');
+                const hifzCountEl = document.querySelector('.ahp-stat:nth-child(3) .ahp-stat-value');
+                const nazraCountEl = document.querySelector('.ahp-stat:nth-child(4) .ahp-stat-value');
+                const inactiveSponsorsEl = document.querySelector('.ahp-stat:nth-child(5) .ahp-stat-value');
+
+                if (totalStudentsEl) totalStudentsEl.textContent = stats.total_students;
+                if (totalSponsorsEl) totalSponsorsEl.textContent = stats.total_sponsors;
+                if (hifzCountEl) hifzCountEl.textContent = stats.hifz_count;
+                if (nazraCountEl) nazraCountEl.textContent = stats.nazra_count;
+                if (inactiveSponsorsEl) inactiveSponsorsEl.textContent = stats.inactive_sponsors_count;
+
+                // Update pending badges on navigation tabs
+                updatePendingBadges(stats.pending_sponsor_users_count, stats.pending_payments_count);
+            }
+        })
+        .catch(err => console.error('Failed to refresh stats:', err));
+    };
+
+    // FIX #5: Update pending count badges on nav tabs
+    function updatePendingBadges(pendingSponsorUsers, pendingPayments) {
+        // Update Sponsor Users badge
+        const sponsorUsersTab = document.querySelector('[data-panel="sponsor-users"]');
+        if (sponsorUsersTab) {
+            let badge = sponsorUsersTab.querySelector('.ahp-badge');
+            if (pendingSponsorUsers > 0) {
+                if (!badge) {
+                    badge = document.createElement('span');
+                    badge.className = 'ahp-badge';
+                    sponsorUsersTab.appendChild(badge);
+                }
+                badge.textContent = pendingSponsorUsers;
+                badge.style.display = 'inline-block';
+            } else if (badge) {
+                badge.style.display = 'none';
+            }
+        }
+
+        // Update Payments badge
+        const paymentsTab = document.querySelector('[data-panel="payments"]');
+        if (paymentsTab) {
+            let badge = paymentsTab.querySelector('.ahp-badge');
+            if (pendingPayments > 0) {
+                if (!badge) {
+                    badge = document.createElement('span');
+                    badge.className = 'ahp-badge';
+                    paymentsTab.appendChild(badge);
+                }
+                badge.textContent = pendingPayments;
+                badge.style.display = 'inline-block';
+            } else if (badge) {
+                badge.style.display = 'none';
+            }
+        }
+    }
+
+    // Call refreshDashboardStats() on page load to set initial badges
+    refreshDashboardStats();
+
     // ==================== TOAST ====================
+    // FIX #6: Improved toast with longer duration and dismiss button
     window.showToast = function(msg, type) {
         const toast = document.getElementById('toast');
-        toast.textContent = msg;
+        toast.innerHTML = `
+            <span>${msg}</span>
+            <button onclick="this.parentElement.style.display='none'" style="margin-left:auto;background:none;border:none;color:inherit;cursor:pointer;font-size:18px;padding:0 8px;">&times;</button>
+        `;
         toast.className = 'ahp-toast ' + type;
-        toast.style.display = 'block';
-        setTimeout(() => toast.style.display = 'none', 3000);
+        toast.style.display = 'flex';
+        toast.style.alignItems = 'center';
+        toast.style.gap = '12px';
+        // Increased from 3s to 5s for better readability
+        setTimeout(() => toast.style.display = 'none', 5000);
     };
 
     // ==================== SPONSORS MANAGEMENT ====================
@@ -3515,6 +3618,9 @@ document.addEventListener('DOMContentLoaded', function() {
             if (data.success) {
                 showToast('<?php _e('Sponsor user approved successfully! Email sent.', 'al-huffaz-portal'); ?>', 'success');
 
+                // FIX #1: Refresh dashboard stats after approval
+                refreshDashboardStats();
+
                 // Auto-switch to "Approved" filter to show the approved user
                 const filterDropdown = document.getElementById('filterUserStatus');
                 if (filterDropdown) {
@@ -3560,6 +3666,8 @@ document.addEventListener('DOMContentLoaded', function() {
         .then(data => {
             if (data.success) {
                 showToast('<?php _e('Sponsor user rejected successfully', 'al-huffaz-portal'); ?>', 'success');
+                // FIX #1: Refresh dashboard stats after rejection
+                refreshDashboardStats();
                 loadSponsorUsers();
             } else {
                 showToast(data.data?.message || '<?php _e('Error rejecting user', 'al-huffaz-portal'); ?>', 'error');
@@ -3694,6 +3802,8 @@ document.addEventListener('DOMContentLoaded', function() {
         .then(data => {
             if (data.success) {
                 showToast(status === 'approved' ? '<?php _e('Payment verified!', 'al-huffaz-portal'); ?>' : '<?php _e('Payment rejected', 'al-huffaz-portal'); ?>', 'success');
+                // FIX #1: Refresh dashboard stats after payment verification
+                refreshDashboardStats();
                 loadPayments();
             } else {
                 showToast(data.data?.message || '<?php _e('Error processing payment', 'al-huffaz-portal'); ?>', 'error');

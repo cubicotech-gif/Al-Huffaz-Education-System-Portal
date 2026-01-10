@@ -2370,7 +2370,32 @@ body.admin-bar .sp-portal .sp-header {
         .then(data => {
             if (data.success) {
                 showToast('Sponsorship cancelled successfully', 'success');
-                setTimeout(() => location.reload(), 1500);
+                // FIX #4: Remove item from list without page reload - smoother UX
+                const sponsorshipCard = document.querySelector(`[data-sponsorship-id="${sponsorshipId}"]`);
+                if (sponsorshipCard) {
+                    sponsorshipCard.style.transition = 'opacity 0.3s, transform 0.3s';
+                    sponsorshipCard.style.opacity = '0';
+                    sponsorshipCard.style.transform = 'scale(0.9)';
+                    setTimeout(() => {
+                        sponsorshipCard.remove();
+                        // Update count badges
+                        const countEl = document.querySelector('.sp-stat-count');
+                        if (countEl) {
+                            const currentCount = parseInt(countEl.textContent) || 0;
+                            if (currentCount > 0) {
+                                countEl.textContent = currentCount - 1;
+                            }
+                        }
+                        // If no more sponsorships, show empty state
+                        const remaining = document.querySelectorAll('[data-sponsorship-id]').length;
+                        if (remaining === 0) {
+                            setTimeout(() => location.reload(), 500);
+                        }
+                    }, 300);
+                } else {
+                    // Fallback: reload if we can't find the card
+                    setTimeout(() => location.reload(), 1500);
+                }
             } else {
                 showToast(data.data?.message || 'Failed to cancel sponsorship', 'error');
             }
