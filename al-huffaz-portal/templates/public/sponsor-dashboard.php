@@ -112,7 +112,7 @@ $sponsor_country = $sponsor_id ? get_post_meta($sponsor_id, '_sponsor_country', 
 $sponsor_whatsapp = $sponsor_id ? get_post_meta($sponsor_id, '_sponsor_whatsapp', true) : '';
 $member_since = date_i18n(get_option('date_format'), strtotime($user->user_registered));
 
-// Get available students for sponsorship
+// CRITICAL FIX: Get available students for sponsorship using correct meta keys
 $available_students = get_posts(array(
     'post_type' => 'student',
     'post_status' => 'publish',
@@ -122,8 +122,8 @@ $available_students = get_posts(array(
         array('key' => 'donation_eligible', 'value' => 'yes'),
         array(
             'relation' => 'OR',
-            array('key' => '_is_sponsored', 'value' => 'no'),
-            array('key' => '_is_sponsored', 'compare' => 'NOT EXISTS'),
+            array('key' => 'already_sponsored', 'value' => 'yes', 'compare' => '!='),
+            array('key' => 'already_sponsored', 'compare' => 'NOT EXISTS'),
         ),
     ),
 ));
@@ -1689,9 +1689,13 @@ body.admin-bar .sp-portal .sp-header {
             <div class="sp-students-grid">
                 <?php foreach ($data['sponsorships'] as $s):
                     $student_id = $s['student_id'];
-                    $monthly_fee = get_post_meta($student_id, 'monthly_tuition_fee', true);
-                    $course_fee = get_post_meta($student_id, 'course_fee', true);
-                    $total_fee = floatval($monthly_fee) + floatval($course_fee);
+                    // CRITICAL FIX: Get all fee components
+                    $monthly_fee = floatval(get_post_meta($student_id, 'monthly_tuition_fee', true)) ?: 0;
+                    $course_fee = floatval(get_post_meta($student_id, 'course_fee', true)) ?: 0;
+                    $uniform_fee = floatval(get_post_meta($student_id, 'uniform_fee', true)) ?: 0;
+                    $annual_fee = floatval(get_post_meta($student_id, 'annual_fee', true)) ?: 0;
+                    $admission_fee = floatval(get_post_meta($student_id, 'admission_fee', true)) ?: 0;
+                    $one_time_fees = $course_fee + $uniform_fee + $annual_fee + $admission_fee;
                 ?>
                 <div class="sp-student-card">
                     <div class="sp-student-header">
@@ -1711,16 +1715,16 @@ body.admin-bar .sp-portal .sp-header {
                     <div class="sp-student-body">
                         <div class="sp-fee-grid">
                             <div class="sp-fee-item">
-                                <div class="sp-fee-label"><?php _e('Monthly', 'al-huffaz-portal'); ?></div>
-                                <div class="sp-fee-value">PKR <?php echo number_format($monthly_fee ?: 0); ?></div>
+                                <div class="sp-fee-label"><?php _e('Monthly Fee', 'al-huffaz-portal'); ?></div>
+                                <div class="sp-fee-value">PKR <?php echo number_format($monthly_fee); ?></div>
                             </div>
                             <div class="sp-fee-item">
-                                <div class="sp-fee-label"><?php _e('Course', 'al-huffaz-portal'); ?></div>
-                                <div class="sp-fee-value">PKR <?php echo number_format($course_fee ?: 0); ?></div>
+                                <div class="sp-fee-label"><?php _e('One-Time Fees', 'al-huffaz-portal'); ?></div>
+                                <div class="sp-fee-value">PKR <?php echo number_format($one_time_fees); ?></div>
                             </div>
                             <div class="sp-fee-item">
-                                <div class="sp-fee-label"><?php _e('Total', 'al-huffaz-portal'); ?></div>
-                                <div class="sp-fee-value">PKR <?php echo number_format($total_fee); ?></div>
+                                <div class="sp-fee-label"><?php _e('Your Plan', 'al-huffaz-portal'); ?></div>
+                                <div class="sp-fee-value"><?php echo esc_html(ucfirst($s['type'])); ?></div>
                             </div>
                         </div>
                     </div>
@@ -1761,9 +1765,22 @@ body.admin-bar .sp-portal .sp-header {
                     $photo_url = $photo_id ? wp_get_attachment_image_url($photo_id, 'medium') : '';
                     $grade = get_post_meta($student_id, 'grade_level', true);
                     $category = get_post_meta($student_id, 'islamic_studies_category', true);
-                    $monthly_fee = get_post_meta($student_id, 'monthly_tuition_fee', true);
-                    $course_fee = get_post_meta($student_id, 'course_fee', true);
-                    $total_fee = floatval($monthly_fee) + floatval($course_fee);
+
+                    // CRITICAL FIX: Get all fee components for proper calculation
+                    $monthly_fee = floatval(get_post_meta($student_id, 'monthly_tuition_fee', true)) ?: 0;
+                    $course_fee = floatval(get_post_meta($student_id, 'course_fee', true)) ?: 0;
+                    $uniform_fee = floatval(get_post_meta($student_id, 'uniform_fee', true)) ?: 0;
+                    $annual_fee = floatval(get_post_meta($student_id, 'annual_fee', true)) ?: 0;
+                    $admission_fee = floatval(get_post_meta($student_id, 'admission_fee', true)) ?: 0;
+
+                    // Calculate one-time fees total (paid once, not monthly)
+                    $one_time_fees = $course_fee + $uniform_fee + $annual_fee + $admission_fee;
+
+                    // Calculate correct sponsorship amounts
+                    $amount_1month = $monthly_fee;  // Just monthly tuition
+                    $amount_3months = $monthly_fee * 3;  // 3 months of tuition
+                    $amount_6months = $monthly_fee * 6;  // 6 months of tuition
+                    $amount_yearly = ($monthly_fee * 12) + $one_time_fees;  // Full year + one-time fees
                 ?>
                 <div class="sp-student-card">
                     <div class="sp-student-header">
@@ -1783,36 +1800,36 @@ body.admin-bar .sp-portal .sp-header {
                     <div class="sp-student-body">
                         <div class="sp-fee-grid">
                             <div class="sp-fee-item">
-                                <div class="sp-fee-label"><?php _e('Monthly', 'al-huffaz-portal'); ?></div>
-                                <div class="sp-fee-value">PKR <?php echo number_format($monthly_fee ?: 0); ?></div>
+                                <div class="sp-fee-label"><?php _e('Monthly Tuition', 'al-huffaz-portal'); ?></div>
+                                <div class="sp-fee-value">PKR <?php echo number_format($monthly_fee); ?>/mo</div>
                             </div>
                             <div class="sp-fee-item">
-                                <div class="sp-fee-label"><?php _e('Course', 'al-huffaz-portal'); ?></div>
-                                <div class="sp-fee-value">PKR <?php echo number_format($course_fee ?: 0); ?></div>
+                                <div class="sp-fee-label"><?php _e('One-Time Fees', 'al-huffaz-portal'); ?></div>
+                                <div class="sp-fee-value">PKR <?php echo number_format($one_time_fees); ?></div>
                             </div>
                             <div class="sp-fee-item">
-                                <div class="sp-fee-label"><?php _e('Total', 'al-huffaz-portal'); ?></div>
-                                <div class="sp-fee-value">PKR <?php echo number_format($total_fee); ?></div>
+                                <div class="sp-fee-label"><?php _e('Yearly Total', 'al-huffaz-portal'); ?></div>
+                                <div class="sp-fee-value">PKR <?php echo number_format($amount_yearly); ?></div>
                             </div>
                         </div>
                         <p class="sp-plan-title"><?php _e('Choose Sponsorship Plan', 'al-huffaz-portal'); ?></p>
                         <div class="sp-plan-grid">
-                            <button type="button" class="sp-plan-btn" onclick="openSponsorModal(<?php echo $student_id; ?>, '<?php echo esc_js($student->post_title); ?>', 1, <?php echo $total_fee; ?>)">
+                            <button type="button" class="sp-plan-btn" onclick="openSponsorModal(<?php echo $student_id; ?>, '<?php echo esc_js($student->post_title); ?>', 1, <?php echo $amount_1month; ?>)">
                                 <span class="sp-plan-duration"><?php _e('1 Month', 'al-huffaz-portal'); ?></span>
-                                <span class="sp-plan-amount">PKR <?php echo number_format($total_fee); ?></span>
+                                <span class="sp-plan-amount">PKR <?php echo number_format($amount_1month); ?></span>
                             </button>
-                            <button type="button" class="sp-plan-btn" onclick="openSponsorModal(<?php echo $student_id; ?>, '<?php echo esc_js($student->post_title); ?>', 3, <?php echo $total_fee * 3; ?>)">
+                            <button type="button" class="sp-plan-btn" onclick="openSponsorModal(<?php echo $student_id; ?>, '<?php echo esc_js($student->post_title); ?>', 3, <?php echo $amount_3months; ?>)">
                                 <span class="sp-plan-duration"><?php _e('3 Months', 'al-huffaz-portal'); ?></span>
-                                <span class="sp-plan-amount">PKR <?php echo number_format($total_fee * 3); ?></span>
+                                <span class="sp-plan-amount">PKR <?php echo number_format($amount_3months); ?></span>
                             </button>
-                            <button type="button" class="sp-plan-btn" onclick="openSponsorModal(<?php echo $student_id; ?>, '<?php echo esc_js($student->post_title); ?>', 6, <?php echo $total_fee * 6; ?>)">
+                            <button type="button" class="sp-plan-btn" onclick="openSponsorModal(<?php echo $student_id; ?>, '<?php echo esc_js($student->post_title); ?>', 6, <?php echo $amount_6months; ?>)">
                                 <span class="sp-plan-duration"><?php _e('6 Months', 'al-huffaz-portal'); ?></span>
-                                <span class="sp-plan-amount">PKR <?php echo number_format($total_fee * 6); ?></span>
+                                <span class="sp-plan-amount">PKR <?php echo number_format($amount_6months); ?></span>
                             </button>
-                            <button type="button" class="sp-plan-btn featured" onclick="openSponsorModal(<?php echo $student_id; ?>, '<?php echo esc_js($student->post_title); ?>', 12, <?php echo $total_fee * 12; ?>)">
+                            <button type="button" class="sp-plan-btn featured" onclick="openSponsorModal(<?php echo $student_id; ?>, '<?php echo esc_js($student->post_title); ?>', 12, <?php echo $amount_yearly; ?>)">
                                 <span class="sp-plan-badge"><?php _e('Best Value', 'al-huffaz-portal'); ?></span>
                                 <span class="sp-plan-duration"><?php _e('12 Months', 'al-huffaz-portal'); ?></span>
-                                <span class="sp-plan-amount">PKR <?php echo number_format($total_fee * 12); ?></span>
+                                <span class="sp-plan-amount">PKR <?php echo number_format($amount_yearly); ?></span>
                             </button>
                         </div>
                     </div>
