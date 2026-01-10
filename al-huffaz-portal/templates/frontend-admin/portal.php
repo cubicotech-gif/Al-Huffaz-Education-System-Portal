@@ -3148,6 +3148,10 @@ document.addEventListener('DOMContentLoaded', function() {
                 showToast(data.data?.message || '<?php _e('Student saved successfully!', 'al-huffaz-portal'); ?>', 'success');
                 // FIX #1: Refresh dashboard stats after saving student
                 refreshDashboardStats();
+                // Clean URL to remove edit parameter
+                if (window.history.replaceState) {
+                    window.history.replaceState({}, document.title, window.location.pathname);
+                }
                 setTimeout(() => {
                     showPanel('students');
                     loadStudents(1); // Refresh student list
@@ -4274,9 +4278,12 @@ document.addEventListener('DOMContentLoaded', function() {
     };
     <?php endif; ?>
 
-    // Auto-show panel based on URL
+    // Auto-show panel based on URL - ONLY if explicitly editing
     <?php if ($is_edit): ?>
     showPanel('add-student');
+    <?php else: ?>
+    // Ensure dashboard is shown by default on page load/refresh
+    showPanel('dashboard');
     <?php endif; ?>
 
     // ==================== KEYBOARD SHORTCUTS ====================
