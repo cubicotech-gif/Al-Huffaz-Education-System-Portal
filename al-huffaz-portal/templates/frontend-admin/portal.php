@@ -2839,8 +2839,15 @@ document.addEventListener('DOMContentLoaded', function() {
         document.getElementById('student-tab-' + tabName).style.display = 'block';
     };
 
-    window.deleteStudent = function(id) {
-        if (!confirm('Are you sure you want to delete this student?')) return;
+    // FIX #18: Enhanced delete with sponsorship check
+    window.deleteStudent = function(id, studentName) {
+        if (!confirm(`<?php _e('Are you sure you want to delete', 'al-huffaz-portal'); ?> ${studentName || 'this student'}?\n\n<?php _e('This action cannot be undone.', 'al-huffaz-portal'); ?>`)) {
+            return;
+        }
+
+        // Show loading toast
+        showToast('<?php _e('Checking for active sponsorships...', 'al-huffaz-portal'); ?>', 'info');
+
         fetch(ajaxUrl, {
             method: 'POST',
             headers: {'Content-Type': 'application/x-www-form-urlencoded'},
@@ -2848,8 +2855,25 @@ document.addEventListener('DOMContentLoaded', function() {
         })
         .then(r => r.json())
         .then(data => {
-            if (data.success) { showToast('Student deleted', 'success'); loadStudents(currentPage); }
-            else showToast(data.data?.message || 'Error', 'error');
+            if (data.success) {
+                showToast('<?php _e('Student deleted successfully', 'al-huffaz-portal'); ?>', 'success');
+                refreshDashboardStats();
+                loadStudents(currentPage);
+            } else {
+                // Check if error is due to active sponsorships
+                if (data.data?.has_sponsorships) {
+                    showToast(data.data.message, 'error');
+                    // Show helpful guidance
+                    setTimeout(() => {
+                        showToast(`<?php _e('Navigate to Active Sponsorships tab to unlink this student first.', 'al-huffaz-portal'); ?>`, 'info');
+                    }, 3000);
+                } else {
+                    showToast(data.data?.message || '<?php _e('Error deleting student', 'al-huffaz-portal'); ?>', 'error');
+                }
+            }
+        })
+        .catch(err => {
+            showToast('<?php _e('Network error. Please try again.', 'al-huffaz-portal'); ?>', 'error');
         });
     };
 
@@ -2993,19 +3017,68 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 
     // ==================== FORM SUBMIT ====================
+    // ==================== STUDENT FORM VALIDATION & SUBMISSION ====================
     document.getElementById('studentForm').addEventListener('submit', function(e) {
         e.preventDefault();
+
+        // FIX #17: Client-side validation before AJAX submission
+        const formData = new FormData(this);
+        const studentName = formData.get('student_name');
+        const grNumber = formData.get('gr_number');
+        const gender = formData.get('gender');
+
+        // Validate required fields
+        const validationErrors = [];
+
+        if (!studentName || studentName.trim().length < 2) {
+            validationErrors.push('<?php _e('Student name must be at least 2 characters', 'al-huffaz-portal'); ?>');
+        }
+
+        if (!grNumber || grNumber.trim().length === 0) {
+            validationErrors.push('<?php _e('GR Number is required', 'al-huffaz-portal'); ?>');
+        }
+
+        if (!gender) {
+            validationErrors.push('<?php _e('Please select student gender', 'al-huffaz-portal'); ?>');
+        }
+
+        // Email validation if provided
+        const guardianEmail = formData.get('guardian_email');
+        if (guardianEmail && guardianEmail.length > 0) {
+            const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+            if (!emailRegex.test(guardianEmail)) {
+                validationErrors.push('<?php _e('Guardian email format is invalid', 'al-huffaz-portal'); ?>');
+            }
+        }
+
+        // Show validation errors
+        if (validationErrors.length > 0) {
+            showToast(validationErrors.join(' • '), 'error');
+            // Scroll to first error
+            const firstInvalidInput = this.querySelector(':invalid, [required]:not([value])');
+            if (firstInvalidInput) {
+                firstInvalidInput.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                firstInvalidInput.focus();
+            }
+            return;
+        }
+
         const btn = document.getElementById('submitBtn');
         btn.disabled = true;
-        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Saving...';
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> <?php _e('Saving...', 'al-huffaz-portal'); ?>';
 
-        fetch(ajaxUrl, {method: 'POST', body: new FormData(this)})
-        .then(r => r.json())
+        fetch(ajaxUrl, {method: 'POST', body: formData})
+        .then(r => {
+            if (!r.ok && (r.status === 403 || r.status === 401)) {
+                throw new Error('SESSION_EXPIRED');
+            }
+            return r.json();
+        })
         .then(data => {
             btn.disabled = false;
             btn.innerHTML = '<i class="fas fa-save"></i> <?php echo $is_edit ? "Update" : "Enroll"; ?> Student';
             if (data.success) {
-                showToast(data.data?.message || 'Student saved!', 'success');
+                showToast(data.data?.message || '<?php _e('Student saved successfully!', 'al-huffaz-portal'); ?>', 'success');
                 // FIX #1: Refresh dashboard stats after saving student
                 refreshDashboardStats();
                 setTimeout(() => {
@@ -3013,7 +3086,18 @@ document.addEventListener('DOMContentLoaded', function() {
                     loadStudents(1); // Refresh student list
                 }, 1000);
             } else {
-                showToast(data.data?.message || 'Error saving', 'error');
+                showToast(data.data?.message || '<?php _e('Error saving student', 'al-huffaz-portal'); ?>', 'error');
+            }
+        })
+        .catch(err => {
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fas fa-save"></i> <?php echo $is_edit ? "Update" : "Enroll"; ?> Student';
+
+            if (err.message === 'SESSION_EXPIRED') {
+                showToast('<?php _e('Session expired. Refreshing page...', 'al-huffaz-portal'); ?>', 'error');
+                setTimeout(() => location.reload(), 2000);
+            } else {
+                showToast('<?php _e('Network error. Please check connection and retry.', 'al-huffaz-portal'); ?>', 'error');
             }
         });
     });
@@ -4052,8 +4136,78 @@ document.addEventListener('DOMContentLoaded', function() {
     <?php endif; ?>
 
     // ==================== KEYBOARD SHORTCUTS ====================
-    // FIX #12: Add keyboard shortcuts for power users
+    // FIX #12 & #20: Add keyboard shortcuts for power users + visual helper
+    let shortcutsModalOpen = false;
+
+    function showKeyboardShortcuts() {
+        if (shortcutsModalOpen) return;
+
+        const modal = document.createElement('div');
+        modal.id = 'keyboardShortcutsModal';
+        modal.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.7);z-index:99999;display:flex;align-items:center;justify-content:center;backdrop-filter:blur(4px);';
+
+        modal.innerHTML = `
+            <div style="background:white;border-radius:16px;padding:40px;max-width:600px;width:90%;box-shadow:0 25px 50px rgba(0,0,0,0.3);">
+                <h2 style="margin:0 0 24px;font-size:24px;color:#1f2937;display:flex;align-items:center;gap:12px;">
+                    <span style="font-size:32px;">⌨️</span> <?php _e('Keyboard Shortcuts', 'al-huffaz-portal'); ?>
+                </h2>
+                <div style="display:grid;gap:16px;">
+                    <div style="display:flex;justify-content:space-between;align-items:center;padding:12px;background:#f9fafb;border-radius:8px;">
+                        <span><?php _e('Save student form', 'al-huffaz-portal'); ?></span>
+                        <kbd style="background:#1f2937;color:white;padding:4px 12px;border-radius:6px;font-family:monospace;font-size:13px;">Ctrl+S</kbd>
+                    </div>
+                    <div style="display:flex;justify-content:space-between;align-items:center;padding:12px;background:#f9fafb;border-radius:8px;">
+                        <span><?php _e('Close modals', 'al-huffaz-portal'); ?></span>
+                        <kbd style="background:#1f2937;color:white;padding:4px 12px;border-radius:6px;font-family:monospace;font-size:13px;">Esc</kbd>
+                    </div>
+                    <div style="display:flex;justify-content:space-between;align-items:center;padding:12px;background:#f9fafb;border-radius:8px;">
+                        <span><?php _e('Focus search', 'al-huffaz-portal'); ?></span>
+                        <kbd style="background:#1f2937;color:white;padding:4px 12px;border-radius:6px;font-family:monospace;font-size:13px;">Ctrl+K</kbd>
+                    </div>
+                    <div style="display:flex;justify-content:space-between;align-items:center;padding:12px;background:#f9fafb;border-radius:8px;">
+                        <span><?php _e('Quick panel switching', 'al-huffaz-portal'); ?></span>
+                        <kbd style="background:#1f2937;color:white;padding:4px 12px;border-radius:6px;font-family:monospace;font-size:13px;">Ctrl+1-7</kbd>
+                    </div>
+                    <div style="display:flex;justify-content:space-between;align-items:center;padding:12px;background:#f9fafb;border-radius:8px;">
+                        <span><?php _e('Show this help', 'al-huffaz-portal'); ?></span>
+                        <kbd style="background:#1f2937;color:white;padding:4px 12px;border-radius:6px;font-family:monospace;font-size:13px;">?</kbd>
+                    </div>
+                </div>
+                <button onclick="this.closest('#keyboardShortcutsModal').remove();shortcutsModalOpen=false;"
+                    style="margin-top:24px;width:100%;padding:14px;background:linear-gradient(135deg,#6366f1,#8b5cf6);color:white;border:none;border-radius:8px;font-size:16px;font-weight:600;cursor:pointer;transition:transform 0.2s;">
+                    <?php _e('Got it!', 'al-huffaz-portal'); ?>
+                </button>
+            </div>
+        `;
+
+        document.body.appendChild(modal);
+        shortcutsModalOpen = true;
+
+        modal.addEventListener('click', function(e) {
+            if (e.target === modal) {
+                modal.remove();
+                shortcutsModalOpen = false;
+            }
+        });
+    }
+
     document.addEventListener('keydown', function(e) {
+        // ? - Show keyboard shortcuts help
+        if (e.key === '?' && !e.ctrlKey && !e.metaKey && !e.altKey) {
+            // Don't trigger if user is typing in an input
+            if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+            e.preventDefault();
+            showKeyboardShortcuts();
+            return;
+        }
+
+        // Esc - Close keyboard shortcuts modal first
+        if (e.key === 'Escape' && shortcutsModalOpen) {
+            document.getElementById('keyboardShortcutsModal')?.remove();
+            shortcutsModalOpen = false;
+            return;
+        }
+
         // Ctrl+S or Cmd+S - Save student form
         if ((e.ctrlKey || e.metaKey) && e.key === 's') {
             e.preventDefault();
@@ -4107,10 +4261,20 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 
     // Show keyboard shortcut hints on page load
+    // Show keyboard shortcut hints on page load
     console.log('%c⌨️ Al-Huffaz Portal Keyboard Shortcuts', 'font-size:14px;font-weight:bold;color:#6366f1');
+    console.log('%c💡 Press ? to see all shortcuts', 'font-size:12px;color:#6b7280;font-style:italic');
     console.log('%cCtrl+S', 'font-weight:bold', '- Save student form');
     console.log('%cEsc', 'font-weight:bold', '- Close modals');
     console.log('%cCtrl+K', 'font-weight:bold', '- Focus search');
     console.log('%cCtrl+1-7', 'font-weight:bold', '- Quick panel switch');
+
+    // FIX #20: Show subtle hint on first visit
+    if (!sessionStorage.getItem('ahp_shortcuts_seen')) {
+        setTimeout(() => {
+            showToast('<?php _e('💡 Tip: Press ? to see keyboard shortcuts', 'al-huffaz-portal'); ?>', 'info');
+            sessionStorage.setItem('ahp_shortcuts_seen', 'true');
+        }, 3000);
+    }
 });
 </script>
