@@ -1434,31 +1434,32 @@ class Ajax_Handler {
             wp_send_json_error(array('message' => __('This student is not available for sponsorship.', 'al-huffaz-portal')));
         }
 
-        // Create sponsorship record
+        // CRITICAL FIX: Use 'sponsorship' post type (not 'alhuffaz_sponsor') to match admin panel expectations
         $sponsorship_id = wp_insert_post(array(
-            'post_type'   => 'alhuffaz_sponsor',
+            'post_type'   => 'sponsorship',
             'post_title'  => sprintf('%s - %s', $user->display_name, $student->post_title),
-            'post_status' => 'publish',
+            'post_status' => 'draft', // Start as draft until admin verifies payment
+            'post_author' => $user_id,
         ));
 
         if (is_wp_error($sponsorship_id)) {
             wp_send_json_error(array('message' => __('Failed to create sponsorship record.', 'al-huffaz-portal')));
         }
 
-        // Save sponsorship meta
-        update_post_meta($sponsorship_id, '_student_id', $student_id);
-        update_post_meta($sponsorship_id, '_sponsor_user_id', $user_id);
-        update_post_meta($sponsorship_id, '_sponsor_name', $user->display_name);
-        update_post_meta($sponsorship_id, '_sponsor_email', $user->user_email);
-        update_post_meta($sponsorship_id, '_amount', $amount);
-        update_post_meta($sponsorship_id, '_sponsorship_type', $sponsorship_type);
-        update_post_meta($sponsorship_id, '_payment_method', $payment_method);
-        update_post_meta($sponsorship_id, '_transaction_id', $transaction_id);
-        update_post_meta($sponsorship_id, '_payment_date', $payment_date);
-        update_post_meta($sponsorship_id, '_status', 'pending');
-        update_post_meta($sponsorship_id, '_linked', 'no');
-        update_post_meta($sponsorship_id, '_notes', $notes);
-        update_post_meta($sponsorship_id, '_created_at', current_time('mysql'));
+        // CRITICAL FIX: Use correct meta keys without underscore prefix to match admin panel
+        update_post_meta($sponsorship_id, 'student_id', $student_id);
+        update_post_meta($sponsorship_id, 'sponsor_user_id', $user_id);
+        update_post_meta($sponsorship_id, 'sponsor_name', $user->display_name);
+        update_post_meta($sponsorship_id, 'sponsor_email', $user->user_email);
+        update_post_meta($sponsorship_id, 'amount', $amount);
+        update_post_meta($sponsorship_id, 'sponsorship_type', $sponsorship_type);
+        update_post_meta($sponsorship_id, 'payment_method', $payment_method);
+        update_post_meta($sponsorship_id, 'transaction_id', $transaction_id);
+        update_post_meta($sponsorship_id, 'payment_date', $payment_date);
+        update_post_meta($sponsorship_id, 'verification_status', 'pending');
+        update_post_meta($sponsorship_id, 'linked', 'no'); // Will be set to 'yes' when admin verifies
+        update_post_meta($sponsorship_id, 'notes', $notes);
+        update_post_meta($sponsorship_id, 'created_at', current_time('mysql'));
 
         // Handle payment screenshot upload
         if (!empty($_FILES['payment_screenshot']) && $_FILES['payment_screenshot']['error'] === UPLOAD_ERR_OK) {
@@ -1469,7 +1470,7 @@ class Ajax_Handler {
             $attachment_id = media_handle_upload('payment_screenshot', $sponsorship_id);
 
             if (!is_wp_error($attachment_id)) {
-                update_post_meta($sponsorship_id, '_payment_screenshot', $attachment_id);
+                update_post_meta($sponsorship_id, 'payment_screenshot', $attachment_id);
             }
         }
 
@@ -1535,7 +1536,7 @@ Please verify the payment in the admin portal.', 'al-huffaz-portal'),
         header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
         header('Pragma: no-cache');
 
-        // Build dashboard redirect URL with success parameters
+        // Build dashboard redirect URL with success parameters and cache busting
         $dashboard_page = get_page_by_path('sponsor-dashboard');
         $redirect_url = home_url('/sponsor-dashboard/'); // Fallback
 
@@ -1543,8 +1544,17 @@ Please verify the payment in the admin portal.', 'al-huffaz-portal'),
             $redirect_url = add_query_arg(array(
                 'payment_submitted' => 'success',
                 'open_tab' => 'payments',
-                'sponsorship_id' => $sponsorship_id
+                'sponsorship_id' => $sponsorship_id,
+                '_' => time() // Cache buster to force fresh data load
             ), get_permalink($dashboard_page->ID));
+        } else {
+            // Fallback with query params
+            $redirect_url = add_query_arg(array(
+                'payment_submitted' => 'success',
+                'open_tab' => 'payments',
+                'sponsorship_id' => $sponsorship_id,
+                '_' => time()
+            ), home_url('/sponsor-dashboard/'));
         }
 
         wp_send_json_success(array(
@@ -1722,48 +1732,63 @@ Thank you for your generosity!', 'al-huffaz-portal'),
             wp_send_json_error(array('message' => __('Invalid sponsorship ID.', 'al-huffaz-portal')));
         }
 
-        // Verify sponsorship exists
+        // CRITICAL FIX: Verify sponsorship exists (use correct post type)
         $sponsorship = get_post($sponsorship_id);
-        if (!$sponsorship || $sponsorship->post_type !== 'alhuffaz_sponsor') {
+        if (!$sponsorship || $sponsorship->post_type !== 'sponsorship') {
             wp_send_json_error(array('message' => __('Sponsorship not found.', 'al-huffaz-portal')));
         }
 
-        // Verify ownership - user must be the sponsor
-        $sponsor_user_id = get_post_meta($sponsorship_id, '_sponsor_user_id', true);
+        // Verify ownership - user must be the sponsor (use correct meta key)
+        $sponsor_user_id = get_post_meta($sponsorship_id, 'sponsor_user_id', true);
         if ($sponsor_user_id != $user_id) {
             wp_send_json_error(array('message' => __('You do not have permission to cancel this sponsorship.', 'al-huffaz-portal')));
         }
 
-        $student_id = get_post_meta($sponsorship_id, '_student_id', true);
+        $student_id = get_post_meta($sponsorship_id, 'student_id', true);
         $student = get_post($student_id);
         $student_name = $student ? $student->post_title : 'Unknown';
 
-        // Update sponsorship status to cancelled
-        update_post_meta($sponsorship_id, '_status', 'cancelled');
-        update_post_meta($sponsorship_id, '_linked', 'no');
-        update_post_meta($sponsorship_id, '_cancelled_at', current_time('mysql'));
-        update_post_meta($sponsorship_id, '_cancelled_by', 'sponsor');
+        // CRITICAL FIX: Update sponsorship status to cancelled (use correct meta keys)
+        update_post_meta($sponsorship_id, 'verification_status', 'cancelled');
+        update_post_meta($sponsorship_id, 'linked', 'no');
+        update_post_meta($sponsorship_id, 'cancelled_at', current_time('mysql'));
+        update_post_meta($sponsorship_id, 'cancelled_by', 'sponsor');
 
-        // Make student available again
-        update_post_meta($student_id, '_is_sponsored', 'no');
+        // Move to trash
+        wp_update_post(array(
+            'ID' => $sponsorship_id,
+            'post_status' => 'trash'
+        ));
+
+        // Make student available again (use correct meta key)
+        delete_post_meta($student_id, 'already_sponsored');
+        delete_post_meta($student_id, 'sponsored_date');
 
         // Check if there are any other active sponsorships for this student
         $other_active_sponsorships = get_posts(array(
-            'post_type' => 'alhuffaz_sponsor',
+            'post_type' => 'sponsorship',
+            'post_status' => 'publish',
             'posts_per_page' => -1,
             'post__not_in' => array($sponsorship_id),
             'meta_query' => array(
                 'relation' => 'AND',
-                array('key' => '_student_id', 'value' => $student_id),
-                array('key' => '_status', 'value' => 'approved'),
-                array('key' => '_linked', 'value' => 'yes'),
+                array('key' => 'student_id', 'value' => $student_id),
+                array('key' => 'linked', 'value' => 'yes'),
             ),
             'fields' => 'ids',
         ));
 
         // If there are other active sponsorships, keep student as sponsored
         if (!empty($other_active_sponsorships)) {
-            update_post_meta($student_id, '_is_sponsored', 'yes');
+            update_post_meta($student_id, 'already_sponsored', 'yes');
+            // Find the earliest sponsored date from remaining sponsorships
+            foreach ($other_active_sponsorships as $other_sp_id) {
+                $other_date = get_post_meta($other_sp_id, 'approved_date', true);
+                if ($other_date) {
+                    update_post_meta($student_id, 'sponsored_date', $other_date);
+                    break;
+                }
+            }
         }
 
         // Log activity
@@ -1822,8 +1847,28 @@ The student is now available for sponsorship again.', 'al-huffaz-portal'),
         header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
         header('Pragma: no-cache');
 
+        // Build dashboard redirect URL with cache busting
+        $dashboard_page = get_page_by_path('sponsor-dashboard');
+        $redirect_url = home_url('/sponsor-dashboard/'); // Fallback
+
+        if ($dashboard_page) {
+            $redirect_url = add_query_arg(array(
+                'cancellation' => 'success',
+                'open_tab' => 'sponsorships',
+                '_' => time() // Cache buster
+            ), get_permalink($dashboard_page->ID));
+        } else {
+            // Fallback with query params
+            $redirect_url = add_query_arg(array(
+                'cancellation' => 'success',
+                'open_tab' => 'sponsorships',
+                '_' => time()
+            ), home_url('/sponsor-dashboard/'));
+        }
+
         wp_send_json_success(array(
             'message' => sprintf(__('Sponsorship for %s has been cancelled. The student is now available for others to sponsor.', 'al-huffaz-portal'), $student_name),
+            'redirect_url' => $redirect_url,
         ));
     }
 
