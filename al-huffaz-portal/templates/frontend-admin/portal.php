@@ -3299,11 +3299,88 @@ document.addEventListener('DOMContentLoaded', function() {
         document.getElementById('sponsorModalBody').innerHTML = '<div class="ahp-loading"><div class="ahp-spinner"></div></div>';
         document.getElementById('sponsorModal').style.display = 'flex';
 
-        // Load sponsor details via AJAX (simplified for now)
-        document.getElementById('sponsorModalBody').innerHTML = `
-            <p>Loading sponsor details for ID: ${id}</p>
-            <p>Click Approve to approve this sponsorship and create the sponsor account.</p>
-        `;
+        // Load sponsor details via AJAX
+        fetch(ajaxUrl, {
+            method: 'POST',
+            headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+            body: new URLSearchParams({action: 'alhuffaz_get_sponsorship_details', nonce, sponsorship_id: id})
+        })
+        .then(r => r.json())
+        .then(data => {
+            if (data.success) {
+                const s = data.data;
+                const statusBadge = s.verification_status === 'pending' ? 'ahp-badge-warning' :
+                                   s.verification_status === 'approved' ? 'ahp-badge-success' : 'ahp-badge-danger';
+
+                document.getElementById('sponsorModalBody').innerHTML = `
+                    <div style="display:grid;gap:20px;">
+                        <div class="ahp-details-grid" style="display:grid;grid-template-columns:repeat(2, 1fr);gap:16px;">
+                            <div>
+                                <label style="display:block;font-size:12px;color:var(--ahp-text-muted);margin-bottom:4px;">Sponsor Name</label>
+                                <strong>${s.sponsor_name || '-'}</strong>
+                            </div>
+                            <div>
+                                <label style="display:block;font-size:12px;color:var(--ahp-text-muted);margin-bottom:4px;">Email</label>
+                                <strong>${s.sponsor_email || '-'}</strong>
+                            </div>
+                            <div>
+                                <label style="display:block;font-size:12px;color:var(--ahp-text-muted);margin-bottom:4px;">Student</label>
+                                <strong>${s.student_name || '-'}</strong>
+                            </div>
+                            <div>
+                                <label style="display:block;font-size:12px;color:var(--ahp-text-muted);margin-bottom:4px;">Amount</label>
+                                <strong>${s.amount || '-'}</strong>
+                            </div>
+                            <div>
+                                <label style="display:block;font-size:12px;color:var(--ahp-text-muted);margin-bottom:4px;">Payment Plan</label>
+                                <strong>${s.duration_months} Month${s.duration_months > 1 ? 's' : ''}</strong>
+                            </div>
+                            <div>
+                                <label style="display:block;font-size:12px;color:var(--ahp-text-muted);margin-bottom:4px;">Payment Method</label>
+                                <strong>${s.payment_method ? s.payment_method.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase()) : '-'}</strong>
+                            </div>
+                            <div>
+                                <label style="display:block;font-size:12px;color:var(--ahp-text-muted);margin-bottom:4px;">Transaction ID</label>
+                                <strong>${s.transaction_id || '-'}</strong>
+                            </div>
+                            <div>
+                                <label style="display:block;font-size:12px;color:var(--ahp-text-muted);margin-bottom:4px;">Payment Date</label>
+                                <strong>${s.payment_date || '-'}</strong>
+                            </div>
+                            <div>
+                                <label style="display:block;font-size:12px;color:var(--ahp-text-muted);margin-bottom:4px;">Status</label>
+                                <span class="ahp-badge ${statusBadge}">${(s.verification_status || '-').charAt(0).toUpperCase() + (s.verification_status || '-').slice(1)}</span>
+                            </div>
+                            <div>
+                                <label style="display:block;font-size:12px;color:var(--ahp-text-muted);margin-bottom:4px;">Submitted</label>
+                                <strong>${s.created_at || '-'}</strong>
+                            </div>
+                        </div>
+                        ${s.payment_screenshot ? `
+                        <div>
+                            <label style="display:block;font-size:12px;color:var(--ahp-text-muted);margin-bottom:8px;">Payment Screenshot</label>
+                            <img src="${s.payment_screenshot}" style="max-width:100%;border-radius:8px;border:1px solid var(--ahp-border);" alt="Payment proof" onclick="window.open('${s.payment_screenshot}', '_blank')">
+                        </div>
+                        ` : ''}
+                        ${s.notes ? `
+                        <div>
+                            <label style="display:block;font-size:12px;color:var(--ahp-text-muted);margin-bottom:4px;">Notes</label>
+                            <p style="margin:0;padding:12px;background:var(--ahp-bg);border-radius:8px;">${s.notes}</p>
+                        </div>
+                        ` : ''}
+                    </div>
+                `;
+            } else {
+                document.getElementById('sponsorModalBody').innerHTML = `
+                    <p style="text-align:center;color:var(--ahp-text-muted);">${data.data?.message || 'Error loading details'}</p>
+                `;
+            }
+        })
+        .catch(() => {
+            document.getElementById('sponsorModalBody').innerHTML = `
+                <p style="text-align:center;color:var(--ahp-text-muted);">Error loading sponsorship details</p>
+            `;
+        });
     };
 
     window.closeSponsorModal = function() {
