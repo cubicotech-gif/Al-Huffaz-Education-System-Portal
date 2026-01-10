@@ -88,6 +88,10 @@ class Ajax_Handler {
         add_action('wp_ajax_alhuffaz_get_notifications', array($this, 'get_notifications'));
         add_action('wp_ajax_alhuffaz_mark_notification_read', array($this, 'mark_notification_read'));
         add_action('wp_ajax_alhuffaz_mark_all_notifications_read', array($this, 'mark_all_notifications_read'));
+
+        // Activity log and recovery AJAX actions
+        add_action('wp_ajax_alhuffaz_get_activity_logs', array($this, 'get_activity_logs'));
+        add_action('wp_ajax_alhuffaz_restore_item', array($this, 'restore_item'));
     }
 
     /**
@@ -3399,5 +3403,170 @@ With gratitude,
         }
 
         wp_send_json_success(array('payments' => $payments));
+    }
+
+    /**
+     * Get activity logs (admin only)
+     */
+    public function get_activity_logs() {
+        $this->verify_admin_nonce();
+
+        if (!current_user_can('manage_options') && !current_user_can('alhuffaz_manage_students')) {
+            wp_send_json_error(array('message' => __('Permission denied.', 'al-huffaz-portal')));
+        }
+
+        global $wpdb;
+        $table = $wpdb->prefix . 'alhuffaz_activity_log';
+
+        $page = isset($_POST['page']) ? intval($_POST['page']) : 1;
+        $per_page = isset($_POST['per_page']) ? intval($_POST['per_page']) : 50;
+        $filter_action = isset($_POST['filter_action']) ? sanitize_text_field($_POST['filter_action']) : '';
+        $filter_type = isset($_POST['filter_type']) ? sanitize_text_field($_POST['filter_type']) : '';
+
+        $offset = ($page - 1) * $per_page;
+
+        // Build query
+        $where = array('1=1');
+        if ($filter_action) {
+            $where[] = $wpdb->prepare('action = %s', $filter_action);
+        }
+        if ($filter_type) {
+            $where[] = $wpdb->prepare('object_type = %s', $filter_type);
+        }
+
+        $where_clause = implode(' AND ', $where);
+
+        // Get total count
+        $total = $wpdb->get_var("SELECT COUNT(*) FROM $table WHERE $where_clause");
+
+        // Get logs
+        $logs_data = $wpdb->get_results($wpdb->prepare(
+            "SELECT * FROM $table WHERE $where_clause ORDER BY created_at DESC LIMIT %d OFFSET %d",
+            $per_page,
+            $offset
+        ));
+
+        $logs = array();
+        foreach ($logs_data as $log) {
+            $user = get_userdata($log->user_id);
+            $username = $user ? $user->display_name : __('Unknown User', 'al-huffaz-portal');
+
+            // Get object name based on type
+            $object_name = '';
+            switch ($log->object_type) {
+                case 'student':
+                    $post = get_post($log->object_id);
+                    $object_name = $post ? $post->post_title : sprintf(__('Student #%d', 'al-huffaz-portal'), $log->object_id);
+                    break;
+                case 'sponsorship':
+                    $student_id = get_post_meta($log->object_id, 'student_id', true);
+                    $student = get_post($student_id);
+                    $sponsor_name = get_post_meta($log->object_id, 'sponsor_name', true);
+                    $object_name = $sponsor_name && $student ? sprintf('%s → %s', $sponsor_name, $student->post_title) : sprintf(__('Sponsorship #%d', 'al-huffaz-portal'), $log->object_id);
+                    break;
+                case 'user':
+                    $u = get_userdata($log->object_id);
+                    $object_name = $u ? $u->display_name : sprintf(__('User #%d', 'al-huffaz-portal'), $log->object_id);
+                    break;
+                case 'payment':
+                    $object_name = sprintf(__('Payment #%d', 'al-huffaz-portal'), $log->object_id);
+                    break;
+                default:
+                    $object_name = sprintf(__('%s #%d', 'al-huffaz-portal'), ucfirst($log->object_type), $log->object_id);
+            }
+
+            // Check if item can be restored (in trash)
+            $can_restore = false;
+            if ($log->object_type === 'student' || $log->object_type === 'sponsorship') {
+                $post = get_post($log->object_id);
+                if ($post && $post->post_status === 'trash') {
+                    $can_restore = true;
+                }
+            }
+
+            $logs[] = array(
+                'id' => $log->id,
+                'user' => $username,
+                'user_id' => $log->user_id,
+                'action' => $log->action,
+                'object_type' => $log->object_type,
+                'object_id' => $log->object_id,
+                'object_name' => $object_name,
+                'details' => $log->details,
+                'ip_address' => $log->ip_address,
+                'created_at' => $log->created_at,
+                'time_ago' => human_time_diff(strtotime($log->created_at), current_time('timestamp')) . ' ' . __('ago', 'al-huffaz-portal'),
+                'can_restore' => $can_restore,
+            );
+        }
+
+        wp_send_json_success(array(
+            'logs' => $logs,
+            'total' => $total,
+            'page' => $page,
+            'per_page' => $per_page,
+            'total_pages' => ceil($total / $per_page),
+        ));
+    }
+
+    /**
+     * Restore deleted item from trash (admin only)
+     */
+    public function restore_item() {
+        $this->verify_admin_nonce();
+
+        if (!current_user_can('manage_options') && !current_user_can('alhuffaz_manage_students')) {
+            wp_send_json_error(array('message' => __('Permission denied.', 'al-huffaz-portal')));
+        }
+
+        $item_id = isset($_POST['item_id']) ? intval($_POST['item_id']) : 0;
+        $item_type = isset($_POST['item_type']) ? sanitize_text_field($_POST['item_type']) : '';
+
+        if (!$item_id || !$item_type) {
+            wp_send_json_error(array('message' => __('Invalid item.', 'al-huffaz-portal')));
+        }
+
+        // Only allow restoring posts (students, sponsorships)
+        if (!in_array($item_type, array('student', 'sponsorship'))) {
+            wp_send_json_error(array('message' => __('This item type cannot be restored.', 'al-huffaz-portal')));
+        }
+
+        $post = get_post($item_id);
+        if (!$post) {
+            wp_send_json_error(array('message' => __('Item not found.', 'al-huffaz-portal')));
+        }
+
+        if ($post->post_status !== 'trash') {
+            wp_send_json_error(array('message' => __('Item is not in trash.', 'al-huffaz-portal')));
+        }
+
+        // Restore the post
+        $result = wp_update_post(array(
+            'ID' => $item_id,
+            'post_status' => 'draft', // Restore to draft status for review
+        ));
+
+        if (is_wp_error($result)) {
+            wp_send_json_error(array('message' => $result->get_error_message()));
+        }
+
+        // If restoring a sponsorship, update verification status
+        if ($item_type === 'sponsorship') {
+            update_post_meta($item_id, 'verification_status', 'pending');
+            update_post_meta($item_id, 'restored_at', current_time('mysql'));
+            update_post_meta($item_id, 'restored_by', get_current_user_id());
+        }
+
+        // Log the restoration
+        Helpers::log_activity(
+            'restore_' . $item_type,
+            $item_type,
+            $item_id,
+            sprintf(__('%s restored from trash', 'al-huffaz-portal'), ucfirst($item_type))
+        );
+
+        wp_send_json_success(array(
+            'message' => sprintf(__('%s restored successfully.', 'al-huffaz-portal'), ucfirst($item_type)),
+        ));
     }
 }
