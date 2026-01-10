@@ -59,7 +59,7 @@ class Login_Redirects {
             in_array('alhuffaz_staff', $user_roles) ||
             in_array('alhuffaz_teacher', $user_roles) ||
             in_array('administrator', $user_roles)) {
-            return home_url('/admin-portal/');
+            return Helpers::get_admin_portal_url();
         }
 
         // Sponsor → Check approval status
@@ -68,19 +68,19 @@ class Login_Redirects {
 
             // If approved or empty (legacy accounts), go to dashboard
             if ($status === 'approved' || empty($status)) {
-                return home_url('/sponsor-dashboard/');
+                return Helpers::get_sponsor_dashboard_url();
             }
 
             // If pending, logout and redirect to login with message
             if ($status === 'pending_approval') {
                 wp_logout();
-                return home_url('/login/?login=pending');
+                return add_query_arg('login', 'pending', Helpers::get_login_url());
             }
 
             // If rejected, logout and redirect to login with message
             if ($status === 'rejected') {
                 wp_logout();
-                return home_url('/login/?login=rejected');
+                return add_query_arg('login', 'rejected', Helpers::get_login_url());
             }
         }
 
@@ -93,7 +93,7 @@ class Login_Redirects {
      * Redirect all logouts to unified login page
      */
     public function handle_logout_redirect() {
-        wp_safe_redirect(home_url('/login/?logout=success'));
+        wp_safe_redirect(add_query_arg('logout', 'success', Helpers::get_login_url()));
         exit;
     }
 
@@ -113,7 +113,7 @@ class Login_Redirects {
         // Check if user is a sponsor
         if (in_array('alhuffaz_sponsor', $user->roles)) {
             // Redirect to sponsor dashboard
-            wp_safe_redirect(home_url('/sponsor-dashboard/'));
+            wp_safe_redirect(Helpers::get_sponsor_dashboard_url());
             exit;
         }
     }
@@ -187,14 +187,18 @@ class Login_Redirects {
      * @return string Dashboard URL
      */
     public static function get_dashboard_url_by_role($role) {
+        $admin_url = Helpers::get_admin_portal_url();
+        $sponsor_url = Helpers::get_sponsor_dashboard_url();
+        $login_url = Helpers::get_login_url();
+
         $role_urls = array(
-            'alhuffaz_admin'   => home_url('/admin-portal/'),
-            'alhuffaz_staff'   => home_url('/admin-portal/'),
-            'alhuffaz_teacher' => home_url('/admin-portal/'),
-            'alhuffaz_sponsor' => home_url('/sponsor-dashboard/'),
-            'administrator'    => home_url('/admin-portal/'),
+            'alhuffaz_admin'   => $admin_url,
+            'alhuffaz_staff'   => $admin_url,
+            'alhuffaz_teacher' => $admin_url,
+            'alhuffaz_sponsor' => $sponsor_url,
+            'administrator'    => $admin_url,
         );
 
-        return isset($role_urls[$role]) ? $role_urls[$role] : home_url('/login/');
+        return isset($role_urls[$role]) ? $role_urls[$role] : $login_url;
     }
 }
