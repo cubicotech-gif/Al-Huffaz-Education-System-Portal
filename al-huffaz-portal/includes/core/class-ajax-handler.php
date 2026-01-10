@@ -37,6 +37,7 @@ class Ajax_Handler {
         add_action('wp_ajax_alhuffaz_link_sponsor', array($this, 'link_sponsor'));
         add_action('wp_ajax_alhuffaz_unlink_sponsor', array($this, 'unlink_sponsor'));
         add_action('wp_ajax_alhuffaz_get_sponsorships', array($this, 'get_sponsorships'));
+        add_action('wp_ajax_alhuffaz_get_sponsorship_details', array($this, 'get_sponsorship_details'));
 
         add_action('wp_ajax_alhuffaz_verify_payment', array($this, 'verify_payment'));
         add_action('wp_ajax_alhuffaz_get_payments', array($this, 'get_payments'));
@@ -819,31 +820,38 @@ class Ajax_Handler {
             wp_send_json_error(array('message' => __('Invalid sponsorship ID.', 'al-huffaz-portal')));
         }
 
-        update_post_meta($sponsorship_id, '_status', 'approved');
-        update_post_meta($sponsorship_id, '_verified_by', get_current_user_id());
-        update_post_meta($sponsorship_id, '_verified_at', current_time('mysql'));
+        // CRITICAL FIX: Use correct meta keys without underscore prefix
+        update_post_meta($sponsorship_id, 'verification_status', 'approved');
+        update_post_meta($sponsorship_id, 'verified_by', get_current_user_id());
+        update_post_meta($sponsorship_id, 'verified_at', current_time('mysql'));
 
         // Automatically link sponsor to student on approval
-        update_post_meta($sponsorship_id, '_linked', 'yes');
+        update_post_meta($sponsorship_id, 'linked', 'yes');
 
-        // CRITICAL FIX: Mark student as sponsored (use correct meta key)
-        $student_id = get_post_meta($sponsorship_id, '_student_id', true);
+        // Mark student as sponsored (use correct meta key)
+        $student_id = get_post_meta($sponsorship_id, 'student_id', true);
         if ($student_id) {
             update_post_meta($student_id, 'already_sponsored', 'yes');
             update_post_meta($student_id, 'sponsored_date', current_time('mysql'));
         }
 
+        // Update post status to published
+        wp_update_post(array(
+            'ID' => $sponsorship_id,
+            'post_status' => 'publish'
+        ));
+
         // Log activity
         Helpers::log_activity('approve_sponsorship', 'sponsorship', $sponsorship_id, 'Sponsorship approved and student linked');
 
         // Sync with Ultimate Member if sponsor has user account
-        $sponsor_user_id = get_post_meta($sponsorship_id, '_sponsor_user_id', true);
+        $sponsor_user_id = get_post_meta($sponsorship_id, 'sponsor_user_id', true);
         if ($sponsor_user_id) {
             UM_Integration::approve_sponsor_in_um($sponsor_user_id);
         }
 
         // Send notification email
-        $sponsor_email = get_post_meta($sponsorship_id, '_sponsor_email', true);
+        $sponsor_email = get_post_meta($sponsorship_id, 'sponsor_email', true);
         if ($sponsor_email) {
             Helpers::send_notification(
                 $sponsor_email,
@@ -890,11 +898,14 @@ class Ajax_Handler {
             wp_send_json_error(array('message' => __('Invalid sponsorship ID.', 'al-huffaz-portal')));
         }
 
-        update_post_meta($sponsorship_id, '_status', 'rejected');
-        update_post_meta($sponsorship_id, '_rejection_reason', $reason);
+        // CRITICAL FIX: Use correct meta keys without underscore prefix
+        update_post_meta($sponsorship_id, 'verification_status', 'rejected');
+        update_post_meta($sponsorship_id, 'rejection_reason', $reason);
+        update_post_meta($sponsorship_id, 'rejected_by', get_current_user_id());
+        update_post_meta($sponsorship_id, 'rejected_at', current_time('mysql'));
 
         // Sync with Ultimate Member if sponsor has user account
-        $sponsor_user_id = get_post_meta($sponsorship_id, '_sponsor_user_id', true);
+        $sponsor_user_id = get_post_meta($sponsorship_id, 'sponsor_user_id', true);
         if ($sponsor_user_id) {
             UM_Integration::reject_sponsor_in_um($sponsor_user_id);
         }
@@ -921,7 +932,16 @@ class Ajax_Handler {
             wp_send_json_error(array('message' => __('Invalid sponsorship ID.', 'al-huffaz-portal')));
         }
 
-        update_post_meta($sponsorship_id, '_linked', 'yes');
+        // CRITICAL FIX: Use correct meta keys without underscore prefix
+        update_post_meta($sponsorship_id, 'linked', 'yes');
+        update_post_meta($sponsorship_id, 'linked_at', current_time('mysql'));
+
+        // Mark student as sponsored
+        $student_id = get_post_meta($sponsorship_id, 'student_id', true);
+        if ($student_id) {
+            update_post_meta($student_id, 'already_sponsored', 'yes');
+            update_post_meta($student_id, 'sponsored_date', current_time('mysql'));
+        }
 
         // Log activity
         Helpers::log_activity('link_sponsor', 'sponsorship', $sponsorship_id, 'Sponsor linked to student');
@@ -945,11 +965,18 @@ class Ajax_Handler {
             wp_send_json_error(array('message' => __('Invalid sponsorship ID.', 'al-huffaz-portal')));
         }
 
-        // Unlink the sponsorship
-        update_post_meta($sponsorship_id, '_linked', 'no');
+        // CRITICAL FIX: Use correct meta keys without underscore prefix
+        update_post_meta($sponsorship_id, 'linked', 'no');
+
+        // Make student available again
+        $student_id = get_post_meta($sponsorship_id, 'student_id', true);
+        if ($student_id) {
+            delete_post_meta($student_id, 'already_sponsored');
+            delete_post_meta($student_id, 'sponsored_date');
+        }
 
         // Clear cache for real-time update
-        $sponsor_user_id = get_post_meta($sponsorship_id, '_sponsor_user_id', true);
+        $sponsor_user_id = get_post_meta($sponsorship_id, 'sponsor_user_id', true);
         if ($sponsor_user_id) {
             wp_cache_delete('sponsor_dashboard_' . $sponsor_user_id, 'alhuffaz');
             wp_cache_flush();
@@ -1022,6 +1049,53 @@ class Ajax_Handler {
             'total_pages'  => $query->max_num_pages,
             'page'         => $page,
         ));
+    }
+
+    /**
+     * Get sponsorship details for modal view
+     */
+    public function get_sponsorship_details() {
+        $this->verify_admin_nonce();
+
+        $sponsorship_id = isset($_POST['sponsorship_id']) ? intval($_POST['sponsorship_id']) : 0;
+
+        if (!$sponsorship_id) {
+            wp_send_json_error(array('message' => __('Invalid sponsorship ID.', 'al-huffaz-portal')));
+        }
+
+        $sponsorship = get_post($sponsorship_id);
+
+        if (!$sponsorship || $sponsorship->post_type !== 'sponsorship') {
+            wp_send_json_error(array('message' => __('Sponsorship not found.', 'al-huffaz-portal')));
+        }
+
+        // Get student details
+        $student_id = get_post_meta($sponsorship_id, 'student_id', true);
+        $student = get_post($student_id);
+
+        // Get payment screenshot
+        $screenshot_id = get_post_meta($sponsorship_id, 'payment_screenshot', true);
+        $screenshot_url = $screenshot_id ? wp_get_attachment_url($screenshot_id) : '';
+
+        $details = array(
+            'id'                  => $sponsorship_id,
+            'sponsor_name'        => get_post_meta($sponsorship_id, 'sponsor_name', true),
+            'sponsor_email'       => get_post_meta($sponsorship_id, 'sponsor_email', true),
+            'student_name'        => $student ? $student->post_title : '-',
+            'amount'              => Helpers::format_currency(get_post_meta($sponsorship_id, 'amount', true)),
+            'duration_months'     => get_post_meta($sponsorship_id, 'duration_months', true),
+            'sponsorship_type'    => get_post_meta($sponsorship_id, 'sponsorship_type', true),
+            'payment_method'      => get_post_meta($sponsorship_id, 'payment_method', true),
+            'transaction_id'      => get_post_meta($sponsorship_id, 'transaction_id', true),
+            'payment_date'        => Helpers::format_date(get_post_meta($sponsorship_id, 'payment_date', true)),
+            'verification_status' => get_post_meta($sponsorship_id, 'verification_status', true),
+            'linked'              => get_post_meta($sponsorship_id, 'linked', true) === 'yes',
+            'notes'               => get_post_meta($sponsorship_id, 'notes', true),
+            'payment_screenshot'  => $screenshot_url,
+            'created_at'          => Helpers::format_date($sponsorship->post_date),
+        );
+
+        wp_send_json_success($details);
     }
 
     /**
