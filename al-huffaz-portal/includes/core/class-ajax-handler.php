@@ -560,6 +560,7 @@ class Ajax_Handler {
         $this->verify_admin_nonce();
 
         $student_id = isset($_POST['student_id']) ? intval($_POST['student_id']) : 0;
+        $force = isset($_POST['force']) && $_POST['force'] === 'true'; // Allow force delete
 
         if (!$student_id) {
             wp_send_json_error(array('message' => __('Invalid student ID.', 'al-huffaz-portal')));
@@ -569,6 +570,38 @@ class Ajax_Handler {
 
         if (!$student || $student->post_type !== 'student') {
             wp_send_json_error(array('message' => __('Student not found.', 'al-huffaz-portal')));
+        }
+
+        // FIX #18: Check for active sponsorships before delete
+        $active_sponsorships = get_posts(array(
+            'post_type' => 'alhuffaz_sponsor',
+            'posts_per_page' => -1,
+            'meta_query' => array(
+                'relation' => 'AND',
+                array(
+                    'key' => '_student_id',
+                    'value' => $student_id,
+                    'compare' => '='
+                ),
+                array(
+                    'key' => '_status',
+                    'value' => 'approved',
+                    'compare' => '='
+                )
+            ),
+            'fields' => 'ids'
+        ));
+
+        if (!empty($active_sponsorships) && !$force) {
+            // Return warning with sponsorship count
+            wp_send_json_error(array(
+                'message' => sprintf(
+                    __('Cannot delete: Student has %d active sponsorship(s). Please cancel or unlink sponsorships first.', 'al-huffaz-portal'),
+                    count($active_sponsorships)
+                ),
+                'has_sponsorships' => true,
+                'sponsorship_count' => count($active_sponsorships)
+            ));
         }
 
         // Delete student
