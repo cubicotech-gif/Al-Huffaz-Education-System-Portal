@@ -1950,7 +1950,7 @@ body.admin-bar .sp-portal .sp-header {
                         <input type="hidden" name="nonce" value="<?php echo $nonce; ?>">
                         <input type="hidden" id="proofStudentId" name="student_id">
                         <input type="hidden" id="proofAmountVal" name="amount">
-                        <input type="hidden" id="proofDurationVal" name="sponsorship_type">
+                        <input type="hidden" id="proofDurationVal" name="duration_months">
 
                         <div class="sp-alert sp-alert-info">
                             <i class="fas fa-lightbulb"></i>
@@ -2022,7 +2022,7 @@ body.admin-bar .sp-portal .sp-header {
 
             <div class="sp-card">
                 <div class="sp-card-body" style="padding: 0;">
-                    <?php if (empty($data['payments'])): ?>
+                    <?php if (empty($data['payment_history'])): ?>
                     <div class="sp-empty">
                         <i class="fas fa-receipt"></i>
                         <h3><?php _e('No Payment History', 'al-huffaz-portal'); ?></h3>
@@ -2035,16 +2035,18 @@ body.admin-bar .sp-portal .sp-header {
                                 <tr>
                                     <th><?php _e('Date', 'al-huffaz-portal'); ?></th>
                                     <th><?php _e('Student', 'al-huffaz-portal'); ?></th>
+                                    <th><?php _e('Plan', 'al-huffaz-portal'); ?></th>
                                     <th><?php _e('Amount', 'al-huffaz-portal'); ?></th>
                                     <th><?php _e('Method', 'al-huffaz-portal'); ?></th>
                                     <th><?php _e('Status', 'al-huffaz-portal'); ?></th>
                                 </tr>
                             </thead>
                             <tbody>
-                                <?php foreach ($data['payments'] as $payment): ?>
+                                <?php foreach ($data['payment_history'] as $payment): ?>
                                 <tr>
-                                    <td><?php echo esc_html(date_i18n(get_option('date_format'), strtotime($payment['date']))); ?></td>
-                                    <td><?php echo esc_html($payment['student_name']); ?></td>
+                                    <td><?php echo esc_html($payment['date']); ?></td>
+                                    <td><?php echo esc_html($payment['student']); ?></td>
+                                    <td><?php echo esc_html($payment['duration'] . ' ' . ($payment['duration'] == 1 ? 'Month' : 'Months')); ?></td>
                                     <td><strong>PKR <?php echo number_format($payment['amount']); ?></strong></td>
                                     <td><?php echo esc_html(ucfirst(str_replace('_', ' ', $payment['method']))); ?></td>
                                     <td><span class="sp-status <?php echo esc_attr($payment['status']); ?>"><?php echo esc_html(ucfirst($payment['status'])); ?></span></td>

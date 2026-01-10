@@ -1414,9 +1414,18 @@ class Ajax_Handler {
         $amount = isset($_POST['amount']) ? floatval($_POST['amount']) : 0;
         $payment_method = isset($_POST['payment_method']) ? sanitize_text_field($_POST['payment_method']) : '';
         $transaction_id = isset($_POST['transaction_id']) ? sanitize_text_field($_POST['transaction_id']) : '';
-        $sponsorship_type = isset($_POST['sponsorship_type']) ? sanitize_text_field($_POST['sponsorship_type']) : 'monthly';
+        $duration_months = isset($_POST['duration_months']) ? intval($_POST['duration_months']) : 1;
         $payment_date = isset($_POST['payment_date']) ? sanitize_text_field($_POST['payment_date']) : current_time('Y-m-d');
         $notes = isset($_POST['notes']) ? sanitize_textarea_field($_POST['notes']) : '';
+
+        // CRITICAL FIX: Calculate sponsorship_type based on duration_months (payment plan selected)
+        $sponsorship_type_map = array(
+            1  => 'monthly',
+            3  => 'quarterly',
+            6  => 'biannual',
+            12 => 'yearly',
+        );
+        $sponsorship_type = isset($sponsorship_type_map[$duration_months]) ? $sponsorship_type_map[$duration_months] : 'monthly';
 
         // Transaction ID is optional - only validate student, amount, and payment method
         if (!$student_id || !$amount || !$payment_method) {
@@ -1458,7 +1467,8 @@ class Ajax_Handler {
         update_post_meta($sponsorship_id, 'sponsor_name', $user->display_name);
         update_post_meta($sponsorship_id, 'sponsor_email', $user->user_email);
         update_post_meta($sponsorship_id, 'amount', $amount);
-        update_post_meta($sponsorship_id, 'sponsorship_type', $sponsorship_type);
+        update_post_meta($sponsorship_id, 'duration_months', $duration_months); // Payment plan duration: 1, 3, 6, or 12 months
+        update_post_meta($sponsorship_id, 'sponsorship_type', $sponsorship_type); // monthly, quarterly, biannual, yearly
         update_post_meta($sponsorship_id, 'payment_method', $payment_method);
         update_post_meta($sponsorship_id, 'transaction_id', $transaction_id);
         update_post_meta($sponsorship_id, 'payment_date', $payment_date);
