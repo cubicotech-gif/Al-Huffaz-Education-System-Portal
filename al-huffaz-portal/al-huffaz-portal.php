@@ -84,15 +84,8 @@ final class Al_Huffaz_Portal {
         require_once ALHUFFAZ_PLUGIN_DIR . 'includes/core/class-login-redirects.php';
         require_once ALHUFFAZ_PLUGIN_DIR . 'includes/core/class-um-integration.php';
 
-        // Admin classes
-        require_once ALHUFFAZ_PLUGIN_DIR . 'includes/admin/class-admin-menu.php';
-        require_once ALHUFFAZ_PLUGIN_DIR . 'includes/admin/class-dashboard.php';
-        require_once ALHUFFAZ_PLUGIN_DIR . 'includes/admin/class-student-manager.php';
-        require_once ALHUFFAZ_PLUGIN_DIR . 'includes/admin/class-sponsor-manager.php';
-        require_once ALHUFFAZ_PLUGIN_DIR . 'includes/admin/class-payment-manager.php';
-        require_once ALHUFFAZ_PLUGIN_DIR . 'includes/admin/class-reports.php';
-        require_once ALHUFFAZ_PLUGIN_DIR . 'includes/admin/class-settings.php';
-        require_once ALHUFFAZ_PLUGIN_DIR . 'includes/admin/class-bulk-import.php';
+        // Admin classes - REMOVED - Using frontend portal only
+        // All admin functionality is now in the frontend portal (shortcode-based)
 
         // Public classes
         require_once ALHUFFAZ_PLUGIN_DIR . 'includes/public/class-shortcodes.php';
@@ -138,17 +131,8 @@ final class Al_Huffaz_Portal {
         // Initialize Ultimate Member integration (if UM is active)
         new AlHuffaz\Core\UM_Integration();
 
-        // Admin components
-        if (is_admin()) {
-            new AlHuffaz\Admin\Admin_Menu();
-            $this->dashboard = new AlHuffaz\Admin\Dashboard();
-            $this->student = new AlHuffaz\Admin\Student_Manager();
-            $this->sponsor = new AlHuffaz\Admin\Sponsor_Manager();
-            $this->payment = new AlHuffaz\Admin\Payment_Manager();
-            new AlHuffaz\Admin\Reports();
-            new AlHuffaz\Admin\Settings();
-            new AlHuffaz\Admin\Bulk_Import();
-        }
+        // Admin components - REMOVED - Using frontend portal only
+        // All management functionality is now in the frontend portal accessible via shortcode
 
         // Public components
         new AlHuffaz\Frontend\Shortcodes();
