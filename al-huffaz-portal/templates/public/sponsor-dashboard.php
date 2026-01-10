@@ -1292,6 +1292,7 @@ body.admin-bar .sp-portal .sp-header {
 
     .sp-stats {
         grid-template-columns: 1fr !important;
+        gap: 12px !important;
     }
 
     .sp-students-grid {
@@ -1302,26 +1303,177 @@ body.admin-bar .sp-portal .sp-header {
         font-size: 24px !important;
     }
 
+    .sp-page-subtitle {
+        font-size: 14px !important;
+    }
+
     .sp-fee-grid {
         grid-template-columns: 1fr !important;
     }
 
     .sp-plan-grid {
-        grid-template-columns: 1fr !important;
+        grid-template-columns: repeat(2, 1fr) !important;
+        gap: 12px !important;
+    }
+
+    .sp-student-header {
+        padding: 16px !important;
+        gap: 12px !important;
+    }
+
+    .sp-student-body {
+        padding: 16px !important;
+    }
+
+    .sp-student-footer {
+        padding: 16px !important;
+        gap: 12px !important;
+    }
+
+    .sp-student-photo,
+    .sp-student-placeholder {
+        width: 56px !important;
+        height: 56px !important;
+    }
+
+    .sp-student-placeholder {
+        font-size: 20px !important;
+    }
+
+    .sp-student-info h3 {
+        font-size: 15px !important;
+    }
+
+    .sp-card-body {
+        padding: 20px !important;
+    }
+
+    .sp-modal-content {
+        width: 95% !important;
+        margin: 20px auto !important;
+        max-height: 90vh !important;
+    }
+
+    .sp-modal-header {
+        padding: 16px 20px !important;
+    }
+
+    .sp-modal-body {
+        padding: 20px !important;
+    }
+
+    .sp-modal-footer {
+        padding: 16px 20px !important;
+    }
+
+    .sp-plan-title {
+        font-size: 16px !important;
+        margin: 0 0 12px 0 !important;
+    }
+
+    .sp-plan-btn {
+        padding: 12px !important;
+    }
+
+    .sp-plan-duration {
+        font-size: 13px !important;
+    }
+
+    .sp-plan-amount {
+        font-size: 16px !important;
     }
 }
 
 @media (max-width: 480px) {
     .sp-stat {
-        padding: 16px !important;
+        padding: 14px !important;
     }
 
     .sp-stat-value {
-        font-size: 24px !important;
+        font-size: 22px !important;
+    }
+
+    .sp-stat-label {
+        font-size: 12px !important;
     }
 
     .sp-profile-grid {
         grid-template-columns: 1fr !important;
+    }
+
+    .sp-page-title {
+        font-size: 20px !important;
+    }
+
+    .sp-page-subtitle {
+        font-size: 13px !important;
+    }
+
+    .sp-plan-grid {
+        grid-template-columns: 1fr !important;
+    }
+
+    .sp-student-header {
+        padding: 12px !important;
+    }
+
+    .sp-student-body {
+        padding: 12px !important;
+    }
+
+    .sp-student-footer {
+        padding: 12px !important;
+        flex-direction: column !important;
+    }
+
+    .sp-student-footer .sp-btn {
+        width: 100% !important;
+    }
+
+    .sp-student-photo,
+    .sp-student-placeholder {
+        width: 48px !important;
+        height: 48px !important;
+    }
+
+    .sp-student-placeholder {
+        font-size: 18px !important;
+    }
+
+    .sp-student-info h3 {
+        font-size: 14px !important;
+    }
+
+    .sp-badge {
+        font-size: 10px !important;
+        padding: 3px 8px !important;
+    }
+
+    .sp-card-body {
+        padding: 16px !important;
+    }
+
+    .sp-modal-content {
+        width: 100% !important;
+        margin: 10px !important;
+        border-radius: 12px !important;
+    }
+
+    .sp-modal-header h2 {
+        font-size: 18px !important;
+    }
+
+    .sp-btn {
+        font-size: 14px !important;
+        padding: 10px 18px !important;
+    }
+
+    .sp-main {
+        padding: 20px 12px !important;
+    }
+
+    .sp-stats {
+        gap: 10px !important;
     }
 }
 </style>
@@ -1421,7 +1573,7 @@ body.admin-bar .sp-portal .sp-header {
         <!-- ==================== DASHBOARD PANEL ==================== -->
         <div class="sp-panel active" id="panel-dashboard">
             <h1 class="sp-page-title"><?php printf(__('Welcome back, %s!', 'al-huffaz-portal'), esc_html($user->first_name ?: $user->display_name)); ?></h1>
-            <p class="sp-page-subtitle"><?php _e('Here\'s an overview of your sponsorship activity.', 'al-huffaz-portal'); ?></p>
+            <p class="sp-page-subtitle"><?php _e('Thank you for your generosity. Your support is transforming lives and nurturing future leaders.', 'al-huffaz-portal'); ?></p>
 
             <?php if (isset($_GET['payment_submitted']) && $_GET['payment_submitted'] === 'success'): ?>
             <div class="sp-alert sp-alert-success" id="payment-success-alert" style="animation: slideInDown 0.5s;">
@@ -1574,8 +1726,8 @@ body.admin-bar .sp-portal .sp-header {
                 <div class="sp-card-body">
                     <div class="sp-empty">
                         <i class="fas fa-heart"></i>
-                        <h3><?php _e('Start Your Sponsorship Journey', 'al-huffaz-portal'); ?></h3>
-                        <p><?php _e('Browse available students and make a difference in their education today.', 'al-huffaz-portal'); ?></p>
+                        <h3><?php _e('Begin Your Journey of Giving', 'al-huffaz-portal'); ?></h3>
+                        <p><?php _e('Explore available students and help nurture the next generation of learners.', 'al-huffaz-portal'); ?></p>
                         <button class="sp-btn sp-btn-primary" onclick="showPanel('available-students')">
                             <i class="fas fa-hand-holding-heart"></i> <?php _e('Browse Students', 'al-huffaz-portal'); ?>
                         </button>
@@ -1670,15 +1822,15 @@ body.admin-bar .sp-portal .sp-header {
         <!-- ==================== MY STUDENTS PANEL ==================== -->
         <div class="sp-panel" id="panel-my-students">
             <h1 class="sp-page-title"><?php _e('My Sponsored Students', 'al-huffaz-portal'); ?></h1>
-            <p class="sp-page-subtitle"><?php _e('Students you are currently sponsoring.', 'al-huffaz-portal'); ?></p>
+            <p class="sp-page-subtitle"><?php _e('Each student you sponsor is receiving quality education through your kindness and support.', 'al-huffaz-portal'); ?></p>
 
             <?php if (empty($data['sponsorships'])): ?>
             <div class="sp-card">
                 <div class="sp-card-body">
                     <div class="sp-empty">
                         <i class="fas fa-users"></i>
-                        <h3><?php _e('No Sponsored Students Yet', 'al-huffaz-portal'); ?></h3>
-                        <p><?php _e('Start sponsoring a student to see them here.', 'al-huffaz-portal'); ?></p>
+                        <h3><?php _e('Ready to Make an Impact?', 'al-huffaz-portal'); ?></h3>
+                        <p><?php _e('Choose a student to sponsor and begin transforming their educational journey.', 'al-huffaz-portal'); ?></p>
                         <button class="sp-btn sp-btn-primary" onclick="showPanel('available-students')">
                             <i class="fas fa-hand-holding-heart"></i> <?php _e('Browse Students', 'al-huffaz-portal'); ?>
                         </button>
@@ -1745,15 +1897,15 @@ body.admin-bar .sp-portal .sp-header {
         <!-- ==================== AVAILABLE STUDENTS PANEL ==================== -->
         <div class="sp-panel" id="panel-available-students">
             <h1 class="sp-page-title"><?php _e('Available Students', 'al-huffaz-portal'); ?></h1>
-            <p class="sp-page-subtitle"><?php _e('Choose a student to sponsor and make a difference in their education.', 'al-huffaz-portal'); ?></p>
+            <p class="sp-page-subtitle"><?php _e('Your sponsorship can open doors to knowledge and opportunity for these deserving students.', 'al-huffaz-portal'); ?></p>
 
             <?php if (empty($available_students)): ?>
             <div class="sp-card">
                 <div class="sp-card-body">
                     <div class="sp-empty">
-                        <i class="fas fa-search"></i>
-                        <h3><?php _e('No Students Available', 'al-huffaz-portal'); ?></h3>
-                        <p><?php _e('All students are currently sponsored. Check back later!', 'al-huffaz-portal'); ?></p>
+                        <i class="fas fa-check-circle"></i>
+                        <h3><?php _e('All Students Sponsored', 'al-huffaz-portal'); ?></h3>
+                        <p><?php _e('Thanks to generous sponsors like you, all students currently have support. Please check back soon for new opportunities.', 'al-huffaz-portal'); ?></p>
                     </div>
                 </div>
             </div>
@@ -1798,20 +1950,6 @@ body.admin-bar .sp-portal .sp-header {
                         </div>
                     </div>
                     <div class="sp-student-body">
-                        <div class="sp-fee-grid">
-                            <div class="sp-fee-item">
-                                <div class="sp-fee-label"><?php _e('Monthly Tuition', 'al-huffaz-portal'); ?></div>
-                                <div class="sp-fee-value">PKR <?php echo number_format($monthly_fee); ?>/mo</div>
-                            </div>
-                            <div class="sp-fee-item">
-                                <div class="sp-fee-label"><?php _e('One-Time Fees', 'al-huffaz-portal'); ?></div>
-                                <div class="sp-fee-value">PKR <?php echo number_format($one_time_fees); ?></div>
-                            </div>
-                            <div class="sp-fee-item">
-                                <div class="sp-fee-label"><?php _e('Yearly Total', 'al-huffaz-portal'); ?></div>
-                                <div class="sp-fee-value">PKR <?php echo number_format($amount_yearly); ?></div>
-                            </div>
-                        </div>
                         <p class="sp-plan-title"><?php _e('Choose Sponsorship Plan', 'al-huffaz-portal'); ?></p>
                         <div class="sp-plan-grid">
                             <button type="button" class="sp-plan-btn" onclick="openSponsorModal(<?php echo $student_id; ?>, '<?php echo esc_js($student->post_title); ?>', 1, <?php echo $amount_1month; ?>)">
@@ -1826,8 +1964,7 @@ body.admin-bar .sp-portal .sp-header {
                                 <span class="sp-plan-duration"><?php _e('6 Months', 'al-huffaz-portal'); ?></span>
                                 <span class="sp-plan-amount">PKR <?php echo number_format($amount_6months); ?></span>
                             </button>
-                            <button type="button" class="sp-plan-btn featured" onclick="openSponsorModal(<?php echo $student_id; ?>, '<?php echo esc_js($student->post_title); ?>', 12, <?php echo $amount_yearly; ?>)">
-                                <span class="sp-plan-badge"><?php _e('Best Value', 'al-huffaz-portal'); ?></span>
+                            <button type="button" class="sp-plan-btn" onclick="openSponsorModal(<?php echo $student_id; ?>, '<?php echo esc_js($student->post_title); ?>', 12, <?php echo $amount_yearly; ?>)">
                                 <span class="sp-plan-duration"><?php _e('12 Months', 'al-huffaz-portal'); ?></span>
                                 <span class="sp-plan-amount">PKR <?php echo number_format($amount_yearly); ?></span>
                             </button>
@@ -1842,15 +1979,15 @@ body.admin-bar .sp-portal .sp-header {
         <!-- ==================== MAKE PAYMENT PANEL ==================== -->
         <div class="sp-panel" id="panel-payments">
             <h1 class="sp-page-title"><?php _e('Make a Payment', 'al-huffaz-portal'); ?></h1>
-            <p class="sp-page-subtitle"><?php _e('Submit your payment proof for verification.', 'al-huffaz-portal'); ?></p>
+            <p class="sp-page-subtitle"><?php _e('Track your submissions and stay updated on verification status.', 'al-huffaz-portal'); ?></p>
 
             <?php if (empty($data['sponsorships'])): ?>
             <div class="sp-card">
                 <div class="sp-card-body">
                     <div class="sp-empty">
-                        <i class="fas fa-credit-card"></i>
-                        <h3><?php _e('No Sponsorships Yet', 'al-huffaz-portal'); ?></h3>
-                        <p><?php _e('You need to sponsor a student before making payments.', 'al-huffaz-portal'); ?></p>
+                        <i class="fas fa-hand-holding-heart"></i>
+                        <h3><?php _e('Start Making a Difference', 'al-huffaz-portal'); ?></h3>
+                        <p><?php _e('Select a student to sponsor first, then you can submit your payment here.', 'al-huffaz-portal'); ?></p>
                         <button class="sp-btn sp-btn-primary" onclick="showPanel('available-students')">
                             <i class="fas fa-hand-holding-heart"></i> <?php _e('Browse Students', 'al-huffaz-portal'); ?>
                         </button>
@@ -2018,15 +2155,15 @@ body.admin-bar .sp-portal .sp-header {
         <!-- ==================== PAYMENT HISTORY PANEL ==================== -->
         <div class="sp-panel" id="panel-history">
             <h1 class="sp-page-title"><?php _e('Payment History', 'al-huffaz-portal'); ?></h1>
-            <p class="sp-page-subtitle"><?php _e('View all your past payments and their status.', 'al-huffaz-portal'); ?></p>
+            <p class="sp-page-subtitle"><?php _e('A record of your contributions and the impact you\'ve made.', 'al-huffaz-portal'); ?></p>
 
             <div class="sp-card">
                 <div class="sp-card-body" style="padding: 0;">
                     <?php if (empty($data['payment_history'])): ?>
                     <div class="sp-empty">
-                        <i class="fas fa-receipt"></i>
-                        <h3><?php _e('No Payment History', 'al-huffaz-portal'); ?></h3>
-                        <p><?php _e('Your payment history will appear here once you make a payment.', 'al-huffaz-portal'); ?></p>
+                        <i class="fas fa-history"></i>
+                        <h3><?php _e('Your Impact Story Begins Here', 'al-huffaz-portal'); ?></h3>
+                        <p><?php _e('Once you make your first contribution, you\'ll see a complete record of the difference you\'ve made.', 'al-huffaz-portal'); ?></p>
                     </div>
                     <?php else: ?>
                     <div class="sp-table-wrap">
@@ -2577,6 +2714,8 @@ body.admin-bar .sp-portal .sp-header {
         .then(data => {
             if (data.success) {
                 loadNotifications();
+                // CRITICAL FIX: Clear notification badge when marking all as read
+                updateNotificationBadge(data.data.unread_count || 0);
                 btn.disabled = false;
                 btn.innerHTML = '<i class="fas fa-check-double"></i> <?php _e('Mark all read', 'al-huffaz-portal'); ?>';
             }
