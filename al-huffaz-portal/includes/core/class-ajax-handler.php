@@ -1105,45 +1105,109 @@ class Ajax_Handler {
     public function get_dashboard_stats() {
         $this->verify_admin_nonce();
 
-        $student_count = wp_count_posts('student')->publish;
+        // ENHANCED: Return ALL dashboard stats for frontend portal auto-refresh
+        $student_counts = wp_count_posts('student');
+        $total_students = isset($student_counts->publish) ? (int)$student_counts->publish : 0;
 
-        $sponsored_count = get_posts(array(
-            'post_type'      => 'student',
-            'posts_per_page' => -1,
-            'fields'         => 'ids',
-            'meta_query'     => array(
+        $sponsor_counts = wp_count_posts('alhuffaz_sponsor');
+        $total_sponsors = isset($sponsor_counts->publish) ? (int)$sponsor_counts->publish : 0;
+
+        // Category counts
+        $hifz_count = 0;
+        $nazra_count = 0;
+        $donation_eligible_count = 0;
+
+        if (post_type_exists('student')) {
+            $hifz_posts = get_posts(array(
+                'post_type' => 'student',
+                'post_status' => 'publish',
+                'posts_per_page' => -1,
+                'meta_key' => 'islamic_studies_category',
+                'meta_value' => 'hifz',
+                'fields' => 'ids'
+            ));
+            $hifz_count = count($hifz_posts);
+
+            $nazra_posts = get_posts(array(
+                'post_type' => 'student',
+                'post_status' => 'publish',
+                'posts_per_page' => -1,
+                'meta_key' => 'islamic_studies_category',
+                'meta_value' => 'nazra',
+                'fields' => 'ids'
+            ));
+            $nazra_count = count($nazra_posts);
+
+            $eligible_posts = get_posts(array(
+                'post_type' => 'student',
+                'post_status' => 'publish',
+                'posts_per_page' => -1,
+                'meta_key' => 'donation_eligible',
+                'meta_value' => 'yes',
+                'fields' => 'ids'
+            ));
+            $donation_eligible_count = count($eligible_posts);
+        }
+
+        // Pending sponsor USER accounts (not sponsorships) - waiting for admin approval
+        $pending_sponsor_users = get_users(array(
+            'role' => 'alhuffaz_sponsor',
+            'meta_query' => array(
                 array(
-                    'key'   => '_is_sponsored',
-                    'value' => 'yes',
-                ),
+                    'key' => 'account_status',
+                    'value' => 'pending_approval',
+                    'compare' => '='
+                )
             ),
+            'fields' => 'ID',
+            'number' => -1
         ));
+        $pending_sponsor_users_count = count($pending_sponsor_users);
 
-        $pending_sponsorships = get_posts(array(
-            'post_type'      => 'alhuffaz_sponsor',
-            'posts_per_page' => -1,
-            'fields'         => 'ids',
-            'meta_query'     => array(
-                array(
-                    'key'   => '_status',
-                    'value' => 'pending',
+        // Inactive sponsors count (sponsors with no active sponsorships)
+        $inactive_sponsors_count = 0;
+        $all_sponsor_users = get_users(array('role' => 'alhuffaz_sponsor'));
+        foreach ($all_sponsor_users as $sponsor_user) {
+            $active_sponsorships = get_posts(array(
+                'post_type' => 'alhuffaz_sponsor',
+                'posts_per_page' => -1,
+                'meta_query' => array(
+                    'relation' => 'AND',
+                    array('key' => '_sponsor_user_id', 'value' => $sponsor_user->ID),
+                    array('key' => '_status', 'value' => 'approved'),
+                    array('key' => '_linked', 'value' => 'yes'),
                 ),
-            ),
-        ));
+                'fields' => 'ids',
+            ));
+            if (empty($active_sponsorships)) {
+                $inactive_sponsors_count++;
+            }
+        }
 
+        // Payments stats
         global $wpdb;
         $payments_table = $wpdb->prefix . 'alhuffaz_payments';
 
-        $total_revenue = $wpdb->get_var("SELECT SUM(amount) FROM $payments_table WHERE status = 'approved'");
+        $pending_payments_count = 0;
+        $table_exists = $wpdb->get_var($wpdb->prepare(
+            "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = %s AND table_name = %s",
+            DB_NAME, $payments_table
+        ));
 
-        $pending_payments = $wpdb->get_var("SELECT COUNT(*) FROM $payments_table WHERE status = 'pending'");
+        if ($table_exists) {
+            $pending_payments_count = (int) $wpdb->get_var("SELECT COUNT(*) FROM $payments_table WHERE status = 'pending'");
+        }
 
+        // Return comprehensive stats for frontend refresh
         wp_send_json_success(array(
-            'students'             => intval($student_count),
-            'sponsored'            => count($sponsored_count),
-            'pending_sponsorships' => count($pending_sponsorships),
-            'total_revenue'        => Helpers::format_currency($total_revenue ?: 0),
-            'pending_payments'     => intval($pending_payments),
+            'total_students' => $total_students,
+            'total_sponsors' => $total_sponsors,
+            'hifz_count' => $hifz_count,
+            'nazra_count' => $nazra_count,
+            'inactive_sponsors_count' => $inactive_sponsors_count,
+            'donation_eligible_count' => $donation_eligible_count,
+            'pending_sponsor_users_count' => $pending_sponsor_users_count,
+            'pending_payments_count' => $pending_payments_count,
         ));
     }
 
