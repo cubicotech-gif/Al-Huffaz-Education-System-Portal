@@ -1497,22 +1497,23 @@ function render_payment_verifications() {
         $student = get_post($student_id);
         
         $amount = get_post_meta($payment->ID, 'amount', true);
+        $duration_months = get_post_meta($payment->ID, 'duration_months', true);
         $type = get_post_meta($payment->ID, 'sponsorship_type', true);
         $transaction_id = get_post_meta($payment->ID, 'transaction_id', true);
         $payment_method = get_post_meta($payment->ID, 'payment_method', true);
         $payment_date = get_post_meta($payment->ID, 'payment_date', true);
         $screenshot_id = get_post_meta($payment->ID, 'payment_screenshot', true);
         $screenshot_url = wp_get_attachment_url($screenshot_id);
-        
+
         $output .= '<div class="sponsor-card" style="grid-template-columns: 1fr;">';
         $output .= '<div class="sponsor-info">';
         $output .= '<h3>' . esc_html($sponsor ? $sponsor->display_name : 'Unknown') . ' → ' . esc_html($student ? $student->post_title : 'Unknown') . '</h3>';
-        
+
         $output .= '<div class="payment-details">';
-        $output .= '<div class="payment-row"><span>Type:</span><strong>' . ucfirst($type) . '</strong></div>';
+        $output .= '<div class="payment-row"><span>Plan:</span><strong>' . ($duration_months ? $duration_months . ' Month' . ($duration_months > 1 ? 's' : '') : ucfirst($type)) . '</strong></div>';
         $output .= '<div class="payment-row"><span>Amount:</span><strong>PKR ' . number_format($amount) . '</strong></div>';
         $output .= '<div class="payment-row"><span>Transaction:</span><strong>' . esc_html($transaction_id) . '</strong></div>';
-        $output .= '<div class="payment-row"><span>Method:</span><strong>' . esc_html($payment_method) . '</strong></div>';
+        $output .= '<div class="payment-row"><span>Method:</span><strong>' . ucfirst(str_replace('_', ' ', $payment_method)) . '</strong></div>';
         $output .= '<div class="payment-row"><span>Date:</span><strong>' . date('M d, Y', strtotime($payment_date)) . '</strong></div>';
         $output .= '</div>';
         

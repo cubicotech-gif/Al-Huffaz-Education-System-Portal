@@ -53,14 +53,14 @@ class Sponsor_Dashboard {
         wp_cache_delete('sponsor_dashboard_' . $user_id, 'alhuffaz');
         wp_cache_flush(); // Flush object cache
 
-        // Get sponsorships - DISABLE ALL CACHING
+        // CRITICAL FIX: Get sponsorships from unified 'sponsorship' post type (not 'alhuffaz_sponsor')
         $sponsorships = get_posts(array(
-            'post_type'      => 'alhuffaz_sponsor',
+            'post_type'      => 'sponsorship',
             'posts_per_page' => -1,
-            'post_status'    => 'publish',
+            'post_status'    => array('publish', 'draft', 'pending'), // Include all statuses
             'meta_query'     => array(
                 array(
-                    'key'   => '_sponsor_user_id',
+                    'key'   => 'sponsor_user_id', // No underscore prefix
                     'value' => $user_id,
                 ),
             ),
@@ -81,29 +81,34 @@ class Sponsor_Dashboard {
         $yearly_total = 0;
 
         foreach ($sponsorships as $sponsorship) {
-            $status = get_post_meta($sponsorship->ID, '_status', true);
-            $linked = get_post_meta($sponsorship->ID, '_linked', true);
-            $amount = floatval(get_post_meta($sponsorship->ID, '_amount', true));
-            $type = get_post_meta($sponsorship->ID, '_sponsorship_type', true);
+            // CRITICAL FIX: Use correct meta keys without underscore prefix
+            $verification_status = get_post_meta($sponsorship->ID, 'verification_status', true);
+            $linked = get_post_meta($sponsorship->ID, 'linked', true);
+            $amount = floatval(get_post_meta($sponsorship->ID, 'amount', true));
+            $type = get_post_meta($sponsorship->ID, 'sponsorship_type', true);
+            $duration_months = get_post_meta($sponsorship->ID, 'duration_months', true);
 
-            if ($status === 'approved' && $linked === 'yes') {
-                $student_id = get_post_meta($sponsorship->ID, '_student_id', true);
+            // Active sponsorships: verified/approved AND linked to student
+            if ($linked === 'yes' && ($verification_status === 'approved' || $verification_status === 'verified')) {
+                $student_id = get_post_meta($sponsorship->ID, 'student_id', true);
                 $student = get_post($student_id);
 
                 if ($student) {
                     $active_sponsorships[] = array(
-                        'id'           => $sponsorship->ID,
-                        'student_id'   => $student_id,
-                        'student_name' => $student->post_title,
-                        'student_photo'=> Helpers::get_student_photo($student_id, 'medium'),
-                        'grade'        => Helpers::get_grade_label(get_post_meta($student_id, 'grade_level', true)),
-                        'category'     => Helpers::get_islamic_category_label(get_post_meta($student_id, 'islamic_studies_category', true)),
-                        'amount'       => $amount,
-                        'type'         => $type,
-                        'start_date'   => Helpers::format_date($sponsorship->post_date),
+                        'id'            => $sponsorship->ID,
+                        'student_id'    => $student_id,
+                        'student_name'  => $student->post_title,
+                        'student_photo' => Helpers::get_student_photo($student_id, 'medium'),
+                        'grade'         => Helpers::get_grade_label(get_post_meta($student_id, 'grade_level', true)),
+                        'category'      => Helpers::get_islamic_category_label(get_post_meta($student_id, 'islamic_studies_category', true)),
+                        'amount'        => $amount,
+                        'type'          => $type,
+                        'duration'      => $duration_months,
+                        'start_date'    => Helpers::format_date($sponsorship->post_date),
                     );
 
                     $students[] = $student_id;
+                    $total_contributed += $amount;
 
                     // Calculate totals by type
                     if ($type === 'monthly') {
@@ -115,8 +120,8 @@ class Sponsor_Dashboard {
                     }
                 }
             } else {
-                // Pending sponsorship
-                $student_id = get_post_meta($sponsorship->ID, '_student_id', true);
+                // Pending sponsorship: payment proof submitted, awaiting verification
+                $student_id = get_post_meta($sponsorship->ID, 'student_id', true);
                 $student = get_post($student_id);
 
                 if ($student) {
@@ -126,42 +131,44 @@ class Sponsor_Dashboard {
                         'student_name' => $student->post_title,
                         'amount'       => $amount,
                         'type'         => $type,
-                        'status'       => $status,
+                        'duration'     => $duration_months,
+                        'status'       => $verification_status ?: 'pending',
                         'submitted_at' => Helpers::format_date($sponsorship->post_date),
                     );
                 }
             }
         }
 
-        // Get payments
-        $payments_result = Payment_Manager::get_sponsor_payments($user_id, array('per_page' => 10));
+        // Build payment history from sponsorships (all submissions)
+        $payment_history = array();
+        foreach ($sponsorships as $sponsorship) {
+            $student_id = get_post_meta($sponsorship->ID, 'student_id', true);
+            $student = get_post($student_id);
+            $verification_status = get_post_meta($sponsorship->ID, 'verification_status', true);
+            $payment_date = get_post_meta($sponsorship->ID, 'payment_date', true);
 
-        // Calculate total contribution
-        global $wpdb;
-        $payments_table = $wpdb->prefix . 'alhuffaz_payments';
-
-        $total_contributed = $wpdb->get_var($wpdb->prepare(
-            "SELECT COALESCE(SUM(amount), 0) FROM $payments_table WHERE sponsor_id = %d AND status = 'approved'",
-            $user_id
-        ));
-
-        // Get pending payments count
-        $pending_payments = $wpdb->get_var($wpdb->prepare(
-            "SELECT COUNT(*) FROM $payments_table WHERE sponsor_id = %d AND status = 'pending'",
-            $user_id
-        ));
+            $payment_history[] = array(
+                'id'          => $sponsorship->ID,
+                'student'     => $student ? $student->post_title : 'Unknown',
+                'amount'      => get_post_meta($sponsorship->ID, 'amount', true),
+                'type'        => get_post_meta($sponsorship->ID, 'sponsorship_type', true),
+                'duration'    => get_post_meta($sponsorship->ID, 'duration_months', true),
+                'method'      => get_post_meta($sponsorship->ID, 'payment_method', true),
+                'status'      => $verification_status ?: 'pending',
+                'date'        => $payment_date ? date('M d, Y', strtotime($payment_date)) : date('M d, Y', strtotime($sponsorship->post_date)),
+            );
+        }
 
         return array(
-            'sponsorships'      => $active_sponsorships,
+            'sponsorships'         => $active_sponsorships,
             'pending_sponsorships' => $pending_sponsorships,
-            'students_count'    => count(array_unique($students)),
-            'total_contributed' => Helpers::format_currency($total_contributed),
-            'monthly_total'     => Helpers::format_currency($monthly_total),
-            'quarterly_total'   => Helpers::format_currency($quarterly_total),
-            'yearly_total'      => Helpers::format_currency($yearly_total),
-            'pending_payments'  => intval($pending_payments),
-            'pending_count'     => count($pending_sponsorships),
-            'recent_payments'   => $payments_result['payments'],
+            'students_count'       => count(array_unique($students)),
+            'total_contributed'    => Helpers::format_currency($total_contributed),
+            'monthly_total'        => Helpers::format_currency($monthly_total),
+            'quarterly_total'      => Helpers::format_currency($quarterly_total),
+            'yearly_total'         => Helpers::format_currency($yearly_total),
+            'pending_count'        => count($pending_sponsorships),
+            'payment_history'      => $payment_history,
         );
     }
 
