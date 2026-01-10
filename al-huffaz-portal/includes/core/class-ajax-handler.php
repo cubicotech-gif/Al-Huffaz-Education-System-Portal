@@ -204,6 +204,131 @@ class Ajax_Handler {
             }
         }
 
+        // Behavioral rating fields
+        $rating_fields = array(
+            'health_rating', 'cleanness_rating', 'completes_homework', 'participates_in_class',
+            'works_well_in_groups', 'problem_solving_skills', 'organization_preparedness'
+        );
+        foreach ($rating_fields as $field) {
+            if (isset($data[$field])) {
+                update_post_meta($student_id, $field, floatval($data[$field]));
+            }
+        }
+
+        // Subjects array with nested monthly exams, mid/final semester
+        // Check both $data and $_POST for subjects (frontend forms use direct POST)
+        $subjects_data = null;
+        if (isset($data['subjects']) && is_array($data['subjects'])) {
+            $subjects_data = $data['subjects'];
+        } elseif (isset($_POST['subjects']) && is_array($_POST['subjects'])) {
+            $subjects_data = $_POST['subjects'];
+        }
+
+        if ($subjects_data) {
+            $subjects = array();
+
+            foreach ($subjects_data as $index => $subject) {
+                $subject_data = array(
+                    'name' => sanitize_text_field($subject['name'] ?? ''),
+                    'strengths' => sanitize_textarea_field($subject['strengths'] ?? ''),
+                    'areas_for_improvement' => sanitize_textarea_field($subject['areas_for_improvement'] ?? ''),
+                    'teacher_comments' => sanitize_textarea_field($subject['teacher_comments'] ?? ''),
+                    'monthly_exams' => array(),
+                    'mid_semester' => array(),
+                    'final_semester' => array(),
+                );
+
+                // Monthly exams
+                if (isset($subject['monthly_exams']) && is_array($subject['monthly_exams'])) {
+                    foreach ($subject['monthly_exams'] as $monthly) {
+                        $oral_total = floatval($monthly['oral_total'] ?? 0);
+                        $oral_obtained = floatval($monthly['oral_obtained'] ?? 0);
+                        $written_total = floatval($monthly['written_total'] ?? 0);
+                        $written_obtained = floatval($monthly['written_obtained'] ?? 0);
+                        $overall_total = $oral_total + $written_total;
+                        $overall_obtained = $oral_obtained + $written_obtained;
+                        $percentage = $overall_total > 0 ? round(($overall_obtained / $overall_total) * 100, 1) : 0;
+                        $grade = $this->calculate_grade($percentage);
+
+                        $subject_data['monthly_exams'][] = array(
+                            'month_name' => sanitize_text_field($monthly['month_name'] ?? ''),
+                            'oral_total' => $oral_total,
+                            'oral_obtained' => $oral_obtained,
+                            'written_total' => $written_total,
+                            'written_obtained' => $written_obtained,
+                            'overall_total' => $overall_total,
+                            'overall_obtained' => $overall_obtained,
+                            'percentage' => $percentage,
+                            'grade' => $grade,
+                        );
+                    }
+                }
+
+                // Mid semester
+                if (isset($subject['mid_semester'])) {
+                    $mid = $subject['mid_semester'];
+                    $oral_total = floatval($mid['oral_total'] ?? 0);
+                    $oral_obtained = floatval($mid['oral_obtained'] ?? 0);
+                    $written_total = floatval($mid['written_total'] ?? 0);
+                    $written_obtained = floatval($mid['written_obtained'] ?? 0);
+                    $overall_total = $oral_total + $written_total;
+                    $overall_obtained = $oral_obtained + $written_obtained;
+                    $percentage = $overall_total > 0 ? round(($overall_obtained / $overall_total) * 100, 1) : 0;
+
+                    $subject_data['mid_semester'] = array(
+                        'oral_total' => $oral_total,
+                        'oral_obtained' => $oral_obtained,
+                        'written_total' => $written_total,
+                        'written_obtained' => $written_obtained,
+                        'overall_total' => $overall_total,
+                        'overall_obtained' => $overall_obtained,
+                        'percentage' => $percentage,
+                        'grade' => $this->calculate_grade($percentage),
+                    );
+                }
+
+                // Final semester
+                if (isset($subject['final_semester'])) {
+                    $final = $subject['final_semester'];
+                    $oral_total = floatval($final['oral_total'] ?? 0);
+                    $oral_obtained = floatval($final['oral_obtained'] ?? 0);
+                    $written_total = floatval($final['written_total'] ?? 0);
+                    $written_obtained = floatval($final['written_obtained'] ?? 0);
+                    $overall_total = $oral_total + $written_total;
+                    $overall_obtained = $oral_obtained + $written_obtained;
+                    $percentage = $overall_total > 0 ? round(($overall_obtained / $overall_total) * 100, 1) : 0;
+
+                    $subject_data['final_semester'] = array(
+                        'oral_total' => $oral_total,
+                        'oral_obtained' => $oral_obtained,
+                        'written_total' => $written_total,
+                        'written_obtained' => $written_obtained,
+                        'overall_total' => $overall_total,
+                        'overall_obtained' => $overall_obtained,
+                        'percentage' => $percentage,
+                        'grade' => $this->calculate_grade($percentage),
+                    );
+                }
+
+                $subjects[] = $subject_data;
+            }
+
+            update_post_meta($student_id, 'subjects', $subjects);
+        }
+
+        // Handle photo upload
+        if (!empty($_FILES['student_photo']) && $_FILES['student_photo']['size'] > 0) {
+            require_once(ABSPATH . 'wp-admin/includes/image.php');
+            require_once(ABSPATH . 'wp-admin/includes/file.php');
+            require_once(ABSPATH . 'wp-admin/includes/media.php');
+
+            $attachment_id = media_handle_upload('student_photo', $student_id);
+
+            if (!is_wp_error($attachment_id)) {
+                update_post_meta($student_id, 'student_photo', $attachment_id);
+            }
+        }
+
         // Log activity
         Helpers::log_activity(
             $student_id ? 'update_student' : 'create_student',
