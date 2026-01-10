@@ -2406,8 +2406,11 @@ window.toggleMobileNav = function() {
 };
 
 document.addEventListener('DOMContentLoaded', function() {
-    const ajaxUrl = '<?php echo admin_url('admin-ajax.php'); ?>';
-    const nonce = '<?php echo $nonce; ?>';
+    // Make ajaxUrl and nonce global so they're accessible to all functions
+    window.ajaxUrl = '<?php echo admin_url('admin-ajax.php'); ?>';
+    window.nonce = '<?php echo $nonce; ?>';
+    const ajaxUrl = window.ajaxUrl; // Keep local reference for backward compatibility
+    const nonce = window.nonce;
     let currentStep = 1;
     const totalSteps = 5;
     let subjectIndex = <?php echo !empty($subjects) ? max(array_keys($subjects)) + 1 : 0; ?>;
@@ -4429,12 +4432,12 @@ window.loadActivityLogs = function() {
     const filterAction = document.getElementById('filterLogAction')?.value || '';
     const filterType = document.getElementById('filterLogType')?.value || '';
 
-    fetch(ajaxUrl, {
+    fetch(window.ajaxUrl, {
         method: 'POST',
         headers: {'Content-Type': 'application/x-www-form-urlencoded'},
         body: new URLSearchParams({
             action: 'alhuffaz_get_activity_logs',
-            nonce: nonce,
+            nonce: window.nonce,
             filter_action: filterAction,
             filter_type: filterType,
             per_page: 100
@@ -4521,12 +4524,12 @@ function getActionColor(action) {
 window.restoreItem = function(itemId, itemType, itemName) {
     if (!confirm(`<?php _e('Are you sure you want to restore', 'al-huffaz-portal'); ?> "${itemName}"?`)) return;
 
-    fetch(ajaxUrl, {
+    fetch(window.ajaxUrl, {
         method: 'POST',
         headers: {'Content-Type': 'application/x-www-form-urlencoded'},
         body: new URLSearchParams({
             action: 'alhuffaz_restore_item',
-            nonce: nonce,
+            nonce: window.nonce,
             item_id: itemId,
             item_type: itemType
         })
