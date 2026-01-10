@@ -133,6 +133,14 @@ if (post_type_exists('student')) {
 // Check for edit mode
 $edit_id = isset($_GET['edit']) ? intval($_GET['edit']) : 0;
 $is_edit = ($edit_id > 0 && get_post_type($edit_id) === 'student');
+
+// CRITICAL FIX: If URL has edit parameter but student doesn't exist, redirect to clean URL
+if ($edit_id > 0 && !$is_edit) {
+    // Student doesn't exist or is not valid, clean the URL
+    wp_redirect(remove_query_arg('edit'));
+    exit;
+}
+
 $student_data = array();
 $subjects = array();
 $photo_url = '';
@@ -2405,7 +2413,34 @@ window.toggleMobileNav = function() {
     nav.classList.toggle('open');
 };
 
+// CRITICAL FIX: Handle browser back/forward cache (bfcache)
+// Prevents cached URL with ?edit= parameter from triggering redirect on page restore
+window.addEventListener('pageshow', function(event) {
+    <?php if (!$is_edit): ?>
+    // If page is restored from cache and has edit parameter, clean it
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.has('edit') && window.history.replaceState) {
+        window.history.replaceState({}, document.title, window.location.pathname);
+        // Force show dashboard
+        if (typeof showPanel === 'function') {
+            showPanel('dashboard');
+        }
+    }
+    <?php endif; ?>
+});
+
 document.addEventListener('DOMContentLoaded', function() {
+    // CRITICAL FIX: Clear edit parameter from URL if not explicitly in edit mode
+    // This prevents browser cache from keeping the ?edit= parameter on refresh
+    const urlParams = new URLSearchParams(window.location.search);
+    const editParam = urlParams.get('edit');
+    <?php if (!$is_edit): ?>
+    // If we're not in edit mode but URL has edit parameter, clean it immediately
+    if (editParam && window.history.replaceState) {
+        window.history.replaceState({}, document.title, window.location.pathname);
+    }
+    <?php endif; ?>
+
     // Make ajaxUrl and nonce global so they're accessible to all functions
     window.ajaxUrl = '<?php echo admin_url('admin-ajax.php'); ?>';
     window.nonce = '<?php echo $nonce; ?>';
