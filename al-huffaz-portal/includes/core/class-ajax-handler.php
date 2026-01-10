@@ -74,6 +74,11 @@ class Ajax_Handler {
         add_action('wp_ajax_alhuffaz_revoke_staff_role', array($this, 'revoke_staff_role'));
         add_action('wp_ajax_alhuffaz_get_eligible_users', array($this, 'get_eligible_users'));
 
+        // Portal user management AJAX actions (admin only)
+        add_action('wp_ajax_alhuffaz_get_portal_users', array($this, 'get_portal_users'));
+        add_action('wp_ajax_alhuffaz_create_portal_user', array($this, 'create_portal_user'));
+        add_action('wp_ajax_alhuffaz_delete_portal_user', array($this, 'delete_portal_user'));
+
         // Sponsor user management AJAX actions (admin only)
         add_action('wp_ajax_alhuffaz_get_sponsor_users', array($this, 'get_sponsor_users'));
         add_action('wp_ajax_alhuffaz_get_sponsor_user_details', array($this, 'get_sponsor_user_details'));
@@ -3567,6 +3572,185 @@ With gratitude,
 
         wp_send_json_success(array(
             'message' => sprintf(__('%s restored successfully.', 'al-huffaz-portal'), ucfirst($item_type)),
+        ));
+    }
+
+    /**
+     * Get portal users (admin and staff) - Admin only
+     */
+    public function get_portal_users() {
+        $this->verify_admin_nonce();
+
+        if (!current_user_can('manage_options')) {
+            wp_send_json_error(array('message' => __('Permission denied.', 'al-huffaz-portal')));
+        }
+
+        $filter_role = isset($_POST['filter_role']) ? sanitize_text_field($_POST['filter_role']) : '';
+
+        // Build query args
+        $args = array(
+            'role__in' => array('alhuffaz_admin', 'alhuffaz_staff'),
+            'orderby' => 'registered',
+            'order' => 'DESC',
+        );
+
+        // Apply role filter
+        if ($filter_role && in_array($filter_role, array('alhuffaz_admin', 'alhuffaz_staff'))) {
+            $args['role'] = $filter_role;
+            unset($args['role__in']);
+        }
+
+        $users = get_users($args);
+
+        $users_data = array();
+        foreach ($users as $user) {
+            $users_data[] = array(
+                'id' => $user->ID,
+                'display_name' => $user->display_name,
+                'email' => $user->user_email,
+                'role' => $user->roles[0],
+                'avatar' => get_avatar_url($user->ID, array('size' => 80)),
+                'registered' => date_i18n(get_option('date_format'), strtotime($user->user_registered)),
+            );
+        }
+
+        // Get stats
+        $stats = array(
+            'admins' => count(get_users(array('role' => 'alhuffaz_admin'))),
+            'staff' => count(get_users(array('role' => 'alhuffaz_staff'))),
+            'total' => count(get_users(array('role__in' => array('alhuffaz_admin', 'alhuffaz_staff')))),
+        );
+
+        wp_send_json_success(array(
+            'users' => $users_data,
+            'stats' => $stats,
+        ));
+    }
+
+    /**
+     * Create portal user (admin or staff) - Admin only
+     */
+    public function create_portal_user() {
+        $this->verify_admin_nonce();
+
+        if (!current_user_can('manage_options')) {
+            wp_send_json_error(array('message' => __('Permission denied.', 'al-huffaz-portal')));
+        }
+
+        $full_name = isset($_POST['full_name']) ? sanitize_text_field($_POST['full_name']) : '';
+        $username = isset($_POST['username']) ? sanitize_user($_POST['username']) : '';
+        $email = isset($_POST['email']) ? sanitize_email($_POST['email']) : '';
+        $password = isset($_POST['password']) ? $_POST['password'] : '';
+        $role = isset($_POST['role']) ? sanitize_text_field($_POST['role']) : '';
+
+        // Validation
+        if (empty($full_name) || empty($username) || empty($email) || empty($password) || empty($role)) {
+            wp_send_json_error(array('message' => __('All fields are required.', 'al-huffaz-portal')));
+        }
+
+        if (!in_array($role, array('alhuffaz_admin', 'alhuffaz_staff'))) {
+            wp_send_json_error(array('message' => __('Invalid user role.', 'al-huffaz-portal')));
+        }
+
+        if (!is_email($email)) {
+            wp_send_json_error(array('message' => __('Invalid email address.', 'al-huffaz-portal')));
+        }
+
+        if (strlen($password) < 8) {
+            wp_send_json_error(array('message' => __('Password must be at least 8 characters.', 'al-huffaz-portal')));
+        }
+
+        // Check if username exists
+        if (username_exists($username)) {
+            wp_send_json_error(array('message' => __('Username already exists.', 'al-huffaz-portal')));
+        }
+
+        // Check if email exists
+        if (email_exists($email)) {
+            wp_send_json_error(array('message' => __('Email already exists.', 'al-huffaz-portal')));
+        }
+
+        // Create user
+        $user_id = wp_create_user($username, $password, $email);
+
+        if (is_wp_error($user_id)) {
+            wp_send_json_error(array('message' => $user_id->get_error_message()));
+        }
+
+        // Update user data
+        wp_update_user(array(
+            'ID' => $user_id,
+            'display_name' => $full_name,
+            'first_name' => $full_name,
+            'role' => $role,
+        ));
+
+        // Log activity
+        Helpers::log_activity(
+            'create_portal_user',
+            'user',
+            $user_id,
+            sprintf(__('Created %s user: %s', 'al-huffaz-portal'),
+                $role === 'alhuffaz_admin' ? 'School Admin' : 'Staff',
+                $full_name
+            )
+        );
+
+        $role_label = $role === 'alhuffaz_admin' ? __('School Admin', 'al-huffaz-portal') : __('Staff', 'al-huffaz-portal');
+        wp_send_json_success(array(
+            'message' => sprintf(__('%s user "%s" created successfully!', 'al-huffaz-portal'), $role_label, $full_name),
+            'user_id' => $user_id,
+        ));
+    }
+
+    /**
+     * Delete portal user - Admin only
+     */
+    public function delete_portal_user() {
+        $this->verify_admin_nonce();
+
+        if (!current_user_can('manage_options')) {
+            wp_send_json_error(array('message' => __('Permission denied.', 'al-huffaz-portal')));
+        }
+
+        $user_id = isset($_POST['user_id']) ? intval($_POST['user_id']) : 0;
+
+        if (!$user_id) {
+            wp_send_json_error(array('message' => __('Invalid user ID.', 'al-huffaz-portal')));
+        }
+
+        // Prevent deleting yourself
+        if ($user_id === get_current_user_id()) {
+            wp_send_json_error(array('message' => __('You cannot delete yourself.', 'al-huffaz-portal')));
+        }
+
+        $user = get_userdata($user_id);
+        if (!$user) {
+            wp_send_json_error(array('message' => __('User not found.', 'al-huffaz-portal')));
+        }
+
+        // Only allow deleting portal users (admin/staff)
+        if (!in_array('alhuffaz_admin', $user->roles) && !in_array('alhuffaz_staff', $user->roles)) {
+            wp_send_json_error(array('message' => __('Can only delete portal users.', 'al-huffaz-portal')));
+        }
+
+        require_once(ABSPATH . 'wp-admin/includes/user.php');
+        $deleted = wp_delete_user($user_id);
+
+        if (!$deleted) {
+            wp_send_json_error(array('message' => __('Error deleting user.', 'al-huffaz-portal')));
+        }
+
+        // Log activity
+        Helpers::log_activity(
+            'delete_portal_user',
+            'user',
+            $user_id,
+            sprintf(__('Deleted portal user: %s', 'al-huffaz-portal'), $user->display_name)
+        );
+
+        wp_send_json_success(array(
+            'message' => sprintf(__('User "%s" deleted successfully.', 'al-huffaz-portal'), $user->display_name),
         ));
     }
 }
