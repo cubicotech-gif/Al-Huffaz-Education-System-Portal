@@ -34,10 +34,7 @@ $countries = Helpers::get_countries();
 <div class="alhuffaz-register-page">
     <div class="alhuffaz-register-container">
         <div class="alhuffaz-register-header">
-            <?php
-            $logo_url = get_option('alhuffaz_logo_url', ALHUFFAZ_ASSETS_URL . 'images/logo.png');
-            ?>
-            <img src="<?php echo esc_url($logo_url); ?>" alt="<?php bloginfo('name'); ?>" class="alhuffaz-register-logo">
+            <img src="https://portal.alhuffazeducationsystem.com/wp-content/uploads/2026/01/cropped-AlHuffaz-Logo-1.png" alt="<?php bloginfo('name'); ?>" class="alhuffaz-register-logo">
             <h1><?php _e('Become a Sponsor', 'al-huffaz-portal'); ?></h1>
             <p><?php _e('Create an account to sponsor students and make a difference', 'al-huffaz-portal'); ?></p>
         </div>
