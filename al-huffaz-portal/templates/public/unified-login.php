@@ -40,10 +40,7 @@ if (is_user_logged_in()) {
 <div class="alhuffaz-unified-login-page">
     <div class="alhuffaz-login-container">
         <div class="alhuffaz-login-header">
-            <?php
-            $logo_url = get_option('alhuffaz_logo_url', ALHUFFAZ_ASSETS_URL . 'images/logo.png');
-            ?>
-            <img src="<?php echo esc_url($logo_url); ?>" alt="<?php bloginfo('name'); ?>" class="alhuffaz-login-logo">
+            <img src="https://portal.alhuffazeducationsystem.com/wp-content/uploads/2026/01/cropped-AlHuffaz-Logo-1.png" alt="<?php bloginfo('name'); ?>" class="alhuffaz-login-logo">
             <h1><?php echo get_option('alhuffaz_portal_title', __('Al-Huffaz Portal', 'al-huffaz-portal')); ?></h1>
             <p><?php _e('Login to access your dashboard', 'al-huffaz-portal'); ?></p>
         </div>
@@ -124,21 +121,6 @@ if (is_user_logged_in()) {
             </a>
             <p class="alhuffaz-register-note">
                 <small><?php _e('Sponsors can browse and sponsor students', 'al-huffaz-portal'); ?></small>
-            </p>
-        </div>
-
-        <div class="alhuffaz-login-help">
-            <p>
-                <i class="fas fa-question-circle"></i>
-                <strong><?php _e('Who can use this login?', 'al-huffaz-portal'); ?></strong>
-            </p>
-            <ul>
-                <li><i class="fas fa-user-shield"></i> <strong><?php _e('School Admins', 'al-huffaz-portal'); ?></strong> - <?php _e('Full portal access', 'al-huffaz-portal'); ?></li>
-                <li><i class="fas fa-chalkboard-teacher"></i> <strong><?php _e('Staff/Teachers', 'al-huffaz-portal'); ?></strong> - <?php _e('Add & edit students', 'al-huffaz-portal'); ?></li>
-                <li><i class="fas fa-hand-holding-heart"></i> <strong><?php _e('Sponsors', 'al-huffaz-portal'); ?></strong> - <?php _e('View & sponsor students', 'al-huffaz-portal'); ?></li>
-            </ul>
-            <p class="alhuffaz-help-footer">
-                <small><i class="fas fa-magic"></i> <?php _e('The system will automatically take you to the correct dashboard based on your role.', 'al-huffaz-portal'); ?></small>
             </p>
         </div>
     </div>
@@ -376,55 +358,6 @@ if (is_user_logged_in()) {
     margin-top: 8px !important;
     font-size: 12px;
     color: #9ca3af;
-}
-
-.alhuffaz-login-help {
-    padding: 20px;
-    background: #f0f9ff;
-    border-radius: 8px;
-    margin-top: 20px;
-    border: 1px solid #bfdbfe;
-}
-
-.alhuffaz-login-help > p:first-child {
-    margin: 0 0 12px 0;
-    color: #1e40af;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-}
-
-.alhuffaz-login-help ul {
-    list-style: none;
-    padding: 0;
-    margin: 12px 0;
-}
-
-.alhuffaz-login-help ul li {
-    padding: 8px 0;
-    color: #374151;
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    font-size: 14px;
-}
-
-.alhuffaz-login-help ul li i {
-    color: #667eea;
-    width: 20px;
-}
-
-.alhuffaz-help-footer {
-    margin-top: 12px !important;
-    padding-top: 12px;
-    border-top: 1px solid #bfdbfe;
-}
-
-.alhuffaz-help-footer small {
-    color: #6b7280;
-    display: flex;
-    align-items: center;
-    gap: 6px;
 }
 
 /* Responsive */
