@@ -3601,11 +3601,23 @@ document.addEventListener('DOMContentLoaded', function() {
     window.approveSponsorUser = function(userId, event) {
         if (!confirm('<?php _e('Approve this sponsor user account? They will receive an email confirmation.', 'al-huffaz-portal'); ?>')) return;
 
-        // Get button element and disable it
+        // Get button element and row for optimistic UI update
         const btn = event ? event.target.closest('button') : null;
+        const row = btn ? btn.closest('tr') : null;
+
+        // FIX #13: Prevent double-click/rapid actions
+        if (btn && btn.disabled) return;
+
         if (btn) {
             btn.disabled = true;
             btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> <?php _e('Approving...', 'al-huffaz-portal'); ?>';
+        }
+
+        // FIX #9: Optimistic UI - fade row immediately for instant feedback
+        if (row) {
+            row.style.transition = 'opacity 0.3s, background-color 0.3s';
+            row.style.opacity = '0.5';
+            row.style.backgroundColor = 'rgba(16, 185, 129, 0.1)'; // green tint
         }
 
         fetch(ajaxUrl, {
@@ -3613,7 +3625,13 @@ document.addEventListener('DOMContentLoaded', function() {
             headers: {'Content-Type': 'application/x-www-form-urlencoded'},
             body: new URLSearchParams({action: 'alhuffaz_approve_sponsor_user', nonce, user_id: userId})
         })
-        .then(r => r.json())
+        .then(r => {
+            // FIX #16: Detect nonce expiry and other auth failures
+            if (r.status === 403 || r.status === 401) {
+                throw new Error('SESSION_EXPIRED');
+            }
+            return r.json();
+        })
         .then(data => {
             if (data.success) {
                 showToast('<?php _e('Sponsor user approved successfully! Email sent.', 'al-huffaz-portal'); ?>', 'success');
@@ -3621,16 +3639,29 @@ document.addEventListener('DOMContentLoaded', function() {
                 // FIX #1: Refresh dashboard stats after approval
                 refreshDashboardStats();
 
-                // Auto-switch to "Approved" filter to show the approved user
-                const filterDropdown = document.getElementById('filterUserStatus');
-                if (filterDropdown) {
-                    filterDropdown.value = 'approved';
+                // FIX #10: Better filter behavior - keep current filter, show inline notification
+                const currentFilter = document.getElementById('filterUserStatus')?.value;
+                if (currentFilter === 'pending_approval' || currentFilter === 'all') {
+                    // Show inline success message on the row before it disappears
+                    if (row) {
+                        row.innerHTML = `<td colspan="5" style="padding:20px;text-align:center;background:linear-gradient(135deg, #10b981, #059669);color:white;font-weight:600;">
+                            <i class="fas fa-check-circle"></i> <?php _e('Approved! User moved to Approved tab', 'al-huffaz-portal'); ?>
+                        </td>`;
+                        setTimeout(() => loadSponsorUsers(), 1000);
+                    } else {
+                        loadSponsorUsers();
+                    }
+                } else {
+                    // Already in approved or other filter, just reload
+                    loadSponsorUsers();
                 }
-
-                // Reload sponsor users with new filter
-                loadSponsorUsers();
             } else {
                 showToast(data.data?.message || '<?php _e('Error approving user', 'al-huffaz-portal'); ?>', 'error');
+                // FIX #11: Restore row state on error
+                if (row) {
+                    row.style.opacity = '1';
+                    row.style.backgroundColor = '';
+                }
                 if (btn) {
                     btn.disabled = false;
                     btn.innerHTML = '<i class="fas fa-check"></i>';
@@ -3638,7 +3669,18 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         })
         .catch(err => {
-            showToast('<?php _e('Network error. Please try again.', 'al-huffaz-portal'); ?>', 'error');
+            // FIX #16: Better error messaging for session expiry
+            if (err.message === 'SESSION_EXPIRED') {
+                showToast('<?php _e('Session expired. Please refresh the page and login again.', 'al-huffaz-portal'); ?>', 'error');
+                setTimeout(() => location.reload(), 2000);
+            } else {
+                showToast('<?php _e('Network error. Please try again.', 'al-huffaz-portal'); ?>', 'error');
+            }
+            // FIX #11: Always restore button state in catch block
+            if (row) {
+                row.style.opacity = '1';
+                row.style.backgroundColor = '';
+            }
             if (btn) {
                 btn.disabled = false;
                 btn.innerHTML = '<i class="fas fa-check"></i>';
@@ -3650,11 +3692,23 @@ document.addEventListener('DOMContentLoaded', function() {
         const reason = prompt('<?php _e('Please enter rejection reason:', 'al-huffaz-portal'); ?>');
         if (reason === null) return;
 
-        // Get button element and disable it
+        // Get button element and row for optimistic UI update
         const btn = event ? event.target.closest('button') : null;
+        const row = btn ? btn.closest('tr') : null;
+
+        // FIX #13: Prevent double-click
+        if (btn && btn.disabled) return;
+
         if (btn) {
             btn.disabled = true;
             btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+        }
+
+        // FIX #9: Optimistic UI - fade row with red tint
+        if (row) {
+            row.style.transition = 'opacity 0.3s, background-color 0.3s';
+            row.style.opacity = '0.5';
+            row.style.backgroundColor = 'rgba(239, 68, 68, 0.1)'; // red tint
         }
 
         fetch(ajaxUrl, {
@@ -3662,15 +3716,35 @@ document.addEventListener('DOMContentLoaded', function() {
             headers: {'Content-Type': 'application/x-www-form-urlencoded'},
             body: new URLSearchParams({action: 'alhuffaz_reject_sponsor_user', nonce, user_id: userId, reason})
         })
-        .then(r => r.json())
+        .then(r => {
+            // FIX #16: Detect session expiry
+            if (r.status === 403 || r.status === 401) {
+                throw new Error('SESSION_EXPIRED');
+            }
+            return r.json();
+        })
         .then(data => {
             if (data.success) {
                 showToast('<?php _e('Sponsor user rejected successfully', 'al-huffaz-portal'); ?>', 'success');
                 // FIX #1: Refresh dashboard stats after rejection
                 refreshDashboardStats();
-                loadSponsorUsers();
+
+                // FIX #10: Show inline message then reload
+                if (row) {
+                    row.innerHTML = `<td colspan="5" style="padding:20px;text-align:center;background:linear-gradient(135deg, #ef4444, #dc2626);color:white;font-weight:600;">
+                        <i class="fas fa-times-circle"></i> <?php _e('Rejected. Email sent to user.', 'al-huffaz-portal'); ?>
+                    </td>`;
+                    setTimeout(() => loadSponsorUsers(), 1000);
+                } else {
+                    loadSponsorUsers();
+                }
             } else {
                 showToast(data.data?.message || '<?php _e('Error rejecting user', 'al-huffaz-portal'); ?>', 'error');
+                // FIX #11: Restore state on error
+                if (row) {
+                    row.style.opacity = '1';
+                    row.style.backgroundColor = '';
+                }
                 if (btn) {
                     btn.disabled = false;
                     btn.innerHTML = '<i class="fas fa-times"></i>';
@@ -3678,7 +3752,18 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         })
         .catch(err => {
-            showToast('<?php _e('Network error. Please try again.', 'al-huffaz-portal'); ?>', 'error');
+            // FIX #16: Session expiry detection
+            if (err.message === 'SESSION_EXPIRED') {
+                showToast('<?php _e('Session expired. Please refresh the page and login again.', 'al-huffaz-portal'); ?>', 'error');
+                setTimeout(() => location.reload(), 2000);
+            } else {
+                showToast('<?php _e('Network error. Please try again.', 'al-huffaz-portal'); ?>', 'error');
+            }
+            // FIX #11: Always restore state
+            if (row) {
+                row.style.opacity = '1';
+                row.style.backgroundColor = '';
+            }
             if (btn) {
                 btn.disabled = false;
                 btn.innerHTML = '<i class="fas fa-times"></i>';
@@ -3965,5 +4050,67 @@ document.addEventListener('DOMContentLoaded', function() {
     <?php if ($is_edit): ?>
     showPanel('add-student');
     <?php endif; ?>
+
+    // ==================== KEYBOARD SHORTCUTS ====================
+    // FIX #12: Add keyboard shortcuts for power users
+    document.addEventListener('keydown', function(e) {
+        // Ctrl+S or Cmd+S - Save student form
+        if ((e.ctrlKey || e.metaKey) && e.key === 's') {
+            e.preventDefault();
+            const activePanel = document.querySelector('.ahp-panel.active');
+            if (activePanel && activePanel.id === 'panel-add-student') {
+                const submitBtn = document.getElementById('submitBtn');
+                if (submitBtn && !submitBtn.disabled) {
+                    submitBtn.click();
+                    showToast('<?php _e('Saving... (Ctrl+S)', 'al-huffaz-portal'); ?>', 'info');
+                }
+            }
+        }
+
+        // Esc - Close modals
+        if (e.key === 'Escape') {
+            // Close student view modal if open
+            const viewModal = document.getElementById('studentViewModal');
+            if (viewModal && viewModal.style.display !== 'none') {
+                viewModal.style.display = 'none';
+                return;
+            }
+
+            // Close sponsor details modal if open
+            const sponsorModal = document.getElementById('sponsorModal');
+            if (sponsorModal && sponsorModal.style.display !== 'none') {
+                closeSponsorModal();
+                return;
+            }
+        }
+
+        // Ctrl+K or Cmd+K - Focus search
+        if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
+            e.preventDefault();
+            const searchInput = document.getElementById('searchStudents');
+            if (searchInput) {
+                searchInput.focus();
+                searchInput.select();
+                showToast('<?php _e('Search focused (Ctrl+K)', 'al-huffaz-portal'); ?>', 'info');
+            }
+        }
+
+        // Ctrl+1 through Ctrl+7 - Quick panel switching
+        if ((e.ctrlKey || e.metaKey) && e.key >= '1' && e.key <= '7') {
+            e.preventDefault();
+            const panels = ['dashboard', 'students', 'add-student', 'sponsors', 'sponsor-users', 'payments', 'staff'];
+            const panelIndex = parseInt(e.key) - 1;
+            if (panels[panelIndex]) {
+                showPanel(panels[panelIndex]);
+            }
+        }
+    });
+
+    // Show keyboard shortcut hints on page load
+    console.log('%c⌨️ Al-Huffaz Portal Keyboard Shortcuts', 'font-size:14px;font-weight:bold;color:#6366f1');
+    console.log('%cCtrl+S', 'font-weight:bold', '- Save student form');
+    console.log('%cEsc', 'font-weight:bold', '- Close modals');
+    console.log('%cCtrl+K', 'font-weight:bold', '- Focus search');
+    console.log('%cCtrl+1-7', 'font-weight:bold', '- Quick panel switch');
 });
 </script>
