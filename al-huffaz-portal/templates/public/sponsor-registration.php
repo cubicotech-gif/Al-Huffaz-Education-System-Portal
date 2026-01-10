@@ -19,11 +19,11 @@ defined('ABSPATH') || exit;
 if (is_user_logged_in()) {
     $user = wp_get_current_user();
     if (in_array('alhuffaz_sponsor', $user->roles)) {
-        wp_redirect(home_url('/sponsor-dashboard/'));
+        wp_redirect(Helpers::get_sponsor_dashboard_url());
         exit;
     }
     if (in_array('alhuffaz_admin', $user->roles) || in_array('administrator', $user->roles)) {
-        wp_redirect(home_url('/admin-portal/'));
+        wp_redirect(Helpers::get_admin_portal_url());
         exit;
     }
 }
@@ -131,7 +131,7 @@ $countries = Helpers::get_countries();
         <div class="alhuffaz-register-footer">
             <p>
                 <?php _e('Already have an account?', 'al-huffaz-portal'); ?>
-                <a href="<?php echo home_url('/login/'); ?>"><?php _e('Login here', 'al-huffaz-portal'); ?></a>
+                <a href="<?php echo esc_url(Helpers::get_login_url()); ?>"><?php _e('Login here', 'al-huffaz-portal'); ?></a>
             </p>
         </div>
 
@@ -413,7 +413,7 @@ jQuery(document).ready(function($) {
             success: function(response) {
                 if (response.success) {
                     // Success - redirect to login with success message
-                    window.location.href = '<?php echo home_url('/login/?registered=success'); ?>';
+                    window.location.href = '<?php echo esc_url(add_query_arg('registered', 'success', Helpers::get_login_url())); ?>';
                 } else {
                     // Error - show message
                     $messages.html('<div class="message error"><i class="fas fa-exclamation-circle"></i> <span>' + response.data.message + '</span></div>');

@@ -411,4 +411,118 @@ class Helpers {
 
         return $result;
     }
+
+    /**
+     * Get admin portal URL dynamically
+     * Finds the page containing [alhuffaz_admin_portal] shortcode
+     */
+    public static function get_admin_portal_url() {
+        // Check cache first
+        static $admin_portal_url = null;
+        if ($admin_portal_url !== null) {
+            return $admin_portal_url;
+        }
+
+        // Try to find page with admin portal shortcode
+        $pages = get_posts(array(
+            'post_type' => 'page',
+            'post_status' => 'publish',
+            'posts_per_page' => 1,
+            's' => '[alhuffaz_admin_portal]',
+        ));
+
+        if (!empty($pages)) {
+            $admin_portal_url = get_permalink($pages[0]->ID);
+            return $admin_portal_url;
+        }
+
+        // Fallback: Try common page slugs
+        $common_slugs = array('admin-portal', 'school-portal', 'portal', 'school-admin', 'admin');
+        foreach ($common_slugs as $slug) {
+            $page = get_page_by_path($slug);
+            if ($page) {
+                $admin_portal_url = get_permalink($page->ID);
+                return $admin_portal_url;
+            }
+        }
+
+        // Last fallback
+        $admin_portal_url = home_url('/');
+        return $admin_portal_url;
+    }
+
+    /**
+     * Get sponsor dashboard URL dynamically
+     * Finds the page containing [alhuffaz_sponsor_dashboard] shortcode
+     */
+    public static function get_sponsor_dashboard_url() {
+        // Check cache first
+        static $sponsor_dashboard_url = null;
+        if ($sponsor_dashboard_url !== null) {
+            return $sponsor_dashboard_url;
+        }
+
+        // Try to find page with sponsor dashboard shortcode
+        $pages = get_posts(array(
+            'post_type' => 'page',
+            'post_status' => 'publish',
+            'posts_per_page' => 1,
+            's' => '[alhuffaz_sponsor_dashboard]',
+        ));
+
+        if (!empty($pages)) {
+            $sponsor_dashboard_url = get_permalink($pages[0]->ID);
+            return $sponsor_dashboard_url;
+        }
+
+        // Fallback: Try common page slugs
+        $common_slugs = array('sponsor-dashboard', 'my-sponsorships', 'dashboard', 'sponsor');
+        foreach ($common_slugs as $slug) {
+            $page = get_page_by_path($slug);
+            if ($page) {
+                $sponsor_dashboard_url = get_permalink($page->ID);
+                return $sponsor_dashboard_url;
+            }
+        }
+
+        // Last fallback
+        $sponsor_dashboard_url = home_url('/');
+        return $sponsor_dashboard_url;
+    }
+
+    /**
+     * Get login page URL dynamically
+     */
+    public static function get_login_url() {
+        static $login_url = null;
+        if ($login_url !== null) {
+            return $login_url;
+        }
+
+        // Try to find page with unified login shortcode
+        $pages = get_posts(array(
+            'post_type' => 'page',
+            'post_status' => 'publish',
+            'posts_per_page' => 1,
+            's' => '[alhuffaz_unified_login]',
+        ));
+
+        if (!empty($pages)) {
+            $login_url = get_permalink($pages[0]->ID);
+            return $login_url;
+        }
+
+        // Fallback
+        $common_slugs = array('login', 'sign-in', 'signin');
+        foreach ($common_slugs as $slug) {
+            $page = get_page_by_path($slug);
+            if ($page) {
+                $login_url = get_permalink($page->ID);
+                return $login_url;
+            }
+        }
+
+        $login_url = wp_login_url();
+        return $login_url;
+    }
 }

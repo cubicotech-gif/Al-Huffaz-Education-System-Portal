@@ -22,7 +22,7 @@ if (is_user_logged_in()) {
     if (in_array('alhuffaz_admin', $user->roles) ||
         in_array('alhuffaz_staff', $user->roles) ||
         in_array('administrator', $user->roles)) {
-        wp_redirect(home_url('/admin-portal/'));
+        wp_redirect(Helpers::get_admin_portal_url());
         exit;
     }
 
@@ -30,7 +30,7 @@ if (is_user_logged_in()) {
     if (in_array('alhuffaz_sponsor', $user->roles)) {
         $status = get_user_meta($user->ID, 'account_status', true);
         if ($status === 'approved' || empty($status)) {
-            wp_redirect(home_url('/sponsor-dashboard/'));
+            wp_redirect(Helpers::get_sponsor_dashboard_url());
             exit;
         }
     }
