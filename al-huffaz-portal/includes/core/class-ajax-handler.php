@@ -52,6 +52,12 @@ class Ajax_Handler {
         add_action('wp_ajax_alhuffaz_register_sponsor', array($this, 'register_sponsor'));
         add_action('wp_ajax_nopriv_alhuffaz_register_sponsor', array($this, 'register_sponsor'));
 
+        add_action('wp_ajax_alhuffaz_custom_login', array($this, 'custom_login'));
+        add_action('wp_ajax_nopriv_alhuffaz_custom_login', array($this, 'custom_login'));
+
+        add_action('wp_ajax_alhuffaz_forgot_password', array($this, 'forgot_password'));
+        add_action('wp_ajax_nopriv_alhuffaz_forgot_password', array($this, 'forgot_password'));
+
         add_action('wp_ajax_alhuffaz_submit_sponsorship', array($this, 'submit_sponsorship'));
         add_action('wp_ajax_nopriv_alhuffaz_submit_sponsorship', array($this, 'submit_sponsorship'));
 
@@ -3230,6 +3236,121 @@ With gratitude,
             'message' => __('Registration successful! Your account is pending approval.', 'al-huffaz-portal'),
             'redirect' => home_url('/login/?registered=success'),
         ));
+    }
+
+    /**
+     * Handle custom login with detailed error messages
+     */
+    public function custom_login() {
+        // Get credentials
+        $username = isset($_POST['username']) ? sanitize_text_field($_POST['username']) : '';
+        $password = isset($_POST['password']) ? $_POST['password'] : '';
+
+        // Validate
+        if (empty($username) || empty($password)) {
+            wp_send_json_error(array('message' => __('Please enter both username and password.', 'al-huffaz-portal')));
+        }
+
+        // Prepare credentials
+        $credentials = array(
+            'user_login'    => $username,
+            'user_password' => $password,
+            'remember'      => true,
+        );
+
+        // Attempt login
+        $user = wp_signon($credentials, false);
+
+        // Check for errors
+        if (is_wp_error($user)) {
+            $error_code = $user->get_error_code();
+
+            // Provide specific error messages
+            switch ($error_code) {
+                case 'invalid_username':
+                    $message = __('Invalid username or email address. Please check and try again.', 'al-huffaz-portal');
+                    break;
+                case 'incorrect_password':
+                    $message = __('Incorrect password. Please try again or use "Forgot Password" to reset.', 'al-huffaz-portal');
+                    break;
+                case 'invalid_email':
+                    $message = __('Invalid email address. Please check and try again.', 'al-huffaz-portal');
+                    break;
+                default:
+                    $message = $user->get_error_message();
+                    break;
+            }
+
+            wp_send_json_error(array('message' => $message));
+        }
+
+        // Login successful
+        wp_send_json_success(array(
+            'message' => __('Login successful! Redirecting...', 'al-huffaz-portal'),
+            'redirect' => get_permalink(),
+        ));
+    }
+
+    /**
+     * Handle forgot password request
+     */
+    public function forgot_password() {
+        // Get email
+        $email = isset($_POST['email']) ? sanitize_email($_POST['email']) : '';
+
+        // Validate
+        if (empty($email) || !is_email($email)) {
+            wp_send_json_error(array('message' => __('Please enter a valid email address.', 'al-huffaz-portal')));
+        }
+
+        // Check if user exists
+        $user = get_user_by('email', $email);
+        if (!$user) {
+            // Don't reveal that user doesn't exist for security
+            wp_send_json_success(array(
+                'message' => __('If an account exists with this email, you will receive password reset instructions shortly.', 'al-huffaz-portal')
+            ));
+            return;
+        }
+
+        // Generate password reset key
+        $reset_key = get_password_reset_key($user);
+
+        if (is_wp_error($reset_key)) {
+            wp_send_json_error(array('message' => __('Unable to generate reset key. Please try again.', 'al-huffaz-portal')));
+        }
+
+        // Build reset URL
+        $reset_url = network_site_url("wp-login.php?action=rp&key=$reset_key&login=" . rawurlencode($user->user_login), 'login');
+
+        // Email subject
+        $subject = sprintf(__('[%s] Password Reset Request', 'al-huffaz-portal'), get_bloginfo('name'));
+
+        // Email message
+        $message = sprintf(
+            __("Hi %s,\n\n", 'al-huffaz-portal') .
+            __("You recently requested to reset your password for your account at %s.\n\n", 'al-huffaz-portal') .
+            __("To reset your password, click the link below:\n\n", 'al-huffaz-portal') .
+            "%s\n\n" .
+            __("This link will expire in 24 hours.\n\n", 'al-huffaz-portal') .
+            __("If you didn't request a password reset, you can safely ignore this email.\n\n", 'al-huffaz-portal') .
+            __("Best regards,\n%s Team", 'al-huffaz-portal'),
+            $user->display_name,
+            get_bloginfo('name'),
+            $reset_url,
+            get_bloginfo('name')
+        );
+
+        // Send email
+        $sent = wp_mail($email, $subject, $message);
+
+        if ($sent) {
+            wp_send_json_success(array(
+                'message' => __('Password reset instructions have been sent to your email address.', 'al-huffaz-portal')
+            ));
+        } else {
+            wp_send_json_error(array('message' => __('Unable to send email. Please try again or contact support.', 'al-huffaz-portal')));
+        }
     }
 
     /**

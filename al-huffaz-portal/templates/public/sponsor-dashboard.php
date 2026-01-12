@@ -61,32 +61,184 @@ if (!is_user_logged_in()) {
         font-family: 'Inter', sans-serif; transition: transform 0.2s, box-shadow 0.2s;
     }
     .sp-login-form input[type="submit"]:hover { transform: translateY(-2px); box-shadow: 0 8px 25px rgba(102, 126, 234, 0.4); }
+    .sp-login-form button {
+        width: 100%; padding: 16px; background: linear-gradient(135deg, #667eea, #764ba2); color: white;
+        border: none; border-radius: 12px; font-size: 16px; font-weight: 600; cursor: pointer;
+        font-family: 'Inter', sans-serif; transition: transform 0.2s, box-shadow 0.2s;
+    }
+    .sp-login-form button:hover { transform: translateY(-2px); box-shadow: 0 8px 25px rgba(102, 126, 234, 0.4); }
+    .sp-login-form button:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
+    .sp-login-error { background: #fee2e2; border: 2px solid #ef4444; color: #991b1b; padding: 14px 16px; border-radius: 12px; margin-bottom: 20px; font-size: 14px; text-align: left; }
+    .sp-login-success { background: #d1fae5; border: 2px solid #10b981; color: #065f46; padding: 14px 16px; border-radius: 12px; margin-bottom: 20px; font-size: 14px; text-align: left; }
+    .sp-login-links { margin-top: 16px; text-align: center; }
+    .sp-login-links a { color: #667eea; text-decoration: none; font-size: 14px; font-weight: 500; }
+    .sp-login-links a:hover { text-decoration: underline; }
+    .sp-forgot-view { display: none; }
+    .sp-back-btn { margin-bottom: 20px; text-align: left; }
+    .sp-back-btn a { color: #667eea; text-decoration: none; font-size: 14px; font-weight: 500; display: inline-flex; align-items: center; gap: 6px; }
+    .sp-back-btn a:hover { text-decoration: underline; }
     .sp-login-footer { margin-top: 32px; padding-top: 24px; border-top: 1px solid #e5e7eb; }
     .sp-login-footer p { margin: 0 0 16px 0; color: #6b7280; font-size: 14px; }
     .sp-login-btn { display: inline-flex; align-items: center; gap: 8px; padding: 14px 28px; border-radius: 12px;
         font-weight: 600; font-size: 15px; text-decoration: none; background: #f3f4f6; color: #374151; transition: all 0.2s; }
     .sp-login-btn:hover { background: #e5e7eb; }
-    </style>
+</style>
     <div class="sp-login-page">
         <div class="sp-login-card">
-            <div class="sp-login-header">
-                <i class="fas fa-hand-holding-heart"></i>
-                <h2><?php _e('Sponsor Portal', 'al-huffaz-portal'); ?></h2>
-                <p><?php _e('Login to access your sponsor dashboard', 'al-huffaz-portal'); ?></p>
+            <!-- Login View -->
+            <div id="sp-login-view">
+                <div class="sp-login-header">
+                    <i class="fas fa-hand-holding-heart"></i>
+                    <h2><?php _e('Sponsor Portal', 'al-huffaz-portal'); ?></h2>
+                    <p><?php _e('Login to access your sponsor dashboard', 'al-huffaz-portal'); ?></p>
+                </div>
+                <div class="sp-login-form">
+                    <div id="sp-login-message"></div>
+                    <form id="sp-login-form">
+                        <label for="sp_username"><?php _e('Email or Username', 'al-huffaz-portal'); ?></label>
+                        <input type="text" id="sp_username" name="username" required autocomplete="username">
+
+                        <label for="sp_password"><?php _e('Password', 'al-huffaz-portal'); ?></label>
+                        <input type="password" id="sp_password" name="password" required autocomplete="current-password">
+
+                        <button type="submit" id="sp-login-btn">
+                            <i class="fas fa-sign-in-alt"></i> <?php _e('Sign In', 'al-huffaz-portal'); ?>
+                        </button>
+                    </form>
+                    <div class="sp-login-links">
+                        <a href="#" onclick="showForgotPassword(event)"><?php _e('Forgot Password?', 'al-huffaz-portal'); ?></a>
+                    </div>
+                </div>
+                <div class="sp-login-footer">
+                    <p><?php _e('Not a sponsor yet?', 'al-huffaz-portal'); ?></p>
+                    <a href="<?php echo home_url('/become-a-sponsor'); ?>" class="sp-login-btn">
+                        <i class="fas fa-heart"></i> <?php _e('Become a Sponsor', 'al-huffaz-portal'); ?>
+                    </a>
+                </div>
             </div>
-            <div class="sp-login-form">
-                <?php wp_login_form(array('redirect' => get_permalink(), 'form_id' => 'sp-login-form',
-                    'label_username' => __('Email or Username', 'al-huffaz-portal'), 'label_password' => __('Password', 'al-huffaz-portal'),
-                    'label_remember' => __('Remember Me', 'al-huffaz-portal'), 'label_log_in' => __('Sign In', 'al-huffaz-portal'))); ?>
-            </div>
-            <div class="sp-login-footer">
-                <p><?php _e('Not a sponsor yet?', 'al-huffaz-portal'); ?></p>
-                <a href="<?php echo home_url('/become-a-sponsor'); ?>" class="sp-login-btn">
-                    <i class="fas fa-heart"></i> <?php _e('Become a Sponsor', 'al-huffaz-portal'); ?>
-                </a>
+
+            <!-- Forgot Password View -->
+            <div id="sp-forgot-view" class="sp-forgot-view">
+                <div class="sp-back-btn">
+                    <a href="#" onclick="showLogin(event)">
+                        <i class="fas fa-arrow-left"></i> <?php _e('Back to Login', 'al-huffaz-portal'); ?>
+                    </a>
+                </div>
+                <div class="sp-login-header">
+                    <i class="fas fa-key"></i>
+                    <h2><?php _e('Reset Password', 'al-huffaz-portal'); ?></h2>
+                    <p><?php _e('Enter your email to receive password reset instructions', 'al-huffaz-portal'); ?></p>
+                </div>
+                <div class="sp-login-form">
+                    <div id="sp-forgot-message"></div>
+                    <form id="sp-forgot-form">
+                        <label for="sp_reset_email"><?php _e('Email Address', 'al-huffaz-portal'); ?></label>
+                        <input type="email" id="sp_reset_email" name="email" required autocomplete="email">
+
+                        <button type="submit" id="sp-forgot-btn">
+                            <i class="fas fa-paper-plane"></i> <?php _e('Send Reset Link', 'al-huffaz-portal'); ?>
+                        </button>
+                    </form>
+                </div>
             </div>
         </div>
     </div>
+
+    <script>
+    function showForgotPassword(e) {
+        e.preventDefault();
+        document.getElementById('sp-login-view').style.display = 'none';
+        document.getElementById('sp-forgot-view').style.display = 'block';
+        document.getElementById('sp-login-message').innerHTML = '';
+        document.getElementById('sp-forgot-message').innerHTML = '';
+    }
+
+    function showLogin(e) {
+        e.preventDefault();
+        document.getElementById('sp-forgot-view').style.display = 'none';
+        document.getElementById('sp-login-view').style.display = 'block';
+        document.getElementById('sp-login-message').innerHTML = '';
+        document.getElementById('sp-forgot-message').innerHTML = '';
+    }
+
+    // Handle login form submission
+    document.getElementById('sp-login-form').addEventListener('submit', function(e) {
+        e.preventDefault();
+
+        const btn = document.getElementById('sp-login-btn');
+        const messageDiv = document.getElementById('sp-login-message');
+        const username = document.getElementById('sp_username').value;
+        const password = document.getElementById('sp_password').value;
+
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> <?php _e('Signing in...', 'al-huffaz-portal'); ?>';
+        messageDiv.innerHTML = '';
+
+        fetch('<?php echo admin_url('admin-ajax.php'); ?>', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+            body: new URLSearchParams({
+                action: 'alhuffaz_custom_login',
+                username: username,
+                password: password
+            })
+        })
+        .then(r => r.json())
+        .then(data => {
+            if (data.success) {
+                messageDiv.innerHTML = '<div class="sp-login-success"><i class="fas fa-check-circle"></i> ' + data.data.message + '</div>';
+                setTimeout(() => window.location.reload(), 500);
+            } else {
+                messageDiv.innerHTML = '<div class="sp-login-error"><i class="fas fa-exclamation-circle"></i> ' + data.data.message + '</div>';
+                btn.disabled = false;
+                btn.innerHTML = '<i class="fas fa-sign-in-alt"></i> <?php _e('Sign In', 'al-huffaz-portal'); ?>';
+            }
+        })
+        .catch(error => {
+            messageDiv.innerHTML = '<div class="sp-login-error"><i class="fas fa-exclamation-circle"></i> <?php _e('An error occurred. Please try again.', 'al-huffaz-portal'); ?></div>';
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fas fa-sign-in-alt"></i> <?php _e('Sign In', 'al-huffaz-portal'); ?>';
+        });
+    });
+
+    // Handle forgot password form submission
+    document.getElementById('sp-forgot-form').addEventListener('submit', function(e) {
+        e.preventDefault();
+
+        const btn = document.getElementById('sp-forgot-btn');
+        const messageDiv = document.getElementById('sp-forgot-message');
+        const email = document.getElementById('sp_reset_email').value;
+
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> <?php _e('Sending...', 'al-huffaz-portal'); ?>';
+        messageDiv.innerHTML = '';
+
+        fetch('<?php echo admin_url('admin-ajax.php'); ?>', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+            body: new URLSearchParams({
+                action: 'alhuffaz_forgot_password',
+                email: email
+            })
+        })
+        .then(r => r.json())
+        .then(data => {
+            if (data.success) {
+                messageDiv.innerHTML = '<div class="sp-login-success"><i class="fas fa-check-circle"></i> ' + data.data.message + '</div>';
+                document.getElementById('sp_reset_email').value = '';
+            } else {
+                messageDiv.innerHTML = '<div class="sp-login-error"><i class="fas fa-exclamation-circle"></i> ' + data.data.message + '</div>';
+            }
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fas fa-paper-plane"></i> <?php _e('Send Reset Link', 'al-huffaz-portal'); ?>';
+        })
+        .catch(error => {
+            messageDiv.innerHTML = '<div class="sp-login-error"><i class="fas fa-exclamation-circle"></i> <?php _e('An error occurred. Please try again.', 'al-huffaz-portal'); ?></div>';
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fas fa-paper-plane"></i> <?php _e('Send Reset Link', 'al-huffaz-portal'); ?>';
+        });
+    });
+    </script>
     <?php
     return;
 }
