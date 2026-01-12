@@ -11,12 +11,16 @@ defined('ABSPATH') || exit;
 // Simple check - just use WordPress capabilities
 $current_user = wp_get_current_user();
 
-// Everyone with edit_posts can access (admins, editors, staff)
-$is_admin = current_user_can('manage_options');
-$can_manage_sponsors = current_user_can('manage_options');
-$can_manage_payments = current_user_can('manage_options');
-$can_manage_staff = current_user_can('manage_options');
-$is_staff = current_user_can('edit_posts') && !current_user_can('manage_options');
+// CRITICAL FIX: Check for both WP admin (manage_options) AND alhuffaz_admin role
+$is_alhuffaz_admin = in_array('alhuffaz_admin', $current_user->roles);
+$is_wp_admin = current_user_can('manage_options');
+
+// Portal permissions
+$is_admin = $is_wp_admin || $is_alhuffaz_admin;
+$can_manage_sponsors = $is_wp_admin || $is_alhuffaz_admin || current_user_can('alhuffaz_manage_sponsors');
+$can_manage_payments = $is_wp_admin || $is_alhuffaz_admin || current_user_can('alhuffaz_manage_payments');
+$can_manage_staff = $is_wp_admin || $is_alhuffaz_admin || current_user_can('alhuffaz_manage_staff');
+$is_staff = current_user_can('edit_posts') && !$is_admin;
 $staff_count = 0;
 
 // Get stats - with null checks
