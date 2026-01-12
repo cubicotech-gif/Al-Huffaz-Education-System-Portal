@@ -3329,14 +3329,44 @@ document.addEventListener('DOMContentLoaded', function() {
                 if (inactiveSponsorsEl) inactiveSponsorsEl.textContent = stats.inactive_sponsors_count;
 
                 // Update pending badges on navigation tabs
-                updatePendingBadges(stats.pending_sponsor_users_count, stats.pending_payments_count);
+                updatePendingBadges(stats.pending_sponsor_users_count, stats.pending_sponsorships_count, stats.pending_payments_count);
+
+                // Update pending sponsor request count in Sponsors panel
+                const pendingSponsorCountEl = document.getElementById('pendingSponsorCount');
+                if (pendingSponsorCountEl) {
+                    pendingSponsorCountEl.textContent = stats.pending_sponsorships_count || 0;
+                }
             }
         })
         .catch(err => console.error('Failed to refresh stats:', err));
     };
 
     // FIX #5: Update pending count badges on nav tabs
-    function updatePendingBadges(pendingSponsorUsers, pendingPayments) {
+    function updatePendingBadges(pendingSponsorUsers, pendingSponsorships, pendingPayments) {
+        // Update Sponsors tab badge (payment approval requests)
+        const sponsorsTab = document.querySelector('[data-panel="sponsors"]');
+        if (sponsorsTab) {
+            let badge = sponsorsTab.querySelector('.ahp-nav-badge');
+            if (pendingSponsorships > 0) {
+                if (!badge) {
+                    badge = document.createElement('span');
+                    badge.className = 'ahp-nav-badge danger';
+                    sponsorsTab.appendChild(badge);
+                }
+                badge.textContent = pendingSponsorships;
+                badge.style.display = 'inline-block';
+            } else if (badge) {
+                badge.style.display = 'none';
+            }
+        }
+
+        // Update Requests subtab badge
+        const requestsSubtab = document.querySelector('[data-tab="requests"] .ahp-nav-badge');
+        if (requestsSubtab) {
+            requestsSubtab.textContent = pendingSponsorships;
+            requestsSubtab.style.display = pendingSponsorships > 0 ? 'inline-block' : 'none';
+        }
+
         // Update Sponsor Users badge
         const sponsorUsersTab = document.querySelector('[data-panel="sponsor-users"]');
         if (sponsorUsersTab) {

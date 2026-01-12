@@ -1415,6 +1415,20 @@ Thank you for your support.', 'al-huffaz-portal'),
             }
         }
 
+        // Pending sponsorships count (payment approval requests)
+        $pending_sponsorships_count = 0;
+        if (post_type_exists('sponsorship')) {
+            $pending_sponsorships = get_posts(array(
+                'post_type' => 'sponsorship',
+                'post_status' => 'any',
+                'posts_per_page' => -1,
+                'meta_key' => 'verification_status',
+                'meta_value' => 'pending',
+                'fields' => 'ids'
+            ));
+            $pending_sponsorships_count = count($pending_sponsorships);
+        }
+
         // Payments stats
         global $wpdb;
         $payments_table = $wpdb->prefix . 'alhuffaz_payments';
@@ -1438,6 +1452,7 @@ Thank you for your support.', 'al-huffaz-portal'),
             'inactive_sponsors_count' => $inactive_sponsors_count,
             'donation_eligible_count' => $donation_eligible_count,
             'pending_sponsor_users_count' => $pending_sponsor_users_count,
+            'pending_sponsorships_count' => $pending_sponsorships_count,
             'pending_payments_count' => $pending_payments_count,
         ));
     }
