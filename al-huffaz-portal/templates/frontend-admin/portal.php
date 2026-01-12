@@ -8,6 +8,9 @@
 
 defined('ABSPATH') || exit;
 
+// CRITICAL FIX: Hide WordPress admin bar on portal page
+show_admin_bar(false);
+
 // Simple check - just use WordPress capabilities
 $current_user = wp_get_current_user();
 
@@ -302,6 +305,17 @@ $nonce = wp_create_nonce('alhuffaz_student_nonce');
     width: 100%;
 }
 
+/* ==================== HIDE WORDPRESS ADMIN BAR ==================== */
+#wpadminbar {
+    display: none !important;
+}
+html {
+    margin-top: 0 !important;
+}
+body {
+    margin-top: 0 !important;
+}
+
 /* ==================== TOP HEADER ==================== */
 .ahp-portal .ahp-header {
     background: var(--ahp-header-bg) !important;
@@ -309,15 +323,6 @@ $nonce = wp_create_nonce('alhuffaz_student_nonce');
     position: sticky !important;
     top: 0 !important;
     z-index: 100 !important;
-}
-
-body.admin-bar .ahp-portal .ahp-header {
-    top: 32px !important;
-}
-@media screen and (max-width: 782px) {
-    body.admin-bar .ahp-portal .ahp-header {
-        top: 46px !important;
-    }
 }
 
 .ahp-portal .ahp-header-inner {
@@ -363,15 +368,6 @@ body.admin-bar .ahp-portal .ahp-header {
     position: sticky !important;
     top: 0 !important;
     z-index: 100 !important;
-}
-
-body.admin-bar .ahp-portal .ahp-top-header {
-    top: 32px !important;
-}
-@media screen and (max-width: 782px) {
-    body.admin-bar .ahp-portal .ahp-top-header {
-        top: 46px !important;
-    }
 }
 
 .ahp-portal .ahp-header-inner {
@@ -1081,12 +1077,6 @@ body.admin-bar .ahp-portal .ahp-top-header {
                         <span class="ahp-user-name"><?php echo esc_html($current_user->display_name); ?></span>
                         <span class="ahp-user-role"><?php echo esc_html(ucfirst($current_user->roles[0] ?? 'User')); ?></span>
                     </div>
-                    <?php if ($is_admin): ?>
-                    <a href="<?php echo admin_url(); ?>" class="ahp-logout-btn" target="_blank">
-                        <i class="fas fa-cog"></i>
-                        <span>WP Admin</span>
-                    </a>
-                    <?php endif; ?>
                     <a href="<?php echo wp_logout_url(home_url()); ?>" class="ahp-logout-btn">
                         <i class="fas fa-sign-out-alt"></i>
                         <span>Logout</span>
@@ -3721,19 +3711,19 @@ document.addEventListener('DOMContentLoaded', function() {
         const existing = document.getElementById('sponsorDetailsModal');
         if (existing) existing.remove();
 
-        // Create modal
+        // Create modal - CRITICAL FIX: Use solid colors instead of CSS variables
         const modal = document.createElement('div');
         modal.id = 'sponsorDetailsModal';
         modal.innerHTML = `
-            <div style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);z-index:10000;display:flex;align-items:center;justify-content:center;padding:20px;" onclick="if(event.target===this) this.parentElement.remove()">
-                <div style="background:var(--ahp-bg);border-radius:12px;max-width:900px;width:100%;max-height:90vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,0.3);">
-                    <div style="position:sticky;top:0;background:var(--ahp-bg);border-bottom:1px solid var(--ahp-border);padding:20px;display:flex;justify-content:space-between;align-items:center;z-index:1;">
-                        <h2 style="margin:0;font-size:20px;color:var(--ahp-text);"><i class="fas fa-user-circle"></i> <?php _e('Sponsor Details', 'al-huffaz-portal'); ?></h2>
-                        <button onclick="this.closest('#sponsorDetailsModal').remove()" style="background:none;border:none;font-size:24px;cursor:pointer;color:var(--ahp-text-muted);padding:0;width:32px;height:32px;display:flex;align-items:center;justify-content:center;border-radius:6px;" onmouseover="this.style.background='var(--ahp-hover)'" onmouseout="this.style.background='none'">
+            <div style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.7);z-index:10000;display:flex;align-items:center;justify-content:center;padding:20px;backdrop-filter:blur(4px);" onclick="if(event.target===this) this.parentElement.remove()">
+                <div style="background:#ffffff;border-radius:16px;max-width:900px;width:100%;max-height:90vh;overflow-y:auto;box-shadow:0 25px 80px rgba(0,0,0,0.4);">
+                    <div style="position:sticky;top:0;background:#ffffff;border-bottom:2px solid #e5e7eb;padding:24px;display:flex;justify-content:space-between;align-items:center;z-index:1;">
+                        <h2 style="margin:0;font-size:22px;color:#1f2937;font-weight:700;"><i class="fas fa-user-circle" style="color:#6366f1;margin-right:8px;"></i> <?php _e('Sponsor User Details', 'al-huffaz-portal'); ?></h2>
+                        <button onclick="this.closest('#sponsorDetailsModal').remove()" style="background:#f3f4f6;border:none;font-size:20px;cursor:pointer;color:#6b7280;padding:0;width:40px;height:40px;display:flex;align-items:center;justify-content:center;border-radius:8px;transition:all 0.2s;" onmouseover="this.style.background='#ef4444';this.style.color='#fff'" onmouseout="this.style.background='#f3f4f6';this.style.color='#6b7280'">
                             <i class="fas fa-times"></i>
                         </button>
                     </div>
-                    <div id="sponsorDetailsContent" style="padding:20px;">${content}</div>
+                    <div id="sponsorDetailsContent" style="padding:24px;background:#f9fafb;">${content}</div>
                 </div>
             </div>
         `;
@@ -3742,64 +3732,76 @@ document.addEventListener('DOMContentLoaded', function() {
 
     function renderSponsorDetailsModal(sponsor, userId) {
         const content = `
-            <!-- Profile Info -->
-            <div style="background:linear-gradient(135deg, #667eea 0%, #764ba2 100%);color:#fff;padding:24px;border-radius:8px;margin-bottom:20px;">
-                <h3 style="margin:0 0 16px 0;font-size:24px;"><i class="fas fa-user-circle"></i> ${sponsor.display_name || 'N/A'}</h3>
-                <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:16px;font-size:14px;">
-                    <div>
-                        <div style="opacity:0.8;margin-bottom:4px;"><i class="fas fa-envelope"></i> Email</div>
-                        <div style="font-weight:600;">${sponsor.email || 'N/A'}</div>
+            <!-- Profile Info Card -->
+            <div style="background:linear-gradient(135deg, #667eea 0%, #764ba2 100%);color:#fff;padding:28px;border-radius:12px;margin-bottom:24px;box-shadow:0 10px 30px rgba(102,126,234,0.3);">
+                <div style="display:flex;align-items:center;gap:20px;margin-bottom:20px;">
+                    <div style="width:80px;height:80px;background:rgba(255,255,255,0.2);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:36px;border:3px solid rgba(255,255,255,0.3);">
+                        <i class="fas fa-user-circle"></i>
                     </div>
                     <div>
-                        <div style="opacity:0.8;margin-bottom:4px;"><i class="fas fa-phone"></i> Phone</div>
-                        <div style="font-weight:600;">${sponsor.phone || 'N/A'}</div>
+                        <h3 style="margin:0 0 8px 0;font-size:28px;font-weight:700;">${sponsor.display_name || 'N/A'}</h3>
+                        <div style="font-size:14px;opacity:0.9;">
+                            <i class="fas fa-id-badge"></i> User ID: ${userId}
+                        </div>
                     </div>
-                    <div>
-                        <div style="opacity:0.8;margin-bottom:4px;"><i class="fas fa-globe"></i> Country</div>
-                        <div style="font-weight:600;">${sponsor.country || 'N/A'}</div>
+                </div>
+                <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:20px;font-size:15px;">
+                    <div style="background:rgba(255,255,255,0.15);padding:16px;border-radius:8px;border-left:4px solid rgba(255,255,255,0.5);">
+                        <div style="opacity:0.85;margin-bottom:6px;font-size:13px;"><i class="fas fa-envelope"></i> Email Address</div>
+                        <div style="font-weight:600;font-size:16px;word-break:break-word;">${sponsor.email || 'N/A'}</div>
+                    </div>
+                    <div style="background:rgba(255,255,255,0.15);padding:16px;border-radius:8px;border-left:4px solid rgba(255,255,255,0.5);">
+                        <div style="opacity:0.85;margin-bottom:6px;font-size:13px;"><i class="fas fa-phone"></i> Phone Number</div>
+                        <div style="font-weight:600;font-size:16px;">${sponsor.phone || 'N/A'}</div>
+                    </div>
+                    <div style="background:rgba(255,255,255,0.15);padding:16px;border-radius:8px;border-left:4px solid rgba(255,255,255,0.5);">
+                        <div style="opacity:0.85;margin-bottom:6px;font-size:13px;"><i class="fas fa-globe"></i> Country</div>
+                        <div style="font-weight:600;font-size:16px;">${sponsor.country || 'N/A'}</div>
                     </div>
                     ${sponsor.whatsapp ? `
-                    <div>
-                        <div style="opacity:0.8;margin-bottom:4px;"><i class="fab fa-whatsapp"></i> WhatsApp</div>
-                        <div style="font-weight:600;">${sponsor.whatsapp}</div>
+                    <div style="background:rgba(255,255,255,0.15);padding:16px;border-radius:8px;border-left:4px solid rgba(255,255,255,0.5);">
+                        <div style="opacity:0.85;margin-bottom:6px;font-size:13px;"><i class="fab fa-whatsapp"></i> WhatsApp</div>
+                        <div style="font-weight:600;font-size:16px;">${sponsor.whatsapp}</div>
                     </div>
                     ` : ''}
                 </div>
             </div>
 
             <!-- Stats Cards -->
-            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:16px;margin-bottom:20px;">
-                <div style="background:var(--ahp-hover);padding:16px;border-radius:8px;text-align:center;">
-                    <div style="font-size:28px;font-weight:700;color:var(--ahp-primary);margin-bottom:4px;">${sponsor.active_sponsorships || 0}</div>
-                    <div style="font-size:13px;color:var(--ahp-text-muted);"><?php _e('Active Sponsorships', 'al-huffaz-portal'); ?></div>
+            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:16px;margin-bottom:24px;">
+                <div style="background:#ffffff;padding:20px;border-radius:12px;text-align:center;box-shadow:0 4px 12px rgba(0,0,0,0.08);border:2px solid #e5e7eb;">
+                    <div style="font-size:36px;font-weight:800;color:#6366f1;margin-bottom:8px;">${sponsor.active_sponsorships || 0}</div>
+                    <div style="font-size:13px;color:#6b7280;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;"><?php _e('Active Sponsorships', 'al-huffaz-portal'); ?></div>
                 </div>
-                <div style="background:var(--ahp-hover);padding:16px;border-radius:8px;text-align:center;">
-                    <div style="font-size:28px;font-weight:700;color:#10b981;margin-bottom:4px;">${sponsor.total_donated || '$0.00'}</div>
-                    <div style="font-size:13px;color:var(--ahp-text-muted);"><?php _e('Total Donated', 'al-huffaz-portal'); ?></div>
+                <div style="background:#ffffff;padding:20px;border-radius:12px;text-align:center;box-shadow:0 4px 12px rgba(0,0,0,0.08);border:2px solid #e5e7eb;">
+                    <div style="font-size:36px;font-weight:800;color:#10b981;margin-bottom:8px;">${sponsor.total_donated || 'PKR 0'}</div>
+                    <div style="font-size:13px;color:#6b7280;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;"><?php _e('Total Donated', 'al-huffaz-portal'); ?></div>
                 </div>
-                <div style="background:var(--ahp-hover);padding:16px;border-radius:8px;text-align:center;">
-                    <div style="font-size:28px;font-weight:700;color:#f59e0b;margin-bottom:4px;text-transform:capitalize;">${sponsor.status}</div>
-                    <div style="font-size:13px;color:var(--ahp-text-muted);"><?php _e('Account Status', 'al-huffaz-portal'); ?></div>
+                <div style="background:#ffffff;padding:20px;border-radius:12px;text-align:center;box-shadow:0 4px 12px rgba(0,0,0,0.08);border:2px solid #e5e7eb;">
+                    <div style="font-size:24px;font-weight:800;color:#f59e0b;margin-bottom:8px;text-transform:capitalize;">${sponsor.status}</div>
+                    <div style="font-size:13px;color:#6b7280;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;"><?php _e('Account Status', 'al-huffaz-portal'); ?></div>
                 </div>
-                <div style="background:var(--ahp-hover);padding:16px;border-radius:8px;text-align:center;">
-                    <div style="font-size:16px;font-weight:600;color:var(--ahp-text);margin-bottom:4px;">${sponsor.registered}</div>
-                    <div style="font-size:13px;color:var(--ahp-text-muted);"><?php _e('Registered', 'al-huffaz-portal'); ?></div>
-                </div>
-            </div>
-
-            <!-- Sponsored Students -->
-            <div id="sponsorStudentsList" style="margin-bottom:20px;">
-                <h4 style="margin:0 0 12px 0;font-size:16px;color:var(--ahp-text);"><i class="fas fa-users"></i> <?php _e('Sponsored Students', 'al-huffaz-portal'); ?></h4>
-                <div style="text-align:center;padding:20px;color:var(--ahp-text-muted);">
-                    <i class="fas fa-spinner fa-spin"></i> <?php _e('Loading students...', 'al-huffaz-portal'); ?>
+                <div style="background:#ffffff;padding:20px;border-radius:12px;text-align:center;box-shadow:0 4px 12px rgba(0,0,0,0.08);border:2px solid #e5e7eb;">
+                    <div style="font-size:16px;font-weight:700;color:#1f2937;margin-bottom:8px;">${sponsor.registered}</div>
+                    <div style="font-size:13px;color:#6b7280;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;"><?php _e('Registered', 'al-huffaz-portal'); ?></div>
                 </div>
             </div>
 
-            <!-- Payment History -->
-            <div id="sponsorPaymentHistory" style="margin-bottom:20px;">
-                <h4 style="margin:0 0 12px 0;font-size:16px;color:var(--ahp-text);"><i class="fas fa-history"></i> <?php _e('Payment History', 'al-huffaz-portal'); ?></h4>
-                <div style="text-align:center;padding:20px;color:var(--ahp-text-muted);">
-                    <i class="fas fa-spinner fa-spin"></i> <?php _e('Loading payments...', 'al-huffaz-portal'); ?>
+            <!-- Sponsored Students Section -->
+            <div id="sponsorStudentsList" style="background:#ffffff;padding:24px;border-radius:12px;margin-bottom:20px;box-shadow:0 4px 12px rgba(0,0,0,0.08);border:2px solid #e5e7eb;">
+                <h4 style="margin:0 0 16px 0;font-size:18px;color:#1f2937;font-weight:700;"><i class="fas fa-users" style="color:#6366f1;margin-right:8px;"></i> <?php _e('Sponsored Students', 'al-huffaz-portal'); ?></h4>
+                <div style="text-align:center;padding:30px;color:#9ca3af;">
+                    <i class="fas fa-spinner fa-spin" style="font-size:28px;margin-bottom:12px;"></i>
+                    <p style="margin:0;font-size:14px;"><?php _e('Loading students...', 'al-huffaz-portal'); ?></p>
+                </div>
+            </div>
+
+            <!-- Payment History Section -->
+            <div id="sponsorPaymentHistory" style="background:#ffffff;padding:24px;border-radius:12px;box-shadow:0 4px 12px rgba(0,0,0,0.08);border:2px solid #e5e7eb;">
+                <h4 style="margin:0 0 16px 0;font-size:18px;color:#1f2937;font-weight:700;"><i class="fas fa-history" style="color:#6366f1;margin-right:8px;"></i> <?php _e('Payment History', 'al-huffaz-portal'); ?></h4>
+                <div style="text-align:center;padding:30px;color:#9ca3af;">
+                    <i class="fas fa-spinner fa-spin" style="font-size:28px;margin-bottom:12px;"></i>
+                    <p style="margin:0;font-size:14px;"><?php _e('Loading payments...', 'al-huffaz-portal'); ?></p>
                 </div>
             </div>
         `;
