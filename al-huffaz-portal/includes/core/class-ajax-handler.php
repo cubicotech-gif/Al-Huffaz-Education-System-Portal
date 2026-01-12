@@ -3581,7 +3581,8 @@ With gratitude,
     public function get_portal_users() {
         $this->verify_admin_nonce();
 
-        if (!current_user_can('manage_options')) {
+        // CRITICAL FIX: Allow both WP admins and alhuffaz_admin users
+        if (!current_user_can('manage_options') && !current_user_can('alhuffaz_manage_staff')) {
             wp_send_json_error(array('message' => __('Permission denied.', 'al-huffaz-portal')));
         }
 
@@ -3633,7 +3634,8 @@ With gratitude,
     public function create_portal_user() {
         $this->verify_admin_nonce();
 
-        if (!current_user_can('manage_options')) {
+        // CRITICAL FIX: Allow both WP admins and alhuffaz_admin users
+        if (!current_user_can('manage_options') && !current_user_can('alhuffaz_manage_staff')) {
             wp_send_json_error(array('message' => __('Permission denied.', 'al-huffaz-portal')));
         }
 
@@ -3709,7 +3711,8 @@ With gratitude,
     public function delete_portal_user() {
         $this->verify_admin_nonce();
 
-        if (!current_user_can('manage_options')) {
+        // CRITICAL FIX: Allow both WP admins and alhuffaz_admin users
+        if (!current_user_can('manage_options') && !current_user_can('alhuffaz_manage_staff')) {
             wp_send_json_error(array('message' => __('Permission denied.', 'al-huffaz-portal')));
         }
 
