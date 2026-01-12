@@ -2106,14 +2106,19 @@ body {
                                 <select name="payment_method" class="sp-form-select" required>
                                     <option value=""><?php _e('Select method...', 'al-huffaz-portal'); ?></option>
                                     <option value="bank_transfer"><?php _e('Bank Transfer', 'al-huffaz-portal'); ?></option>
-                                    <option value="easypaisa"><?php _e('Easypaisa', 'al-huffaz-portal'); ?></option>
-                                    <option value="jazzcash"><?php _e('JazzCash', 'al-huffaz-portal'); ?></option>
+                                    <option value="wire_transfer"><?php _e('Wire Transfer', 'al-huffaz-portal'); ?></option>
+                                    <option value="other_international"><?php _e('Other International Transfer', 'al-huffaz-portal'); ?></option>
                                 </select>
                             </div>
                             <div class="sp-form-group">
                                 <label class="sp-form-label"><?php _e('Transaction Reference', 'al-huffaz-portal'); ?></label>
                                 <input type="text" name="transaction_ref" class="sp-form-input" placeholder="Transaction ID or reference">
                             </div>
+                        </div>
+
+                        <div class="sp-form-group">
+                            <label class="sp-form-label"><?php _e('Bank Name', 'al-huffaz-portal'); ?> <span style="color: var(--sp-text-muted); font-weight: normal;">(<?php _e('Optional', 'al-huffaz-portal'); ?>)</span></label>
+                            <input type="text" name="bank_name" class="sp-form-input" placeholder="<?php _e('Enter your bank name', 'al-huffaz-portal'); ?>">
                         </div>
 
                         <div class="sp-form-group">
@@ -2188,9 +2193,14 @@ body {
                             <select name="payment_method" class="sp-form-select" required>
                                 <option value=""><?php _e('Select payment method...', 'al-huffaz-portal'); ?></option>
                                 <option value="bank_transfer"><?php _e('Bank Transfer', 'al-huffaz-portal'); ?></option>
-                                <option value="easypaisa"><?php _e('Easypaisa', 'al-huffaz-portal'); ?></option>
-                                <option value="jazzcash"><?php _e('JazzCash', 'al-huffaz-portal'); ?></option>
+                                <option value="wire_transfer"><?php _e('Wire Transfer', 'al-huffaz-portal'); ?></option>
+                                <option value="other_international"><?php _e('Other International Transfer', 'al-huffaz-portal'); ?></option>
                             </select>
+                        </div>
+
+                        <div class="sp-form-group">
+                            <label class="sp-form-label"><?php _e('Bank Name', 'al-huffaz-portal'); ?> <span style="color: var(--sp-text-muted); font-weight: normal;">(<?php _e('Optional', 'al-huffaz-portal'); ?>)</span></label>
+                            <input type="text" name="bank_name" class="sp-form-input" placeholder="<?php _e('Enter your bank name', 'al-huffaz-portal'); ?>">
                         </div>
 
                         <div class="sp-form-group">

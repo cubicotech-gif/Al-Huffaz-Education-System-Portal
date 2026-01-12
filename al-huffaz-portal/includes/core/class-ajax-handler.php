@@ -1608,6 +1608,7 @@ Thank you for your support.', 'al-huffaz-portal'),
             'student_id'     => get_post_meta($sponsorship->ID, '_student_id', true),
             'amount'         => floatval($data['amount']),
             'payment_method' => sanitize_text_field($data['payment_method']),
+            'bank_name'      => sanitize_text_field($data['bank_name'] ?? ''),
             'transaction_id' => sanitize_text_field($data['transaction_id'] ?? ''),
             'payment_date'   => current_time('mysql'),
             'status'         => 'pending',
@@ -1664,6 +1665,7 @@ Thank you for your support.', 'al-huffaz-portal'),
         $student_id = isset($_POST['student_id']) ? intval($_POST['student_id']) : 0;
         $amount = isset($_POST['amount']) ? floatval($_POST['amount']) : 0;
         $payment_method = isset($_POST['payment_method']) ? sanitize_text_field($_POST['payment_method']) : '';
+        $bank_name = isset($_POST['bank_name']) ? sanitize_text_field($_POST['bank_name']) : '';
         $transaction_id = isset($_POST['transaction_id']) ? sanitize_text_field($_POST['transaction_id']) : '';
         $duration_months = isset($_POST['duration_months']) ? intval($_POST['duration_months']) : 1;
         $payment_date = isset($_POST['payment_date']) ? sanitize_text_field($_POST['payment_date']) : current_time('Y-m-d');
@@ -1721,6 +1723,7 @@ Thank you for your support.', 'al-huffaz-portal'),
         update_post_meta($sponsorship_id, 'duration_months', $duration_months); // Payment plan duration: 1, 3, 6, or 12 months
         update_post_meta($sponsorship_id, 'sponsorship_type', $sponsorship_type); // monthly, quarterly, biannual, yearly
         update_post_meta($sponsorship_id, 'payment_method', $payment_method);
+        update_post_meta($sponsorship_id, 'bank_name', $bank_name);
         update_post_meta($sponsorship_id, 'transaction_id', $transaction_id);
         update_post_meta($sponsorship_id, 'payment_date', $payment_date);
         update_post_meta($sponsorship_id, 'verification_status', 'pending');
