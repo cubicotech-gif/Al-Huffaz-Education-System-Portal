@@ -191,6 +191,7 @@ final class Al_Huffaz_Portal {
             student_id bigint(20) NOT NULL,
             amount decimal(10,2) NOT NULL,
             payment_method varchar(50) NOT NULL,
+            bank_name varchar(100) DEFAULT NULL,
             transaction_id varchar(100) DEFAULT NULL,
             payment_date datetime NOT NULL,
             status varchar(20) DEFAULT 'pending',
@@ -258,7 +259,7 @@ final class Al_Huffaz_Portal {
             'alhuffaz_school_address' => '',
             'alhuffaz_enable_email_notifications' => 'yes',
             'alhuffaz_admin_email' => get_option('admin_email'),
-            'alhuffaz_payment_methods' => array('bank_transfer', 'jazzcash', 'easypaisa'),
+            'alhuffaz_payment_methods' => array('bank_transfer', 'wire_transfer', 'other_international'),
             'alhuffaz_academic_year' => date('Y') . '-' . (date('Y') + 1),
             'alhuffaz_grade_levels' => array(
                 'kg1' => 'KG-1',

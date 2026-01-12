@@ -52,6 +52,12 @@ class Ajax_Handler {
         add_action('wp_ajax_alhuffaz_register_sponsor', array($this, 'register_sponsor'));
         add_action('wp_ajax_nopriv_alhuffaz_register_sponsor', array($this, 'register_sponsor'));
 
+        add_action('wp_ajax_alhuffaz_custom_login', array($this, 'custom_login'));
+        add_action('wp_ajax_nopriv_alhuffaz_custom_login', array($this, 'custom_login'));
+
+        add_action('wp_ajax_alhuffaz_forgot_password', array($this, 'forgot_password'));
+        add_action('wp_ajax_nopriv_alhuffaz_forgot_password', array($this, 'forgot_password'));
+
         add_action('wp_ajax_alhuffaz_submit_sponsorship', array($this, 'submit_sponsorship'));
         add_action('wp_ajax_nopriv_alhuffaz_submit_sponsorship', array($this, 'submit_sponsorship'));
 
@@ -97,6 +103,13 @@ class Ajax_Handler {
         // Activity log and recovery AJAX actions
         add_action('wp_ajax_alhuffaz_get_activity_logs', array($this, 'get_activity_logs'));
         add_action('wp_ajax_alhuffaz_restore_item', array($this, 'restore_item'));
+
+        // Payment analytics AJAX actions
+        add_action('wp_ajax_alhuffaz_get_payment_analytics', array($this, 'get_payment_analytics'));
+        add_action('wp_ajax_alhuffaz_get_sponsor_payment_summary', array($this, 'get_sponsor_payment_summary'));
+        add_action('wp_ajax_alhuffaz_get_all_payments', array($this, 'get_all_payments'));
+        add_action('wp_ajax_alhuffaz_approve_payment_request', array($this, 'approve_payment_request'));
+        add_action('wp_ajax_alhuffaz_reject_payment_request', array($this, 'reject_payment_request'));
     }
 
     /**
@@ -1409,6 +1422,20 @@ Thank you for your support.', 'al-huffaz-portal'),
             }
         }
 
+        // Pending sponsorships count (payment approval requests)
+        $pending_sponsorships_count = 0;
+        if (post_type_exists('sponsorship')) {
+            $pending_sponsorships = get_posts(array(
+                'post_type' => 'sponsorship',
+                'post_status' => 'any',
+                'posts_per_page' => -1,
+                'meta_key' => 'verification_status',
+                'meta_value' => 'pending',
+                'fields' => 'ids'
+            ));
+            $pending_sponsorships_count = count($pending_sponsorships);
+        }
+
         // Payments stats
         global $wpdb;
         $payments_table = $wpdb->prefix . 'alhuffaz_payments';
@@ -1432,6 +1459,7 @@ Thank you for your support.', 'al-huffaz-portal'),
             'inactive_sponsors_count' => $inactive_sponsors_count,
             'donation_eligible_count' => $donation_eligible_count,
             'pending_sponsor_users_count' => $pending_sponsor_users_count,
+            'pending_sponsorships_count' => $pending_sponsorships_count,
             'pending_payments_count' => $pending_payments_count,
         ));
     }
@@ -1608,6 +1636,7 @@ Thank you for your support.', 'al-huffaz-portal'),
             'student_id'     => get_post_meta($sponsorship->ID, '_student_id', true),
             'amount'         => floatval($data['amount']),
             'payment_method' => sanitize_text_field($data['payment_method']),
+            'bank_name'      => sanitize_text_field($data['bank_name'] ?? ''),
             'transaction_id' => sanitize_text_field($data['transaction_id'] ?? ''),
             'payment_date'   => current_time('mysql'),
             'status'         => 'pending',
@@ -1664,6 +1693,7 @@ Thank you for your support.', 'al-huffaz-portal'),
         $student_id = isset($_POST['student_id']) ? intval($_POST['student_id']) : 0;
         $amount = isset($_POST['amount']) ? floatval($_POST['amount']) : 0;
         $payment_method = isset($_POST['payment_method']) ? sanitize_text_field($_POST['payment_method']) : '';
+        $bank_name = isset($_POST['bank_name']) ? sanitize_text_field($_POST['bank_name']) : '';
         $transaction_id = isset($_POST['transaction_id']) ? sanitize_text_field($_POST['transaction_id']) : '';
         $duration_months = isset($_POST['duration_months']) ? intval($_POST['duration_months']) : 1;
         $payment_date = isset($_POST['payment_date']) ? sanitize_text_field($_POST['payment_date']) : current_time('Y-m-d');
@@ -1721,6 +1751,7 @@ Thank you for your support.', 'al-huffaz-portal'),
         update_post_meta($sponsorship_id, 'duration_months', $duration_months); // Payment plan duration: 1, 3, 6, or 12 months
         update_post_meta($sponsorship_id, 'sponsorship_type', $sponsorship_type); // monthly, quarterly, biannual, yearly
         update_post_meta($sponsorship_id, 'payment_method', $payment_method);
+        update_post_meta($sponsorship_id, 'bank_name', $bank_name);
         update_post_meta($sponsorship_id, 'transaction_id', $transaction_id);
         update_post_meta($sponsorship_id, 'payment_date', $payment_date);
         update_post_meta($sponsorship_id, 'verification_status', 'pending');
@@ -3230,6 +3261,121 @@ With gratitude,
     }
 
     /**
+     * Handle custom login with detailed error messages
+     */
+    public function custom_login() {
+        // Get credentials
+        $username = isset($_POST['username']) ? sanitize_text_field($_POST['username']) : '';
+        $password = isset($_POST['password']) ? $_POST['password'] : '';
+
+        // Validate
+        if (empty($username) || empty($password)) {
+            wp_send_json_error(array('message' => __('Please enter both username and password.', 'al-huffaz-portal')));
+        }
+
+        // Prepare credentials
+        $credentials = array(
+            'user_login'    => $username,
+            'user_password' => $password,
+            'remember'      => true,
+        );
+
+        // Attempt login
+        $user = wp_signon($credentials, false);
+
+        // Check for errors
+        if (is_wp_error($user)) {
+            $error_code = $user->get_error_code();
+
+            // Provide specific error messages
+            switch ($error_code) {
+                case 'invalid_username':
+                    $message = __('Invalid username or email address. Please check and try again.', 'al-huffaz-portal');
+                    break;
+                case 'incorrect_password':
+                    $message = __('Incorrect password. Please try again or use "Forgot Password" to reset.', 'al-huffaz-portal');
+                    break;
+                case 'invalid_email':
+                    $message = __('Invalid email address. Please check and try again.', 'al-huffaz-portal');
+                    break;
+                default:
+                    $message = $user->get_error_message();
+                    break;
+            }
+
+            wp_send_json_error(array('message' => $message));
+        }
+
+        // Login successful
+        wp_send_json_success(array(
+            'message' => __('Login successful! Redirecting...', 'al-huffaz-portal'),
+            'redirect' => get_permalink(),
+        ));
+    }
+
+    /**
+     * Handle forgot password request
+     */
+    public function forgot_password() {
+        // Get email
+        $email = isset($_POST['email']) ? sanitize_email($_POST['email']) : '';
+
+        // Validate
+        if (empty($email) || !is_email($email)) {
+            wp_send_json_error(array('message' => __('Please enter a valid email address.', 'al-huffaz-portal')));
+        }
+
+        // Check if user exists
+        $user = get_user_by('email', $email);
+        if (!$user) {
+            // Don't reveal that user doesn't exist for security
+            wp_send_json_success(array(
+                'message' => __('If an account exists with this email, you will receive password reset instructions shortly.', 'al-huffaz-portal')
+            ));
+            return;
+        }
+
+        // Generate password reset key
+        $reset_key = get_password_reset_key($user);
+
+        if (is_wp_error($reset_key)) {
+            wp_send_json_error(array('message' => __('Unable to generate reset key. Please try again.', 'al-huffaz-portal')));
+        }
+
+        // Build reset URL
+        $reset_url = network_site_url("wp-login.php?action=rp&key=$reset_key&login=" . rawurlencode($user->user_login), 'login');
+
+        // Email subject
+        $subject = sprintf(__('[%s] Password Reset Request', 'al-huffaz-portal'), get_bloginfo('name'));
+
+        // Email message
+        $message = sprintf(
+            __("Hi %s,\n\n", 'al-huffaz-portal') .
+            __("You recently requested to reset your password for your account at %s.\n\n", 'al-huffaz-portal') .
+            __("To reset your password, click the link below:\n\n", 'al-huffaz-portal') .
+            "%s\n\n" .
+            __("This link will expire in 24 hours.\n\n", 'al-huffaz-portal') .
+            __("If you didn't request a password reset, you can safely ignore this email.\n\n", 'al-huffaz-portal') .
+            __("Best regards,\n%s Team", 'al-huffaz-portal'),
+            $user->display_name,
+            get_bloginfo('name'),
+            $reset_url,
+            get_bloginfo('name')
+        );
+
+        // Send email
+        $sent = wp_mail($email, $subject, $message);
+
+        if ($sent) {
+            wp_send_json_success(array(
+                'message' => __('Password reset instructions have been sent to your email address.', 'al-huffaz-portal')
+            ));
+        } else {
+            wp_send_json_error(array('message' => __('Unable to send email. Please try again or contact support.', 'al-huffaz-portal')));
+        }
+    }
+
+    /**
      * Send admin notification for new sponsor registration
      */
     private function send_admin_notification_new_sponsor($user_id, $name, $email) {
@@ -3754,6 +3900,245 @@ With gratitude,
 
         wp_send_json_success(array(
             'message' => sprintf(__('User "%s" deleted successfully.', 'al-huffaz-portal'), $user->display_name),
+        ));
+    }
+
+    /**
+     * Get payment analytics and statistics
+     */
+    public function get_payment_analytics() {
+        $this->verify_admin_nonce();
+
+        // Get all approved sponsorships
+        $approved_sponsorships = get_posts(array(
+            'post_type' => 'sponsorship',
+            'post_status' => 'any',
+            'posts_per_page' => -1,
+            'meta_key' => 'verification_status',
+            'meta_value' => 'approved',
+        ));
+
+        $total_amount = 0;
+        $unique_sponsors = array();
+        $unique_students = array();
+
+        foreach ($approved_sponsorships as $sp) {
+            $amount = get_post_meta($sp->ID, 'amount', true);
+            $total_amount += floatval($amount);
+
+            $sponsor_email = get_post_meta($sp->ID, 'sponsor_email', true);
+            if ($sponsor_email) {
+                $unique_sponsors[$sponsor_email] = true;
+            }
+
+            $student_id = get_post_meta($sp->ID, 'student_id', true);
+            if ($student_id) {
+                $unique_students[$student_id] = true;
+            }
+        }
+
+        // Get counts by status
+        $approved_count = count($approved_sponsorships);
+        $pending_count = count(get_posts(array(
+            'post_type' => 'sponsorship',
+            'post_status' => 'any',
+            'posts_per_page' => -1,
+            'meta_key' => 'verification_status',
+            'meta_value' => 'pending',
+            'fields' => 'ids',
+        )));
+        $rejected_count = count(get_posts(array(
+            'post_type' => 'sponsorship',
+            'post_status' => 'any',
+            'posts_per_page' => -1,
+            'meta_key' => 'verification_status',
+            'meta_value' => 'rejected',
+            'fields' => 'ids',
+        )));
+
+        wp_send_json_success(array(
+            'total_approved_amount' => Helpers::format_currency($total_amount),
+            'total_active_sponsors' => count($unique_sponsors),
+            'total_students_sponsored' => count($unique_students),
+            'approved_count' => $approved_count,
+            'pending_count' => $pending_count,
+            'rejected_count' => $rejected_count,
+        ));
+    }
+
+    /**
+     * Get sponsor-wise payment summary
+     */
+    public function get_sponsor_payment_summary() {
+        $this->verify_admin_nonce();
+
+        // Get all approved sponsorships
+        $sponsorships = get_posts(array(
+            'post_type' => 'sponsorship',
+            'post_status' => 'any',
+            'posts_per_page' => -1,
+            'meta_key' => 'verification_status',
+            'meta_value' => 'approved',
+        ));
+
+        // Group by sponsor
+        $sponsor_data = array();
+        foreach ($sponsorships as $sp) {
+            $sponsor_email = get_post_meta($sp->ID, 'sponsor_email', true);
+            if (!$sponsor_email) continue;
+
+            if (!isset($sponsor_data[$sponsor_email])) {
+                $sponsor_data[$sponsor_email] = array(
+                    'name' => get_post_meta($sp->ID, 'sponsor_name', true),
+                    'email' => $sponsor_email,
+                    'students' => array(),
+                    'payment_count' => 0,
+                    'total_amount' => 0,
+                    'last_payment_date' => '',
+                );
+            }
+
+            $student_id = get_post_meta($sp->ID, 'student_id', true);
+            if ($student_id) {
+                $sponsor_data[$sponsor_email]['students'][$student_id] = true;
+            }
+
+            $amount = floatval(get_post_meta($sp->ID, 'amount', true));
+            $sponsor_data[$sponsor_email]['total_amount'] += $amount;
+            $sponsor_data[$sponsor_email]['payment_count']++;
+
+            $payment_date = get_post_meta($sp->ID, 'payment_date', true);
+            if ($payment_date && $payment_date > $sponsor_data[$sponsor_email]['last_payment_date']) {
+                $sponsor_data[$sponsor_email]['last_payment_date'] = $payment_date;
+            }
+        }
+
+        // Format data
+        $sponsors = array();
+        foreach ($sponsor_data as $data) {
+            $sponsors[] = array(
+                'name' => $data['name'],
+                'email' => $data['email'],
+                'students_count' => count($data['students']),
+                'payment_count' => $data['payment_count'],
+                'total_amount' => Helpers::format_currency($data['total_amount']),
+                'last_payment_date' => $data['last_payment_date'] ? date_i18n(get_option('date_format'), strtotime($data['last_payment_date'])) : '-',
+            );
+        }
+
+        // Sort by total amount (descending)
+        usort($sponsors, function($a, $b) {
+            return $b['payment_count'] - $a['payment_count'];
+        });
+
+        wp_send_json_success(array('sponsors' => $sponsors));
+    }
+
+    /**
+     * Get all payment records with filter
+     */
+    public function get_all_payments() {
+        $this->verify_admin_nonce();
+
+        $status = isset($_POST['status']) ? sanitize_text_field($_POST['status']) : '';
+
+        // Build query args
+        $args = array(
+            'post_type' => 'sponsorship',
+            'post_status' => 'any',
+            'posts_per_page' => -1,
+            'orderby' => 'date',
+            'order' => 'DESC',
+        );
+
+        if ($status) {
+            $args['meta_query'] = array(
+                array(
+                    'key' => 'verification_status',
+                    'value' => $status,
+                ),
+            );
+        }
+
+        $sponsorships = get_posts($args);
+
+        $payments = array();
+        foreach ($sponsorships as $sp) {
+            $student_id = get_post_meta($sp->ID, 'student_id', true);
+            $student = get_post($student_id);
+
+            $payments[] = array(
+                'id' => $sp->ID,
+                'sponsor_name' => get_post_meta($sp->ID, 'sponsor_name', true),
+                'sponsor_email' => get_post_meta($sp->ID, 'sponsor_email', true),
+                'student_name' => $student ? $student->post_title : '-',
+                'amount' => Helpers::format_currency(get_post_meta($sp->ID, 'amount', true)),
+                'duration_months' => get_post_meta($sp->ID, 'duration_months', true) ?: '1',
+                'method' => get_post_meta($sp->ID, 'payment_method', true) ?: '-',
+                'status' => get_post_meta($sp->ID, 'verification_status', true),
+                'date' => date_i18n(get_option('date_format'), strtotime($sp->post_date)),
+            );
+        }
+
+        wp_send_json_success(array('payments' => $payments));
+    }
+
+    /**
+     * Approve payment request
+     */
+    public function approve_payment_request() {
+        $this->verify_admin_nonce();
+
+        $sponsorship_id = isset($_POST['sponsorship_id']) ? intval($_POST['sponsorship_id']) : 0;
+        if (!$sponsorship_id) {
+            wp_send_json_error(array('message' => __('Invalid sponsorship ID.', 'al-huffaz-portal')));
+        }
+
+        // Update verification status
+        update_post_meta($sponsorship_id, 'verification_status', 'approved');
+        update_post_meta($sponsorship_id, 'linked', 'yes');
+        wp_update_post(array('ID' => $sponsorship_id, 'post_status' => 'publish'));
+
+        // Log activity
+        $sponsor_name = get_post_meta($sponsorship_id, 'sponsor_name', true);
+        Helpers::log_activity(
+            'approve_sponsorship',
+            'sponsorship',
+            $sponsorship_id,
+            sprintf(__('Approved sponsorship payment from %s', 'al-huffaz-portal'), $sponsor_name)
+        );
+
+        wp_send_json_success(array(
+            'message' => __('Payment approved successfully!', 'al-huffaz-portal'),
+        ));
+    }
+
+    /**
+     * Reject payment request
+     */
+    public function reject_payment_request() {
+        $this->verify_admin_nonce();
+
+        $sponsorship_id = isset($_POST['sponsorship_id']) ? intval($_POST['sponsorship_id']) : 0;
+        if (!$sponsorship_id) {
+            wp_send_json_error(array('message' => __('Invalid sponsorship ID.', 'al-huffaz-portal')));
+        }
+
+        // Update verification status
+        update_post_meta($sponsorship_id, 'verification_status', 'rejected');
+        update_post_meta($sponsorship_id, 'linked', 'no');
+
+        // Log activity
+        $sponsor_name = get_post_meta($sponsorship_id, 'sponsor_name', true);
+        Helpers::log_activity(
+            'reject_sponsorship',
+            'sponsorship',
+            $sponsorship_id,
+            sprintf(__('Rejected sponsorship payment from %s', 'al-huffaz-portal'), $sponsor_name)
+        );
+
+        wp_send_json_success(array(
+            'message' => __('Payment rejected.', 'al-huffaz-portal'),
         ));
     }
 }
