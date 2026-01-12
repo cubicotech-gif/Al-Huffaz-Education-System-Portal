@@ -13,6 +13,9 @@ use AlHuffaz\Core\Roles;
 
 if (!defined('ABSPATH')) exit;
 
+// CRITICAL FIX: Hide WordPress admin bar on sponsor dashboard
+show_admin_bar(false);
+
 // CRITICAL: Disable all caching for sponsor dashboard
 header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
 header('Cache-Control: post-check=0, pre-check=0', false);
@@ -185,6 +188,17 @@ $nonce = wp_create_nonce('alhuffaz_public_nonce');
     -webkit-font-smoothing: antialiased;
 }
 
+/* ==================== HIDE WORDPRESS ADMIN BAR ==================== */
+#wpadminbar {
+    display: none !important;
+}
+html {
+    margin-top: 0 !important;
+}
+body {
+    margin-top: 0 !important;
+}
+
 /* ==================== TOP HEADER ==================== */
 .sp-header {
     background: var(--sp-header-bg) !important;
@@ -192,15 +206,6 @@ $nonce = wp_create_nonce('alhuffaz_public_nonce');
     position: sticky !important;
     top: 0 !important;
     z-index: 100 !important;
-}
-
-body.admin-bar .sp-portal .sp-header {
-    top: 32px !important;
-}
-@media screen and (max-width: 782px) {
-    body.admin-bar .sp-portal .sp-header {
-        top: 46px !important;
-    }
 }
 
 .sp-header-inner {
