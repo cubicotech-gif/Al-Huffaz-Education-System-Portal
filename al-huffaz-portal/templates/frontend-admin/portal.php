@@ -1000,7 +1000,42 @@ body {
 @media (max-width: 768px) {
     .ahp-portal .ahp-header-inner { padding: 0 16px !important; }
     .ahp-portal .ahp-menu-toggle { display: flex !important; }
-    .ahp-portal .ahp-user-menu { display: none !important; }
+
+    /* CRITICAL FIX: Make logo text responsive */
+    .ahp-portal .ahp-logo span { display: none !important; }
+
+    /* CRITICAL FIX: Make user menu responsive instead of hiding it */
+    .ahp-portal .ahp-user-info {
+        padding: 6px 10px !important;
+        gap: 8px !important;
+    }
+
+    .ahp-portal .ahp-user-name {
+        display: none !important;
+    }
+
+    .ahp-portal .ahp-user-role {
+        display: none !important;
+    }
+
+    .ahp-portal .ahp-avatar {
+        width: 32px !important;
+        height: 32px !important;
+        font-size: 12px !important;
+    }
+
+    .ahp-portal .ahp-logout-btn {
+        padding: 8px 12px !important;
+        font-size: 12px !important;
+    }
+
+    .ahp-portal .ahp-logout-btn span {
+        display: none !important;
+    }
+
+    .ahp-portal .ahp-logout-btn i {
+        margin-right: 0 !important;
+    }
 
     .ahp-portal .ahp-nav {
         display: none !important;
@@ -1036,7 +1071,21 @@ body {
     .ahp-portal .ahp-step-line { display: none !important; }
     .ahp-portal .ahp-title { font-size: 20px !important; }
 }
+
 @media (max-width: 480px) {
+    /* Further mobile optimization for very small screens */
+    .ahp-portal .ahp-logo i {
+        font-size: 20px !important;
+    }
+
+    .ahp-portal .ahp-user-menu {
+        gap: 6px !important;
+    }
+
+    .ahp-portal .ahp-logout-btn {
+        padding: 6px 8px !important;
+    }
+
     .ahp-portal .ahp-stats { grid-template-columns: 1fr !important; }
     .ahp-portal .ahp-marks-row { grid-template-columns: 1fr !important; }
 }

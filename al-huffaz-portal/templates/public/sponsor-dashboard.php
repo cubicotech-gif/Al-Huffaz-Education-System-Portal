@@ -1256,6 +1256,10 @@ body {
         padding: 0 16px !important;
     }
 
+    .sp-logo span {
+        display: none !important;
+    }
+
     .sp-menu-toggle {
         display: flex !important;
     }
@@ -1287,8 +1291,57 @@ body {
         background: var(--sp-primary-light) !important;
     }
 
+    /* CRITICAL FIX: Make user menu responsive - don't overflow */
+    .sp-user-menu {
+        gap: 8px !important;
+    }
+
+    .sp-user-info {
+        padding: 6px 10px !important;
+        gap: 8px !important;
+    }
+
     .sp-user-name {
         display: none !important;
+    }
+
+    .sp-avatar {
+        width: 32px !important;
+        height: 32px !important;
+        font-size: 12px !important;
+    }
+
+    .sp-status-badge {
+        display: none !important;
+    }
+
+    .sp-logout-btn {
+        padding: 8px 12px !important;
+        font-size: 12px !important;
+    }
+
+    .sp-logout-btn span {
+        display: none !important;
+    }
+
+    .sp-logout-btn i {
+        margin-right: 0 !important;
+    }
+
+    .sp-notification-bell {
+        width: 36px !important;
+        height: 36px !important;
+    }
+
+    .sp-notification-bell i {
+        font-size: 16px !important;
+    }
+
+    .sp-notification-panel {
+        width: calc(100vw - 32px) !important;
+        right: 16px !important;
+        left: 16px !important;
+        max-width: 420px !important;
     }
 
     .sp-main {
@@ -1390,6 +1443,28 @@ body {
 }
 
 @media (max-width: 480px) {
+    /* Further mobile optimization for very small screens */
+    .sp-logo i {
+        font-size: 20px !important;
+    }
+
+    .sp-user-menu {
+        gap: 6px !important;
+    }
+
+    .sp-logout-btn {
+        padding: 6px 8px !important;
+    }
+
+    .sp-notification-bell {
+        width: 32px !important;
+        height: 32px !important;
+    }
+
+    .sp-notification-bell i {
+        font-size: 14px !important;
+    }
+
     .sp-stat {
         padding: 14px !important;
     }
