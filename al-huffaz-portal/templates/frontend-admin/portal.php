@@ -8,6 +8,9 @@
 
 defined('ABSPATH') || exit;
 
+// CRITICAL FIX: Hide WordPress admin bar on portal page
+show_admin_bar(false);
+
 // Simple check - just use WordPress capabilities
 $current_user = wp_get_current_user();
 
@@ -302,6 +305,17 @@ $nonce = wp_create_nonce('alhuffaz_student_nonce');
     width: 100%;
 }
 
+/* ==================== HIDE WORDPRESS ADMIN BAR ==================== */
+#wpadminbar {
+    display: none !important;
+}
+html {
+    margin-top: 0 !important;
+}
+body {
+    margin-top: 0 !important;
+}
+
 /* ==================== TOP HEADER ==================== */
 .ahp-portal .ahp-header {
     background: var(--ahp-header-bg) !important;
@@ -309,15 +323,6 @@ $nonce = wp_create_nonce('alhuffaz_student_nonce');
     position: sticky !important;
     top: 0 !important;
     z-index: 100 !important;
-}
-
-body.admin-bar .ahp-portal .ahp-header {
-    top: 32px !important;
-}
-@media screen and (max-width: 782px) {
-    body.admin-bar .ahp-portal .ahp-header {
-        top: 46px !important;
-    }
 }
 
 .ahp-portal .ahp-header-inner {
@@ -363,15 +368,6 @@ body.admin-bar .ahp-portal .ahp-header {
     position: sticky !important;
     top: 0 !important;
     z-index: 100 !important;
-}
-
-body.admin-bar .ahp-portal .ahp-top-header {
-    top: 32px !important;
-}
-@media screen and (max-width: 782px) {
-    body.admin-bar .ahp-portal .ahp-top-header {
-        top: 46px !important;
-    }
 }
 
 .ahp-portal .ahp-header-inner {
@@ -1081,12 +1077,6 @@ body.admin-bar .ahp-portal .ahp-top-header {
                         <span class="ahp-user-name"><?php echo esc_html($current_user->display_name); ?></span>
                         <span class="ahp-user-role"><?php echo esc_html(ucfirst($current_user->roles[0] ?? 'User')); ?></span>
                     </div>
-                    <?php if ($is_admin): ?>
-                    <a href="<?php echo admin_url(); ?>" class="ahp-logout-btn" target="_blank">
-                        <i class="fas fa-cog"></i>
-                        <span>WP Admin</span>
-                    </a>
-                    <?php endif; ?>
                     <a href="<?php echo wp_logout_url(home_url()); ?>" class="ahp-logout-btn">
                         <i class="fas fa-sign-out-alt"></i>
                         <span>Logout</span>
