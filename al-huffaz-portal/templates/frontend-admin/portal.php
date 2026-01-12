@@ -2212,18 +2212,35 @@ body {
             <?php if ($can_manage_payments): ?>
             <div class="ahp-panel" id="panel-payments">
                 <div class="ahp-header">
-                    <h1 class="ahp-title"><?php _e('Payment Verification', 'al-huffaz-portal'); ?></h1>
-                    <div class="ahp-actions">
-                        <select class="ahp-filter" id="filterPaymentStatus" onchange="loadPayments()">
-                            <option value=""><?php _e('All Status', 'al-huffaz-portal'); ?></option>
-                            <option value="pending" selected><?php _e('Pending', 'al-huffaz-portal'); ?></option>
-                            <option value="approved"><?php _e('Verified', 'al-huffaz-portal'); ?></option>
-                            <option value="rejected"><?php _e('Rejected', 'al-huffaz-portal'); ?></option>
-                        </select>
-                    </div>
+                    <h1 class="ahp-title"><?php _e('Payment Records & Analytics', 'al-huffaz-portal'); ?></h1>
+                    <p style="color:var(--ahp-text-muted);margin:8px 0 0 0;font-size:14px;">
+                        <?php _e('Track all sponsorship payments, donations, and financial records.', 'al-huffaz-portal'); ?>
+                    </p>
                 </div>
 
-                <div class="ahp-stats">
+                <!-- Payment Statistics -->
+                <div class="ahp-stats" style="grid-template-columns:repeat(auto-fit,minmax(200px,1fr));">
+                    <div class="ahp-stat">
+                        <div class="ahp-stat-icon green"><i class="fas fa-dollar-sign"></i></div>
+                        <div>
+                            <div class="ahp-stat-label"><?php _e('Total Approved Amount', 'al-huffaz-portal'); ?></div>
+                            <div class="ahp-stat-value" id="totalApprovedAmount">Rs. 0</div>
+                        </div>
+                    </div>
+                    <div class="ahp-stat">
+                        <div class="ahp-stat-icon blue"><i class="fas fa-users"></i></div>
+                        <div>
+                            <div class="ahp-stat-label"><?php _e('Active Sponsors', 'al-huffaz-portal'); ?></div>
+                            <div class="ahp-stat-value" id="totalActiveSponsors">0</div>
+                        </div>
+                    </div>
+                    <div class="ahp-stat">
+                        <div class="ahp-stat-icon purple"><i class="fas fa-user-graduate"></i></div>
+                        <div>
+                            <div class="ahp-stat-label"><?php _e('Students Sponsored', 'al-huffaz-portal'); ?></div>
+                            <div class="ahp-stat-value" id="totalStudentsSponsored">0</div>
+                        </div>
+                    </div>
                     <div class="ahp-stat">
                         <div class="ahp-stat-icon orange"><i class="fas fa-hourglass-half"></i></div>
                         <div>
@@ -2232,41 +2249,74 @@ body {
                         </div>
                     </div>
                     <div class="ahp-stat">
-                        <div class="ahp-stat-icon green"><i class="fas fa-check-double"></i></div>
+                        <div class="ahp-stat-icon success"><i class="fas fa-check-circle"></i></div>
                         <div>
-                            <div class="ahp-stat-label"><?php _e('Verified Payments', 'al-huffaz-portal'); ?></div>
-                            <div class="ahp-stat-value" id="verifiedPaymentCount">-</div>
+                            <div class="ahp-stat-label"><?php _e('Approved Payments', 'al-huffaz-portal'); ?></div>
+                            <div class="ahp-stat-value" id="approvedPaymentCount">0</div>
                         </div>
                     </div>
                     <div class="ahp-stat">
-                        <div class="ahp-stat-icon blue"><i class="fas fa-rupee-sign"></i></div>
+                        <div class="ahp-stat-icon red"><i class="fas fa-times-circle"></i></div>
                         <div>
-                            <div class="ahp-stat-label"><?php _e('Total Revenue', 'al-huffaz-portal'); ?></div>
-                            <div class="ahp-stat-value" id="totalRevenue">-</div>
+                            <div class="ahp-stat-label"><?php _e('Rejected Payments', 'al-huffaz-portal'); ?></div>
+                            <div class="ahp-stat-value" id="rejectedPaymentCount">0</div>
                         </div>
                     </div>
                 </div>
 
-                <div class="ahp-card">
+                <!-- Sponsor-wise Payment Breakdown -->
+                <div class="ahp-card" style="margin-bottom:20px;">
                     <div class="ahp-card-header">
-                        <h3 class="ahp-card-title"><i class="fas fa-receipt"></i> <?php _e('Payment Records', 'al-huffaz-portal'); ?></h3>
+                        <h3 class="ahp-card-title"><i class="fas fa-chart-bar"></i> <?php _e('Sponsor-wise Contribution Summary', 'al-huffaz-portal'); ?></h3>
                     </div>
                     <div class="ahp-card-body" style="padding:0;">
                         <div class="ahp-table-wrap">
                             <table class="ahp-table">
                                 <thead>
                                     <tr>
+                                        <th><?php _e('Sponsor Name', 'al-huffaz-portal'); ?></th>
+                                        <th><?php _e('Email', 'al-huffaz-portal'); ?></th>
+                                        <th><?php _e('Students Sponsored', 'al-huffaz-portal'); ?></th>
+                                        <th><?php _e('Total Payments', 'al-huffaz-portal'); ?></th>
+                                        <th><?php _e('Total Amount', 'al-huffaz-portal'); ?></th>
+                                        <th><?php _e('Last Payment', 'al-huffaz-portal'); ?></th>
+                                    </tr>
+                                </thead>
+                                <tbody id="sponsorPaymentSummaryBody">
+                                    <tr><td colspan="6" class="ahp-loading"><div class="ahp-spinner"></div></td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- All Payment Records -->
+                <div class="ahp-card">
+                    <div class="ahp-card-header" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;">
+                        <h3 class="ahp-card-title"><i class="fas fa-receipt"></i> <?php _e('All Payment Records', 'al-huffaz-portal'); ?></h3>
+                        <select class="ahp-filter" id="filterPaymentStatus" onchange="loadAllPayments()" style="min-width:150px;">
+                            <option value=""><?php _e('All Status', 'al-huffaz-portal'); ?></option>
+                            <option value="approved"><?php _e('Approved', 'al-huffaz-portal'); ?></option>
+                            <option value="pending"><?php _e('Pending', 'al-huffaz-portal'); ?></option>
+                            <option value="rejected"><?php _e('Rejected', 'al-huffaz-portal'); ?></option>
+                        </select>
+                    </div>
+                    <div class="ahp-card-body" style="padding:0;">
+                        <div class="ahp-table-wrap">
+                            <table class="ahp-table">
+                                <thead>
+                                    <tr>
+                                        <th><?php _e('Date', 'al-huffaz-portal'); ?></th>
                                         <th><?php _e('Sponsor', 'al-huffaz-portal'); ?></th>
                                         <th><?php _e('Student', 'al-huffaz-portal'); ?></th>
                                         <th><?php _e('Amount', 'al-huffaz-portal'); ?></th>
+                                        <th><?php _e('Duration', 'al-huffaz-portal'); ?></th>
                                         <th><?php _e('Method', 'al-huffaz-portal'); ?></th>
-                                        <th><?php _e('Transaction ID', 'al-huffaz-portal'); ?></th>
                                         <th><?php _e('Status', 'al-huffaz-portal'); ?></th>
-                                        <th><?php _e('Date', 'al-huffaz-portal'); ?></th>
                                         <th><?php _e('Actions', 'al-huffaz-portal'); ?></th>
                                     </tr>
                                 </thead>
-                                <tbody id="paymentsTableBody">
+                                <tbody id="allPaymentsTableBody">
                                     <tr><td colspan="8" class="ahp-loading"><div class="ahp-spinner"></div></td></tr>
                                 </tbody>
                             </table>
@@ -2543,7 +2593,7 @@ document.addEventListener('DOMContentLoaded', function() {
         if (panel === 'add-student' && !document.getElementById('studentId').value) resetForm();
         if (panel === 'sponsors') loadSponsors();
         if (panel === 'sponsor-users') loadSponsorUsers();
-        if (panel === 'payments') loadPayments();
+        if (panel === 'payments') loadPaymentAnalytics();
         if (panel === 'staff') loadPortalUsers();
         if (panel === 'history') loadActivityLogs();
 
@@ -4213,27 +4263,91 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 
     // ==================== PAYMENTS MANAGEMENT ====================
-    window.loadPayments = function() {
-        const status = document.getElementById('filterPaymentStatus')?.value || '';
-        document.getElementById('paymentsTableBody').innerHTML = '<tr><td colspan="8" class="ahp-loading"><div class="ahp-spinner"></div></td></tr>';
-
+    // Load payment analytics when panel is opened
+    window.loadPaymentAnalytics = function() {
         fetch(ajaxUrl, {
             method: 'POST',
             headers: {'Content-Type': 'application/x-www-form-urlencoded'},
-            body: new URLSearchParams({action: 'alhuffaz_get_payments', nonce, status, per_page: 50})
+            body: new URLSearchParams({action: 'alhuffaz_get_payment_analytics', nonce})
         })
         .then(r => r.json())
         .then(data => {
             if (data.success) {
-                renderPayments(data.data.payments);
+                const stats = data.data;
+                document.getElementById('totalApprovedAmount').textContent = stats.total_approved_amount || 'Rs. 0';
+                document.getElementById('totalActiveSponsors').textContent = stats.total_active_sponsors || '0';
+                document.getElementById('totalStudentsSponsored').textContent = stats.total_students_sponsored || '0';
+                document.getElementById('approvedPaymentCount').textContent = stats.approved_count || '0';
+                document.getElementById('rejectedPaymentCount').textContent = stats.rejected_count || '0';
+            }
+        })
+        .catch(err => console.error('Failed to load payment analytics:', err));
+
+        // Load both tables
+        loadSponsorPaymentSummary();
+        loadAllPayments();
+    };
+
+    // Load sponsor-wise payment summary
+    function loadSponsorPaymentSummary() {
+        document.getElementById('sponsorPaymentSummaryBody').innerHTML = '<tr><td colspan="6" class="ahp-loading"><div class="ahp-spinner"></div></td></tr>';
+
+        fetch(ajaxUrl, {
+            method: 'POST',
+            headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+            body: new URLSearchParams({action: 'alhuffaz_get_sponsor_payment_summary', nonce})
+        })
+        .then(r => r.json())
+        .then(data => {
+            if (data.success) {
+                renderSponsorPaymentSummary(data.data.sponsors);
             } else {
-                document.getElementById('paymentsTableBody').innerHTML = '<tr><td colspan="8" style="text-align:center;padding:40px;">Error loading payments</td></tr>';
+                document.getElementById('sponsorPaymentSummaryBody').innerHTML = '<tr><td colspan="6" style="text-align:center;padding:40px;">Error loading sponsor summary</td></tr>';
+            }
+        });
+    }
+
+    function renderSponsorPaymentSummary(sponsors) {
+        const tbody = document.getElementById('sponsorPaymentSummaryBody');
+        if (!sponsors || !sponsors.length) {
+            tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:40px;color:var(--ahp-text-muted);">No sponsor payment records found</td></tr>';
+            return;
+        }
+
+        tbody.innerHTML = sponsors.map(s => `
+            <tr>
+                <td><strong>${s.name || '-'}</strong></td>
+                <td>${s.email || '-'}</td>
+                <td><span class="ahp-badge ahp-badge-primary">${s.students_count || '0'} students</span></td>
+                <td>${s.payment_count || '0'} payments</td>
+                <td><strong style="color:var(--ahp-success);">${s.total_amount || 'Rs. 0'}</strong></td>
+                <td>${s.last_payment_date || '-'}</td>
+            </tr>
+        `).join('');
+    }
+
+    // Load all payment records
+    window.loadAllPayments = function() {
+        const status = document.getElementById('filterPaymentStatus')?.value || '';
+        document.getElementById('allPaymentsTableBody').innerHTML = '<tr><td colspan="8" class="ahp-loading"><div class="ahp-spinner"></div></td></tr>';
+
+        fetch(ajaxUrl, {
+            method: 'POST',
+            headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+            body: new URLSearchParams({action: 'alhuffaz_get_all_payments', nonce, status})
+        })
+        .then(r => r.json())
+        .then(data => {
+            if (data.success) {
+                renderAllPayments(data.data.payments);
+            } else {
+                document.getElementById('allPaymentsTableBody').innerHTML = '<tr><td colspan="8" style="text-align:center;padding:40px;">Error loading payments</td></tr>';
             }
         });
     };
 
-    function renderPayments(payments) {
-        const tbody = document.getElementById('paymentsTableBody');
+    function renderAllPayments(payments) {
+        const tbody = document.getElementById('allPaymentsTableBody');
         if (!payments || !payments.length) {
             tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;padding:40px;color:var(--ahp-text-muted);">No payment records found</td></tr>';
             return;
@@ -4242,47 +4356,66 @@ document.addEventListener('DOMContentLoaded', function() {
         tbody.innerHTML = payments.map(p => {
             const statusBadge = p.status === 'pending' ? 'ahp-badge-warning' :
                                p.status === 'approved' ? 'ahp-badge-success' : 'ahp-badge-danger';
+            const durationMap = {'1': '1 Month', '3': '3 Months', '6': '6 Months', '12': '12 Months'};
+            const duration = durationMap[p.duration_months] || p.duration_months + ' months';
+
             return `
             <tr>
-                <td><strong>${p.sponsor_name || '-'}</strong></td>
-                <td>${p.student_name || '-'}</td>
-                <td><strong>${p.amount || '-'}</strong></td>
-                <td><span class="ahp-badge ahp-badge-primary">${(p.method || '-').toUpperCase()}</span></td>
-                <td><code>${p.transaction_id || '-'}</code></td>
-                <td><span class="ahp-badge ${statusBadge}">${(p.status || '-').charAt(0).toUpperCase() + (p.status || '-').slice(1)}</span></td>
                 <td>${p.date || '-'}</td>
+                <td><strong>${p.sponsor_name || '-'}</strong><br><small style="color:var(--ahp-text-muted);">${p.sponsor_email || ''}</small></td>
+                <td>${p.student_name || '-'}</td>
+                <td><strong style="color:var(--ahp-success);">${p.amount || '-'}</strong></td>
+                <td><span class="ahp-badge ahp-badge-primary">${duration}</span></td>
+                <td>${p.method || '-'}</td>
+                <td><span class="ahp-badge ${statusBadge}">${(p.status || '-').charAt(0).toUpperCase() + (p.status || '-').slice(1)}</span></td>
                 <td>
                     <div class="ahp-cell-actions">
                         ${p.status === 'pending' ? `
-                        <button class="ahp-btn ahp-btn-success ahp-btn-icon" onclick="verifyPayment(${p.id}, 'approved')" title="Verify"><i class="fas fa-check"></i></button>
-                        <button class="ahp-btn ahp-btn-danger ahp-btn-icon" onclick="verifyPayment(${p.id}, 'rejected')" title="Reject"><i class="fas fa-times"></i></button>
-                        ` : ''}
+                        <button class="ahp-btn ahp-btn-success ahp-btn-icon" onclick="approvePaymentRequest(${p.id})" title="Approve"><i class="fas fa-check"></i></button>
+                        <button class="ahp-btn ahp-btn-danger ahp-btn-icon" onclick="rejectPaymentRequest(${p.id})" title="Reject"><i class="fas fa-times"></i></button>
+                        ` : '<span style="color:var(--ahp-text-muted);font-size:12px;">No actions</span>'}
                     </div>
                 </td>
             </tr>`;
         }).join('');
     }
 
-    window.verifyPayment = function(id, status) {
-        const confirmMsg = status === 'approved' ?
-            '<?php _e('Verify this payment?', 'al-huffaz-portal'); ?>' :
-            '<?php _e('Reject this payment?', 'al-huffaz-portal'); ?>';
-        if (!confirm(confirmMsg)) return;
+    window.approvePaymentRequest = function(id) {
+        if (!confirm('<?php _e('Approve this payment request?', 'al-huffaz-portal'); ?>')) return;
 
         fetch(ajaxUrl, {
             method: 'POST',
             headers: {'Content-Type': 'application/x-www-form-urlencoded'},
-            body: new URLSearchParams({action: 'alhuffaz_verify_payment', nonce, payment_id: id, status})
+            body: new URLSearchParams({action: 'alhuffaz_approve_payment_request', nonce, sponsorship_id: id})
         })
         .then(r => r.json())
         .then(data => {
             if (data.success) {
-                showToast(status === 'approved' ? '<?php _e('Payment verified!', 'al-huffaz-portal'); ?>' : '<?php _e('Payment rejected', 'al-huffaz-portal'); ?>', 'success');
-                // FIX #1: Refresh dashboard stats after payment verification
+                showToast('<?php _e('Payment approved successfully!', 'al-huffaz-portal'); ?>', 'success');
                 refreshDashboardStats();
-                loadPayments();
+                loadPaymentAnalytics();
             } else {
-                showToast(data.data?.message || '<?php _e('Error processing payment', 'al-huffaz-portal'); ?>', 'error');
+                showToast(data.data?.message || '<?php _e('Error approving payment', 'al-huffaz-portal'); ?>', 'error');
+            }
+        });
+    };
+
+    window.rejectPaymentRequest = function(id) {
+        if (!confirm('<?php _e('Reject this payment request?', 'al-huffaz-portal'); ?>')) return;
+
+        fetch(ajaxUrl, {
+            method: 'POST',
+            headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+            body: new URLSearchParams({action: 'alhuffaz_reject_payment_request', nonce, sponsorship_id: id})
+        })
+        .then(r => r.json())
+        .then(data => {
+            if (data.success) {
+                showToast('<?php _e('Payment rejected', 'al-huffaz-portal'); ?>', 'success');
+                refreshDashboardStats();
+                loadPaymentAnalytics();
+            } else {
+                showToast(data.data?.message || '<?php _e('Error rejecting payment', 'al-huffaz-portal'); ?>', 'error');
             }
         });
     };
