@@ -3420,11 +3420,11 @@ document.addEventListener('DOMContentLoaded', function() {
         // Update Sponsor Users badge
         const sponsorUsersTab = document.querySelector('[data-panel="sponsor-users"]');
         if (sponsorUsersTab) {
-            let badge = sponsorUsersTab.querySelector('.ahp-badge');
+            let badge = sponsorUsersTab.querySelector('.ahp-nav-badge');
             if (pendingSponsorUsers > 0) {
                 if (!badge) {
                     badge = document.createElement('span');
-                    badge.className = 'ahp-badge';
+                    badge.className = 'ahp-nav-badge danger';
                     sponsorUsersTab.appendChild(badge);
                 }
                 badge.textContent = pendingSponsorUsers;
@@ -3434,14 +3434,14 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         }
 
-        // Update Payments badge
+        // Update Payments badge - FIXED: Use correct selector .ahp-nav-badge
         const paymentsTab = document.querySelector('[data-panel="payments"]');
         if (paymentsTab) {
-            let badge = paymentsTab.querySelector('.ahp-badge');
+            let badge = paymentsTab.querySelector('.ahp-nav-badge');
             if (pendingPayments > 0) {
                 if (!badge) {
                     badge = document.createElement('span');
-                    badge.className = 'ahp-badge';
+                    badge.className = 'ahp-nav-badge warning';
                     paymentsTab.appendChild(badge);
                 }
                 badge.textContent = pendingPayments;
@@ -3454,6 +3454,11 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Call refreshDashboardStats() on page load to set initial badges
     refreshDashboardStats();
+
+    // CRITICAL FIX: Auto-refresh badges every 30 seconds to catch new payment submissions
+    setInterval(function() {
+        refreshDashboardStats();
+    }, 30000); // Refresh every 30 seconds
 
     // ==================== TOAST ====================
     // FIX #6: Improved toast with longer duration and dismiss button
