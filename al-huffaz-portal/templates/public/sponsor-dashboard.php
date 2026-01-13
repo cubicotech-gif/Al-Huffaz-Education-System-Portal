@@ -247,14 +247,8 @@ $user = wp_get_current_user();
 $user_id = $user->ID;
 $data = Sponsor_Dashboard::get_dashboard_data($user_id);
 
-// Get sponsor profile data
-$sponsor_post = get_posts(array(
-    'post_type' => 'alhuffaz_sponsor',
-    'posts_per_page' => 1,
-    'meta_query' => array(array('key' => '_sponsor_user_id', 'value' => $user_id)),
-));
-$sponsor_id = !empty($sponsor_post) ? $sponsor_post[0]->ID : 0;
-
+// FIXED: Get sponsor profile data directly from user_meta (stored during registration)
+// Removed legacy 'alhuffaz_sponsor' CPT query - sponsor data is in user_meta, not CPT
 // User approval status
 $is_user_approved = true;
 if (function_exists('um_user') && function_exists('um_is_user_approved')) {
@@ -262,9 +256,9 @@ if (function_exists('um_user') && function_exists('um_is_user_approved')) {
 }
 
 $sponsor_status = $is_user_approved ? 'approved' : 'pending';
-$sponsor_phone = $sponsor_id ? get_post_meta($sponsor_id, '_sponsor_phone', true) : get_user_meta($user_id, 'phone', true);
-$sponsor_country = $sponsor_id ? get_post_meta($sponsor_id, '_sponsor_country', true) : get_user_meta($user_id, 'country', true);
-$sponsor_whatsapp = $sponsor_id ? get_post_meta($sponsor_id, '_sponsor_whatsapp', true) : '';
+$sponsor_phone = get_user_meta($user_id, 'sponsor_phone', true);
+$sponsor_country = get_user_meta($user_id, 'sponsor_country', true);
+$sponsor_whatsapp = get_user_meta($user_id, 'sponsor_whatsapp', true);
 $member_since = date_i18n(get_option('date_format'), strtotime($user->user_registered));
 
 // CRITICAL FIX: Get available students for sponsorship using correct meta keys

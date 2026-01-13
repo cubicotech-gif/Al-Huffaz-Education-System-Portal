@@ -324,20 +324,21 @@ class Roles {
             $user_id = get_current_user_id();
         }
 
+        // FIXED: Query 'sponsorship' CPT with correct meta keys (no underscore prefix)
         $sponsorships = get_posts(array(
-            'post_type'      => 'alhuffaz_sponsor',
+            'post_type'      => 'sponsorship',
             'posts_per_page' => -1,
             'meta_query'     => array(
                 array(
-                    'key'   => '_sponsor_user_id',
+                    'key'   => 'sponsor_user_id',
                     'value' => $user_id,
                 ),
                 array(
-                    'key'   => '_linked',
+                    'key'   => 'linked',
                     'value' => 'yes',
                 ),
                 array(
-                    'key'   => '_status',
+                    'key'   => 'verification_status',
                     'value' => 'approved',
                 ),
             ),
@@ -345,7 +346,7 @@ class Roles {
 
         $student_ids = array();
         foreach ($sponsorships as $sponsorship) {
-            $student_id = get_post_meta($sponsorship->ID, '_student_id', true);
+            $student_id = get_post_meta($sponsorship->ID, 'student_id', true);
             if ($student_id) {
                 $student_ids[] = $student_id;
             }
