@@ -1155,9 +1155,18 @@ body {
                 <button class="ahp-nav-item" data-panel="sponsors">
                     <i class="fas fa-hand-holding-heart"></i>
                     <span><?php _e('Sponsors', 'al-huffaz-portal'); ?></span>
-                    <?php if ($pending_sponsors_count > 0): ?>
-                    <span class="ahp-nav-badge danger"><?php echo $pending_sponsors_count; ?></span>
-                    <?php endif; ?>
+                    <?php
+                    // DEBUG: Log the pending count
+                    error_log('SPONSORS TAB - pending_sponsors_count: ' . $pending_sponsors_count);
+                    if ($pending_sponsors_count > 0):
+                        error_log('SPONSORS TAB - Rendering badge with count: ' . $pending_sponsors_count);
+                    ?>
+                    <span class="ahp-nav-badge danger" id="sponsors-main-badge"><?php echo $pending_sponsors_count; ?></span>
+                    <?php
+                    else:
+                        error_log('SPONSORS TAB - NOT rendering badge, count is: ' . $pending_sponsors_count);
+                    endif;
+                    ?>
                 </button>
                 <button class="ahp-nav-item" data-panel="sponsor-users">
                     <i class="fas fa-users-cog"></i>
@@ -3366,8 +3375,11 @@ document.addEventListener('DOMContentLoaded', function() {
         })
         .then(r => r.json())
         .then(data => {
+            console.log('Dashboard stats response:', data);
             if (data.success && data.data) {
                 const stats = data.data;
+                console.log('Stats data:', stats);
+                console.log('Pending sponsorships count:', stats.pending_sponsorships_count);
                 // Update dashboard stat cards (if on dashboard panel)
                 const totalStudentsEl = document.querySelector('.ahp-stat:nth-child(1) .ahp-stat-value');
                 const totalSponsorsEl = document.querySelector('.ahp-stat:nth-child(2) .ahp-stat-value');
@@ -3382,6 +3394,11 @@ document.addEventListener('DOMContentLoaded', function() {
                 if (inactiveSponsorsEl) inactiveSponsorsEl.textContent = stats.inactive_sponsors_count;
 
                 // Update pending badges on navigation tabs
+                console.log('Calling updatePendingBadges with:', {
+                    pending_sponsor_users_count: stats.pending_sponsor_users_count,
+                    pending_sponsorships_count: stats.pending_sponsorships_count,
+                    pending_payments_count: stats.pending_payments_count
+                });
                 updatePendingBadges(stats.pending_sponsor_users_count, stats.pending_sponsorships_count, stats.pending_payments_count);
 
                 // Update pending sponsor request count in Sponsors panel
@@ -3398,20 +3415,29 @@ document.addEventListener('DOMContentLoaded', function() {
     function updatePendingBadges(pendingSponsorUsers, pendingSponsorships, pendingPayments) {
         // Update Sponsors tab badge (payment approval requests)
         const sponsorsTab = document.querySelector('[data-panel="sponsors"]');
+        console.log('updatePendingBadges called:', {pendingSponsorships, sponsorsTab});
         if (sponsorsTab) {
             let badge = sponsorsTab.querySelector('.ahp-nav-badge');
+            console.log('Existing badge:', badge);
             if (pendingSponsorships > 0) {
                 if (!badge) {
+                    console.log('Creating new badge...');
                     badge = document.createElement('span');
                     badge.className = 'ahp-nav-badge danger';
                     sponsorsTab.appendChild(badge);
+                    console.log('Badge created and appended');
                 }
                 badge.textContent = pendingSponsorships;
                 badge.style.display = 'inline-block';
+                console.log('Badge updated:', badge, 'text:', pendingSponsorships);
             } else if (badge) {
                 badge.style.display = 'none';
+                console.log('Badge hidden (count is 0)');
             }
+        } else {
+            console.error('Sponsors tab not found!');
         }
+    }
 
         // Update Requests subtab badge
         const requestsSubtab = document.querySelector('[data-tab="requests"] .ahp-nav-badge');
@@ -3457,6 +3483,28 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Call refreshDashboardStats() on page load to set initial badges
     refreshDashboardStats();
+
+    // DEBUG: Check if badge exists in DOM after page load
+    setTimeout(function() {
+        console.log('=== BADGE DEBUG CHECK ===');
+        const sponsorsBadge = document.querySelector('#sponsors-main-badge');
+        const sponsorsTab = document.querySelector('[data-panel="sponsors"]');
+        const allBadgesInTab = sponsorsTab ? sponsorsTab.querySelectorAll('.ahp-nav-badge') : [];
+
+        console.log('Badge with ID sponsors-main-badge:', sponsorsBadge);
+        console.log('Sponsors tab element:', sponsorsTab);
+        console.log('All badges in sponsors tab:', allBadgesInTab);
+        console.log('Sponsors tab HTML:', sponsorsTab ? sponsorsTab.innerHTML : 'Tab not found');
+
+        if (sponsorsBadge) {
+            console.log('Badge found! Computed styles:', window.getComputedStyle(sponsorsBadge));
+            console.log('Badge display:', window.getComputedStyle(sponsorsBadge).display);
+            console.log('Badge visibility:', window.getComputedStyle(sponsorsBadge).visibility);
+            console.log('Badge opacity:', window.getComputedStyle(sponsorsBadge).opacity);
+        } else {
+            console.error('Badge NOT found in DOM!');
+        }
+    }, 2000); // Wait 2 seconds for all async operations to complete
 
     // CRITICAL FIX: Auto-refresh badges every 30 seconds to catch new payment submissions
     setInterval(function() {
