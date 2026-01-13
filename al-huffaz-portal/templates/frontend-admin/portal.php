@@ -2591,7 +2591,10 @@ document.addEventListener('DOMContentLoaded', function() {
         document.querySelector('[data-panel="' + panel + '"]')?.classList.add('active');
         if (panel === 'students') loadStudents();
         if (panel === 'add-student' && !document.getElementById('studentId').value) resetForm();
-        if (panel === 'sponsors') loadSponsors();
+        if (panel === 'sponsors') {
+            loadSponsors();
+            loadSponsorStats(); // CRITICAL FIX: Load sponsor stats when panel opens
+        }
         if (panel === 'sponsor-users') loadSponsorUsers();
         if (panel === 'payments') loadPaymentAnalytics();
         if (panel === 'staff') loadPortalUsers();
@@ -3508,6 +3511,28 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     };
 
+    // CRITICAL FIX: Load sponsor statistics for stat cards
+    window.loadSponsorStats = function() {
+        fetch(ajaxUrl, {
+            method: 'POST',
+            headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+            body: new URLSearchParams({action: 'alhuffaz_get_sponsor_stats', nonce})
+        })
+        .then(r => r.json())
+        .then(data => {
+            if (data.success && data.data) {
+                const stats = data.data;
+                // Update stat cards in Sponsors panel
+                const pendingCountEl = document.getElementById('pendingSponsorCount');
+                const approvedCountEl = document.getElementById('approvedSponsorCount');
+
+                if (pendingCountEl) pendingCountEl.textContent = stats.pending_count || '0';
+                if (approvedCountEl) approvedCountEl.textContent = stats.approved_count || '0';
+            }
+        })
+        .catch(err => console.error('Failed to load sponsor stats:', err));
+    };
+
     window.loadSponsors = function() {
         const status = document.getElementById('filterSponsorStatusMain')?.value || document.getElementById('filterSponsorStatus')?.value || '';
         document.getElementById('sponsorsTableBody').innerHTML = '<tr><td colspan="7" class="ahp-loading"><div class="ahp-spinner"></div></td></tr>';
@@ -3671,6 +3696,8 @@ document.addEventListener('DOMContentLoaded', function() {
             if (data.success) {
                 showToast('<?php _e('Sponsorship approved successfully!', 'al-huffaz-portal'); ?>', 'success');
                 loadSponsors();
+                loadSponsorStats(); // CRITICAL FIX: Update stat cards
+                refreshDashboardStats(); // CRITICAL FIX: Update badges
             } else {
                 showToast(data.data?.message || '<?php _e('Error approving sponsorship', 'al-huffaz-portal'); ?>', 'error');
             }
@@ -3691,6 +3718,8 @@ document.addEventListener('DOMContentLoaded', function() {
             if (data.success) {
                 showToast('<?php _e('Sponsorship rejected', 'al-huffaz-portal'); ?>', 'success');
                 loadSponsors();
+                loadSponsorStats(); // CRITICAL FIX: Update stat cards
+                refreshDashboardStats(); // CRITICAL FIX: Update badges
             } else {
                 showToast(data.data?.message || '<?php _e('Error rejecting sponsorship', 'al-huffaz-portal'); ?>', 'error');
             }
