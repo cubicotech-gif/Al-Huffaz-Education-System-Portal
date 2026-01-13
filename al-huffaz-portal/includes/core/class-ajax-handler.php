@@ -110,6 +110,9 @@ class Ajax_Handler {
         add_action('wp_ajax_alhuffaz_get_all_payments', array($this, 'get_all_payments'));
         add_action('wp_ajax_alhuffaz_approve_payment_request', array($this, 'approve_payment_request'));
         add_action('wp_ajax_alhuffaz_reject_payment_request', array($this, 'reject_payment_request'));
+
+        // Sponsor statistics AJAX action
+        add_action('wp_ajax_alhuffaz_get_sponsor_stats', array($this, 'get_sponsor_stats'));
     }
 
     /**
@@ -4139,6 +4142,40 @@ With gratitude,
 
         wp_send_json_success(array(
             'message' => __('Payment rejected.', 'al-huffaz-portal'),
+        ));
+    }
+
+    /**
+     * Get sponsor statistics for stat cards in Sponsors panel
+     */
+    public function get_sponsor_stats() {
+        $this->verify_admin_nonce();
+
+        // Get pending sponsorships count
+        $pending_posts = get_posts(array(
+            'post_type' => 'sponsorship',
+            'post_status' => 'any',
+            'posts_per_page' => -1,
+            'meta_key' => 'verification_status',
+            'meta_value' => 'pending',
+            'fields' => 'ids'
+        ));
+        $pending_count = count($pending_posts);
+
+        // Get approved sponsorships count
+        $approved_posts = get_posts(array(
+            'post_type' => 'sponsorship',
+            'post_status' => 'any',
+            'posts_per_page' => -1,
+            'meta_key' => 'verification_status',
+            'meta_value' => 'approved',
+            'fields' => 'ids'
+        ));
+        $approved_count = count($approved_posts);
+
+        wp_send_json_success(array(
+            'pending_count' => $pending_count,
+            'approved_count' => $approved_count,
         ));
     }
 }
