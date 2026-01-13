@@ -30,9 +30,29 @@ $staff_count = 0;
 $student_counts = wp_count_posts('student');
 $total_students = isset($student_counts->publish) ? (int)$student_counts->publish : 0;
 
-// CRITICAL FIX: Count sponsorships (not alhuffaz_sponsor post type)
-$sponsor_counts = wp_count_posts('sponsorship');
-$total_sponsors = isset($sponsor_counts->publish) ? (int)$sponsor_counts->publish : 0;
+// CRITICAL FIX: Count UNIQUE sponsors from approved sponsorships (not just post count)
+// This ensures we count each sponsor once, even if they have multiple sponsorships
+$approved_sponsorships = get_posts(array(
+    'post_type' => 'sponsorship',
+    'post_status' => 'publish',
+    'posts_per_page' => -1,
+    'meta_query' => array(
+        'relation' => 'OR',
+        array('key' => 'linked', 'value' => 'yes'),           // New format
+        array('key' => '_linked', 'value' => 'yes'),          // Old format (legacy)
+    ),
+    'fields' => 'ids'
+));
+
+// Get unique sponsor emails
+$unique_sponsors = array();
+foreach ($approved_sponsorships as $sp_id) {
+    $sponsor_email = get_post_meta($sp_id, 'sponsor_email', true);
+    if ($sponsor_email) {
+        $unique_sponsors[$sponsor_email] = true;
+    }
+}
+$total_sponsors = count($unique_sponsors);
 
 // Category counts
 $hifz_count = 0;
@@ -1909,13 +1929,16 @@ body {
                 <div id="sponsor-tab-active" class="ahp-sponsor-tab-content" style="display:block;">
                     <?php
                     // CRITICAL FIX: Get active sponsors data grouped by sponsor
+                    // Check BOTH old and new meta keys for backwards compatibility
                     global $wpdb;
                     $active_sponsorships_query = get_posts(array(
                         'post_type' => 'sponsorship',
                         'post_status' => 'publish',
                         'posts_per_page' => -1,
                         'meta_query' => array(
-                            array('key' => 'linked', 'value' => 'yes'),
+                            'relation' => 'OR',
+                            array('key' => 'linked', 'value' => 'yes'),           // New format
+                            array('key' => '_linked', 'value' => 'yes'),          // Old format (legacy)
                         ),
                     ));
 

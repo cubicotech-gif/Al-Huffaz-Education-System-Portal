@@ -1350,9 +1350,29 @@ Thank you for your support.', 'al-huffaz-portal'),
         $student_counts = wp_count_posts('student');
         $total_students = isset($student_counts->publish) ? (int)$student_counts->publish : 0;
 
-        // FIXED: Count sponsors by user role (not CPT) - sponsors are WP users
-        $sponsor_users = get_users(array('role' => 'alhuffaz_sponsor'));
-        $total_sponsors = count($sponsor_users);
+        // FIXED: Count UNIQUE sponsors from approved sponsorships (not just user accounts)
+        // This includes sponsors who submitted payments without creating accounts
+        $approved_sponsorships = get_posts(array(
+            'post_type' => 'sponsorship',
+            'post_status' => 'publish',
+            'posts_per_page' => -1,
+            'meta_query' => array(
+                'relation' => 'OR',
+                array('key' => 'linked', 'value' => 'yes'),           // New format
+                array('key' => '_linked', 'value' => 'yes'),          // Old format (legacy)
+            ),
+            'fields' => 'ids'
+        ));
+
+        // Get unique sponsor emails from these sponsorships
+        $unique_sponsors = array();
+        foreach ($approved_sponsorships as $sp_id) {
+            $sponsor_email = get_post_meta($sp_id, 'sponsor_email', true);
+            if ($sponsor_email) {
+                $unique_sponsors[$sponsor_email] = true;
+            }
+        }
+        $total_sponsors = count($unique_sponsors);
 
         // Category counts
         $hifz_count = 0;
