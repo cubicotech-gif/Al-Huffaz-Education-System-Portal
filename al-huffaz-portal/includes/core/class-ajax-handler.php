@@ -845,6 +845,76 @@ class Ajax_Handler {
             wp_send_json_error(array('message' => __('Invalid sponsorship ID.', 'al-huffaz-portal')));
         }
 
+        // Get sponsor information from sponsorship
+        $sponsor_user_id = get_post_meta($sponsorship_id, 'sponsor_user_id', true);
+        $sponsor_email = get_post_meta($sponsorship_id, 'sponsor_email', true);
+
+        // CRITICAL FIX: Handle case where sponsor user account was deleted
+        // Find or create sponsor CPT to link this sponsorship to
+        $sponsor_cpt_id = null;
+
+        // Check if sponsor user still exists and has linked sponsor CPT
+        if ($sponsor_user_id && get_userdata($sponsor_user_id)) {
+            $sponsor_cpt_id = get_user_meta($sponsor_user_id, 'sponsor_cpt_id', true);
+        }
+
+        // If no sponsor CPT found via user, search by email
+        if (!$sponsor_cpt_id && $sponsor_email) {
+            $existing_sponsor_cpts = get_posts(array(
+                'post_type'      => 'sponsor',
+                'posts_per_page' => 1,
+                'post_status'    => 'any',
+                'meta_query'     => array(
+                    array(
+                        'key'   => 'sponsor_email',
+                        'value' => $sponsor_email,
+                    ),
+                ),
+            ));
+
+            if (!empty($existing_sponsor_cpts)) {
+                $sponsor_cpt_id = $existing_sponsor_cpts[0]->ID;
+
+                // Reactivate sponsor CPT if it was marked as deleted
+                $cpt_status = get_post_meta($sponsor_cpt_id, 'account_status', true);
+                if ($cpt_status === 'deleted') {
+                    update_post_meta($sponsor_cpt_id, 'account_status', 'approved');
+                    update_post_meta($sponsor_cpt_id, 'reactivated_date', current_time('mysql'));
+                }
+            } else {
+                // Create new sponsor CPT if none exists (orphaned sponsorship case)
+                $sponsor_name = get_post_meta($sponsorship_id, 'sponsor_name', true);
+                $sponsor_phone = get_post_meta($sponsorship_id, 'sponsor_phone', true);
+                $sponsor_country = get_post_meta($sponsorship_id, 'sponsor_country', true);
+
+                $sponsor_cpt_id = wp_insert_post(array(
+                    'post_type'   => 'sponsor',
+                    'post_title'  => $sponsor_name . ' (' . $sponsor_email . ')',
+                    'post_status' => 'publish',
+                    'post_author' => 1,
+                ));
+
+                if ($sponsor_cpt_id && !is_wp_error($sponsor_cpt_id)) {
+                    update_post_meta($sponsor_cpt_id, 'sponsor_user_id', $sponsor_user_id ?: 0);
+                    update_post_meta($sponsor_cpt_id, 'sponsor_name', $sponsor_name);
+                    update_post_meta($sponsor_cpt_id, 'sponsor_email', $sponsor_email);
+                    update_post_meta($sponsor_cpt_id, 'sponsor_phone', $sponsor_phone);
+                    update_post_meta($sponsor_cpt_id, 'sponsor_country', $sponsor_country);
+                    update_post_meta($sponsor_cpt_id, 'account_status', 'approved');
+                    update_post_meta($sponsor_cpt_id, 'created_date', current_time('mysql'));
+
+                    Helpers::log_activity('sponsor_cpt_created', 'post', $sponsor_cpt_id,
+                        sprintf('Sponsor CPT created during approval for: %s', $sponsor_email)
+                    );
+                }
+            }
+        }
+
+        // Link sponsorship to sponsor CPT
+        if ($sponsor_cpt_id) {
+            update_post_meta($sponsorship_id, 'sponsor_cpt_id', $sponsor_cpt_id);
+        }
+
         // CRITICAL FIX: Use correct meta keys without underscore prefix
         update_post_meta($sponsorship_id, 'verification_status', 'approved');
         update_post_meta($sponsorship_id, 'verified_by', get_current_user_id());
@@ -858,6 +928,11 @@ class Ajax_Handler {
         if ($student_id) {
             update_post_meta($student_id, 'already_sponsored', 'yes');
             update_post_meta($student_id, 'sponsored_date', current_time('mysql'));
+
+            // Link student to sponsor CPT (not user ID)
+            if ($sponsor_cpt_id) {
+                update_post_meta($student_id, 'sponsor_cpt_id', $sponsor_cpt_id);
+            }
         }
 
         // Update post status to published
@@ -870,13 +945,11 @@ class Ajax_Handler {
         Helpers::log_activity('approve_sponsorship', 'sponsorship', $sponsorship_id, 'Sponsorship approved and student linked');
 
         // Sync with Ultimate Member if sponsor has user account
-        $sponsor_user_id = get_post_meta($sponsorship_id, 'sponsor_user_id', true);
-        if ($sponsor_user_id) {
+        if ($sponsor_user_id && get_userdata($sponsor_user_id)) {
             UM_Integration::approve_sponsor_in_um($sponsor_user_id);
         }
 
         // Send notification email
-        $sponsor_email = get_post_meta($sponsorship_id, 'sponsor_email', true);
         if ($sponsor_email) {
             Helpers::send_notification(
                 $sponsor_email,
@@ -885,8 +958,8 @@ class Ajax_Handler {
             );
         }
 
-        // Create in-app notification for sponsor
-        if ($sponsor_user_id && class_exists('AlHuffaz\\Core\\Notifications')) {
+        // Create in-app notification for sponsor (only if user account exists)
+        if ($sponsor_user_id && get_userdata($sponsor_user_id) && class_exists('AlHuffaz\\Core\\Notifications')) {
             $student = get_post($student_id);
             $student_name = $student ? $student->post_title : __('student', 'al-huffaz-portal');
 
