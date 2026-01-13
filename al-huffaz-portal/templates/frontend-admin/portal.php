@@ -3362,8 +3362,11 @@ document.addEventListener('DOMContentLoaded', function() {
         })
         .then(r => r.json())
         .then(data => {
+            console.log('Dashboard stats response:', data);
             if (data.success && data.data) {
                 const stats = data.data;
+                console.log('Stats data:', stats);
+                console.log('Pending sponsorships count:', stats.pending_sponsorships_count);
                 // Update dashboard stat cards (if on dashboard panel)
                 const totalStudentsEl = document.querySelector('.ahp-stat:nth-child(1) .ahp-stat-value');
                 const totalSponsorsEl = document.querySelector('.ahp-stat:nth-child(2) .ahp-stat-value');
@@ -3378,6 +3381,11 @@ document.addEventListener('DOMContentLoaded', function() {
                 if (inactiveSponsorsEl) inactiveSponsorsEl.textContent = stats.inactive_sponsors_count;
 
                 // Update pending badges on navigation tabs
+                console.log('Calling updatePendingBadges with:', {
+                    pending_sponsor_users_count: stats.pending_sponsor_users_count,
+                    pending_sponsorships_count: stats.pending_sponsorships_count,
+                    pending_payments_count: stats.pending_payments_count
+                });
                 updatePendingBadges(stats.pending_sponsor_users_count, stats.pending_sponsorships_count, stats.pending_payments_count);
 
                 // Update pending sponsor request count in Sponsors panel
