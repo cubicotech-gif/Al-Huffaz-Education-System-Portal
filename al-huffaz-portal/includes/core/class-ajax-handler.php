@@ -598,19 +598,19 @@ class Ajax_Handler {
             wp_send_json_error(array('message' => __('Student not found.', 'al-huffaz-portal')));
         }
 
-        // FIX #18: Check for active sponsorships before delete
+        // FIXED: Check for active sponsorships before delete using correct CPT
         $active_sponsorships = get_posts(array(
-            'post_type' => 'alhuffaz_sponsor',
+            'post_type' => 'sponsorship',
             'posts_per_page' => -1,
             'meta_query' => array(
                 'relation' => 'AND',
                 array(
-                    'key' => '_student_id',
+                    'key' => 'student_id',
                     'value' => $student_id,
                     'compare' => '='
                 ),
                 array(
-                    'key' => '_status',
+                    'key' => 'verification_status',
                     'value' => 'approved',
                     'compare' => '='
                 )
@@ -1350,8 +1350,9 @@ Thank you for your support.', 'al-huffaz-portal'),
         $student_counts = wp_count_posts('student');
         $total_students = isset($student_counts->publish) ? (int)$student_counts->publish : 0;
 
-        $sponsor_counts = wp_count_posts('alhuffaz_sponsor');
-        $total_sponsors = isset($sponsor_counts->publish) ? (int)$sponsor_counts->publish : 0;
+        // FIXED: Count sponsors by user role (not CPT) - sponsors are WP users
+        $sponsor_users = get_users(array('role' => 'alhuffaz_sponsor'));
+        $total_sponsors = count($sponsor_users);
 
         // Category counts
         $hifz_count = 0;
@@ -1405,18 +1406,18 @@ Thank you for your support.', 'al-huffaz-portal'),
         ));
         $pending_sponsor_users_count = count($pending_sponsor_users);
 
-        // Inactive sponsors count (sponsors with no active sponsorships)
+        // FIXED: Inactive sponsors count (sponsors with no active sponsorships)
         $inactive_sponsors_count = 0;
         $all_sponsor_users = get_users(array('role' => 'alhuffaz_sponsor'));
         foreach ($all_sponsor_users as $sponsor_user) {
             $active_sponsorships = get_posts(array(
-                'post_type' => 'alhuffaz_sponsor',
+                'post_type' => 'sponsorship',
                 'posts_per_page' => -1,
                 'meta_query' => array(
                     'relation' => 'AND',
-                    array('key' => '_sponsor_user_id', 'value' => $sponsor_user->ID),
-                    array('key' => '_status', 'value' => 'approved'),
-                    array('key' => '_linked', 'value' => 'yes'),
+                    array('key' => 'sponsor_user_id', 'value' => $sponsor_user->ID),
+                    array('key' => 'verification_status', 'value' => 'approved'),
+                    array('key' => 'linked', 'value' => 'yes'),
                 ),
                 'fields' => 'ids',
             ));
@@ -1484,35 +1485,35 @@ Thank you for your support.', 'al-huffaz-portal'),
             }
         }
 
-        // Create sponsorship post
+        // FIXED: Create sponsorship post using correct CPT
         $sponsorship_id = wp_insert_post(array(
-            'post_type'   => 'alhuffaz_sponsor',
+            'post_type'   => 'sponsorship',
             'post_title'  => sanitize_text_field($data['sponsor_name']) . ' - ' . date('Y-m-d H:i'),
-            'post_status' => 'publish',
+            'post_status' => 'draft', // Draft until verified
         ));
 
         if (is_wp_error($sponsorship_id)) {
             wp_send_json_error(array('message' => $sponsorship_id->get_error_message()));
         }
 
-        // Save meta
+        // FIXED: Save meta with correct keys (no underscore prefix)
         $fields = array(
-            'student_id'       => intval($data['student_id']),
-            'sponsor_name'     => sanitize_text_field($data['sponsor_name']),
-            'sponsor_email'    => sanitize_email($data['sponsor_email']),
-            'sponsor_phone'    => Helpers::sanitize_phone($data['sponsor_phone']),
-            'sponsor_country'  => sanitize_text_field($data['sponsor_country'] ?? 'PK'),
-            'amount'           => floatval($data['amount']),
-            'sponsorship_type' => sanitize_text_field($data['sponsorship_type'] ?? 'monthly'),
-            'payment_method'   => sanitize_text_field($data['payment_method'] ?? ''),
-            'transaction_id'   => sanitize_text_field($data['transaction_id'] ?? ''),
-            'notes'            => sanitize_textarea_field($data['notes'] ?? ''),
-            'status'           => 'pending',
-            'linked'           => 'no',
+            'student_id'          => intval($data['student_id']),
+            'sponsor_name'        => sanitize_text_field($data['sponsor_name']),
+            'sponsor_email'       => sanitize_email($data['sponsor_email']),
+            'sponsor_phone'       => Helpers::sanitize_phone($data['sponsor_phone']),
+            'sponsor_country'     => sanitize_text_field($data['sponsor_country'] ?? 'PK'),
+            'amount'              => floatval($data['amount']),
+            'sponsorship_type'    => sanitize_text_field($data['sponsorship_type'] ?? 'monthly'),
+            'payment_method'      => sanitize_text_field($data['payment_method'] ?? ''),
+            'transaction_id'      => sanitize_text_field($data['transaction_id'] ?? ''),
+            'notes'               => sanitize_textarea_field($data['notes'] ?? ''),
+            'verification_status' => 'pending',
+            'linked'              => 'no',
         );
 
         foreach ($fields as $key => $value) {
-            update_post_meta($sponsorship_id, '_' . $key, $value);
+            update_post_meta($sponsorship_id, $key, $value);
         }
 
         // Handle screenshot upload
@@ -1524,7 +1525,7 @@ Thank you for your support.', 'al-huffaz-portal'),
             $attachment_id = media_handle_upload('payment_screenshot', $sponsorship_id);
 
             if (!is_wp_error($attachment_id)) {
-                update_post_meta($sponsorship_id, '_payment_screenshot', $attachment_id);
+                update_post_meta($sponsorship_id, 'payment_screenshot', $attachment_id);
             }
         }
 
@@ -1923,31 +1924,31 @@ Please verify the payment in the admin portal.', 'al-huffaz-portal'),
         );
         $sponsorship_type = isset($sponsorship_type_map[$duration]) ? $sponsorship_type_map[$duration] : 'monthly';
 
-        // Create sponsorship record
+        // FIXED: Create sponsorship record using correct 'sponsorship' CPT
         $sponsorship_id = wp_insert_post(array(
-            'post_type'   => 'alhuffaz_sponsor',
+            'post_type'   => 'sponsorship',
             'post_title'  => sprintf('%s - %s (%d months)', $user->display_name, $student->post_title, $duration),
-            'post_status' => 'publish',
+            'post_status' => 'draft', // Draft until payment proof submitted
         ));
 
         if (is_wp_error($sponsorship_id)) {
             wp_send_json_error(array('message' => __('Failed to create sponsorship record.', 'al-huffaz-portal')));
         }
 
-        // Save sponsorship meta
-        update_post_meta($sponsorship_id, '_student_id', $student_id);
-        update_post_meta($sponsorship_id, '_sponsor_user_id', $user_id);
-        update_post_meta($sponsorship_id, '_sponsor_name', $user->display_name);
-        update_post_meta($sponsorship_id, '_sponsor_email', $user->user_email);
-        update_post_meta($sponsorship_id, '_sponsor_phone', get_user_meta($user_id, 'phone', true));
-        update_post_meta($sponsorship_id, '_sponsor_country', get_user_meta($user_id, 'country', true));
-        update_post_meta($sponsorship_id, '_amount', $amount);
-        update_post_meta($sponsorship_id, '_duration_months', $duration);
-        update_post_meta($sponsorship_id, '_sponsorship_type', $sponsorship_type);
-        update_post_meta($sponsorship_id, '_status', 'pending');
-        update_post_meta($sponsorship_id, '_linked', 'no');
-        update_post_meta($sponsorship_id, '_created_at', current_time('mysql'));
-        update_post_meta($sponsorship_id, '_payment_pending', 'yes'); // Mark as awaiting payment proof
+        // FIXED: Save sponsorship meta with correct keys (no underscore prefix)
+        update_post_meta($sponsorship_id, 'student_id', $student_id);
+        update_post_meta($sponsorship_id, 'sponsor_user_id', $user_id);
+        update_post_meta($sponsorship_id, 'sponsor_name', $user->display_name);
+        update_post_meta($sponsorship_id, 'sponsor_email', $user->user_email);
+        update_post_meta($sponsorship_id, 'sponsor_phone', get_user_meta($user_id, 'sponsor_phone', true));
+        update_post_meta($sponsorship_id, 'sponsor_country', get_user_meta($user_id, 'sponsor_country', true));
+        update_post_meta($sponsorship_id, 'amount', $amount);
+        update_post_meta($sponsorship_id, 'duration_months', $duration);
+        update_post_meta($sponsorship_id, 'sponsorship_type', $sponsorship_type);
+        update_post_meta($sponsorship_id, 'verification_status', 'pending');
+        update_post_meta($sponsorship_id, 'linked', 'no');
+        update_post_meta($sponsorship_id, 'created_at', current_time('mysql'));
+        update_post_meta($sponsorship_id, 'payment_pending', 'yes'); // Mark as awaiting payment proof
 
         // Log activity
         if (class_exists('AlHuffaz\\Core\\Helpers')) {
@@ -2194,27 +2195,27 @@ The student is now available for sponsorship again.', 'al-huffaz-portal'),
             wp_send_json_error(array('message' => __('Invalid student ID.', 'al-huffaz-portal')));
         }
 
-        // Verify sponsor has access to this student (must have approved, linked sponsorship)
+        // FIXED: Verify sponsor has access to this student (must have approved, linked sponsorship)
         $sponsorships = get_posts(array(
-            'post_type'      => 'alhuffaz_sponsor',
+            'post_type'      => 'sponsorship',
             'posts_per_page' => 1,
             'post_status'    => 'publish',
             'meta_query'     => array(
                 'relation' => 'AND',
                 array(
-                    'key'   => '_sponsor_user_id',
+                    'key'   => 'sponsor_user_id',
                     'value' => $user_id,
                 ),
                 array(
-                    'key'   => '_student_id',
+                    'key'   => 'student_id',
                     'value' => $student_id,
                 ),
                 array(
-                    'key'   => '_status',
+                    'key'   => 'verification_status',
                     'value' => 'approved',
                 ),
                 array(
-                    'key'   => '_linked',
+                    'key'   => 'linked',
                     'value' => 'yes',
                 ),
             ),
@@ -2655,25 +2656,25 @@ The student is now available for sponsorship again.', 'al-huffaz-portal'),
             $phone = get_user_meta($user->ID, 'sponsor_phone', true);
             $country = get_user_meta($user->ID, 'sponsor_country', true);
 
-            // Count active sponsorships (approved + linked)
+            // FIXED: Count active sponsorships (approved + linked)
             $active_sponsorships = get_posts(array(
-                'post_type' => 'alhuffaz_sponsor',
+                'post_type' => 'sponsorship',
                 'posts_per_page' => -1,
                 'meta_query' => array(
                     'relation' => 'AND',
-                    array('key' => '_sponsor_user_id', 'value' => $user->ID),
-                    array('key' => '_status', 'value' => 'approved'),
-                    array('key' => '_linked', 'value' => 'yes'),
+                    array('key' => 'sponsor_user_id', 'value' => $user->ID),
+                    array('key' => 'verification_status', 'value' => 'approved'),
+                    array('key' => 'linked', 'value' => 'yes'),
                 ),
                 'fields' => 'ids',
             ));
 
-            // Count total sponsorships
+            // FIXED: Count total sponsorships
             $total_sponsorships = get_posts(array(
-                'post_type' => 'alhuffaz_sponsor',
+                'post_type' => 'sponsorship',
                 'posts_per_page' => -1,
                 'meta_query' => array(
-                    array('key' => '_sponsor_user_id', 'value' => $user->ID),
+                    array('key' => 'sponsor_user_id', 'value' => $user->ID),
                 ),
                 'fields' => 'ids',
             ));
@@ -2751,15 +2752,15 @@ The student is now available for sponsorship again.', 'al-huffaz-portal'),
         $country = get_user_meta($user_id, 'sponsor_country', true);
         $whatsapp = get_user_meta($user_id, 'sponsor_whatsapp', true);
 
-        // Count sponsorships
+        // FIXED: Count sponsorships
         $active_sponsorships = get_posts(array(
-            'post_type' => 'alhuffaz_sponsor',
+            'post_type' => 'sponsorship',
             'posts_per_page' => -1,
             'meta_query' => array(
                 'relation' => 'AND',
-                array('key' => '_sponsor_user_id', 'value' => $user_id),
-                array('key' => '_status', 'value' => 'approved'),
-                array('key' => '_linked', 'value' => 'yes'),
+                array('key' => 'sponsor_user_id', 'value' => $user_id),
+                array('key' => 'verification_status', 'value' => 'approved'),
+                array('key' => 'linked', 'value' => 'yes'),
             ),
             'fields' => 'ids',
         ));
@@ -2912,15 +2913,15 @@ If you have any questions, please contact us.', 'al-huffaz-portal'),
             wp_send_json_error(array('message' => __('User not found.', 'al-huffaz-portal')));
         }
 
-        // Check if user has active sponsorships
+        // FIXED: Check if user has active sponsorships
         $active_sponsorships = get_posts(array(
-            'post_type' => 'alhuffaz_sponsor',
+            'post_type' => 'sponsorship',
             'posts_per_page' => -1,
             'meta_query' => array(
                 'relation' => 'AND',
-                array('key' => '_sponsor_user_id', 'value' => $user_id),
-                array('key' => '_status', 'value' => 'approved'),
-                array('key' => '_linked', 'value' => 'yes'),
+                array('key' => 'sponsor_user_id', 'value' => $user_id),
+                array('key' => 'verification_status', 'value' => 'approved'),
+                array('key' => 'linked', 'value' => 'yes'),
             ),
             'fields' => 'ids',
         ));
@@ -2931,12 +2932,12 @@ If you have any questions, please contact us.', 'al-huffaz-portal'),
             ));
         }
 
-        // Delete all sponsorship records
+        // FIXED: Delete all sponsorship records
         $all_sponsorships = get_posts(array(
-            'post_type' => 'alhuffaz_sponsor',
+            'post_type' => 'sponsorship',
             'posts_per_page' => -1,
             'meta_query' => array(
-                array('key' => '_sponsor_user_id', 'value' => $user_id),
+                array('key' => 'sponsor_user_id', 'value' => $user_id),
             ),
             'fields' => 'ids',
         ));
@@ -3458,21 +3459,21 @@ With gratitude,
             wp_send_json_error(array('message' => __('Invalid user ID.', 'al-huffaz-portal')));
         }
 
-        // Get active sponsorships
+        // FIXED: Get active sponsorships
         $sponsorships = get_posts(array(
-            'post_type' => 'alhuffaz_sponsor',
+            'post_type' => 'sponsorship',
             'posts_per_page' => -1,
             'meta_query' => array(
                 'relation' => 'AND',
-                array('key' => '_sponsor_user_id', 'value' => $user_id),
-                array('key' => '_status', 'value' => 'approved'),
-                array('key' => '_linked', 'value' => 'yes'),
+                array('key' => 'sponsor_user_id', 'value' => $user_id),
+                array('key' => 'verification_status', 'value' => 'approved'),
+                array('key' => 'linked', 'value' => 'yes'),
             ),
         ));
 
         $students = array();
         foreach ($sponsorships as $sponsorship) {
-            $student_id = get_post_meta($sponsorship->ID, '_student_id', true);
+            $student_id = get_post_meta($sponsorship->ID, 'student_id', true);
             $student = get_post($student_id);
 
             if ($student) {

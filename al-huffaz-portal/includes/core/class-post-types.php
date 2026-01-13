@@ -111,33 +111,10 @@ class Post_Types {
             ));
         }
 
-        // Sponsorship Post Type
-        register_post_type('alhuffaz_sponsor', array(
-            'labels' => array(
-                'name'               => __('Sponsorships', 'al-huffaz-portal'),
-                'singular_name'      => __('Sponsorship', 'al-huffaz-portal'),
-                'menu_name'          => __('Sponsorships', 'al-huffaz-portal'),
-                'add_new'            => __('Add New', 'al-huffaz-portal'),
-                'add_new_item'       => __('Add New Sponsorship', 'al-huffaz-portal'),
-                'edit_item'          => __('Edit Sponsorship', 'al-huffaz-portal'),
-                'new_item'           => __('New Sponsorship', 'al-huffaz-portal'),
-                'view_item'          => __('View Sponsorship', 'al-huffaz-portal'),
-                'search_items'       => __('Search Sponsorships', 'al-huffaz-portal'),
-                'not_found'          => __('No sponsorships found', 'al-huffaz-portal'),
-                'not_found_in_trash' => __('No sponsorships found in trash', 'al-huffaz-portal'),
-            ),
-            'public'              => false,
-            'publicly_queryable'  => false,
-            'show_ui'             => false,
-            'show_in_menu'        => false,
-            'show_in_rest'        => true,
-            'capability_type'     => 'post',
-            'hierarchical'        => false,
-            'supports'            => array('title'),
-            'has_archive'         => false,
-            'rewrite'             => false,
-            'query_var'           => false,
-        ));
+        // REMOVED: Legacy 'alhuffaz_sponsor' CPT registration
+        // The sponsorship system now uses 'sponsorship' CPT registered in alhuffaz-payment-collection.php
+        // This consolidation eliminates duplicate CPT registrations and standardizes on one system.
+        // Migration date: 2026-01-13
     }
 
     /**
