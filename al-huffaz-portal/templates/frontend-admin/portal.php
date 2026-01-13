@@ -74,14 +74,17 @@ if (post_type_exists('student')) {
     $donation_eligible_count = count($eligible_posts);
 }
 
-// CRITICAL FIX: Query 'sponsorship' post type with correct meta key
+// CRITICAL FIX: Query 'sponsorship' post type - Check BOTH old and new meta keys for backwards compatibility
 if (post_type_exists('sponsorship')) {
     $pending_posts = get_posts(array(
         'post_type' => 'sponsorship',
         'post_status' => 'any',
         'posts_per_page' => -1,
-        'meta_key' => 'verification_status',
-        'meta_value' => 'pending',
+        'meta_query' => array(
+            'relation' => 'OR',
+            array('key' => 'verification_status', 'value' => 'pending'),  // New format
+            array('key' => '_status', 'value' => 'pending'),              // Old format (legacy)
+        ),
         'fields' => 'ids'
     ));
     $pending_sponsors_count = count($pending_posts);

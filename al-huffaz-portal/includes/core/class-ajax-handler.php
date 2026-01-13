@@ -1426,15 +1426,18 @@ Thank you for your support.', 'al-huffaz-portal'),
             }
         }
 
-        // Pending sponsorships count (payment approval requests)
+        // FIXED: Pending sponsorships count - Check BOTH old and new meta keys for backwards compatibility
         $pending_sponsorships_count = 0;
         if (post_type_exists('sponsorship')) {
             $pending_sponsorships = get_posts(array(
                 'post_type' => 'sponsorship',
                 'post_status' => 'any',
                 'posts_per_page' => -1,
-                'meta_key' => 'verification_status',
-                'meta_value' => 'pending',
+                'meta_query' => array(
+                    'relation' => 'OR',
+                    array('key' => 'verification_status', 'value' => 'pending'),  // New format
+                    array('key' => '_status', 'value' => 'pending'),              // Old format (legacy)
+                ),
                 'fields' => 'ids'
             ));
             $pending_sponsorships_count = count($pending_sponsorships);
@@ -4152,30 +4155,36 @@ With gratitude,
     public function get_sponsor_stats() {
         $this->verify_admin_nonce();
 
-        // Get pending sponsorships count
+        // FIXED: Get pending sponsorships count - Check BOTH old and new meta keys
         $pending_posts = get_posts(array(
             'post_type' => 'sponsorship',
             'post_status' => 'any',
             'posts_per_page' => -1,
-            'meta_key' => 'verification_status',
-            'meta_value' => 'pending',
+            'meta_query' => array(
+                'relation' => 'OR',
+                array('key' => 'verification_status', 'value' => 'pending'),  // New format
+                array('key' => '_status', 'value' => 'pending'),              // Old format (legacy)
+            ),
             'fields' => 'ids'
         ));
         $pending_count = count($pending_posts);
 
-        // Get approved sponsorships count
+        // FIXED: Get approved sponsorships count - Check BOTH old and new meta keys
         $approved_posts = get_posts(array(
             'post_type' => 'sponsorship',
             'post_status' => 'any',
             'posts_per_page' => -1,
-            'meta_key' => 'verification_status',
-            'meta_value' => 'approved',
+            'meta_query' => array(
+                'relation' => 'OR',
+                array('key' => 'verification_status', 'value' => 'approved'),  // New format
+                array('key' => '_status', 'value' => 'approved'),              // Old format (legacy)
+            ),
             'fields' => 'ids'
         ));
         $approved_count = count($approved_posts);
 
         wp_send_json_success(array(
-            'pending_count' => $pending_count,
+            'pending_sponsorships_count' => $pending_count,
             'approved_count' => $approved_count,
         ));
     }
