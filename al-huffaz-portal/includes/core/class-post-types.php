@@ -115,6 +115,38 @@ class Post_Types {
         // The sponsorship system now uses 'sponsorship' CPT registered in alhuffaz-payment-collection.php
         // This consolidation eliminates duplicate CPT registrations and standardizes on one system.
         // Migration date: 2026-01-13
+
+        // Sponsor Profile Post Type - One CPT per sponsor person
+        // Auto-created when sponsor user is approved
+        if (!post_type_exists('sponsor')) {
+            register_post_type('sponsor', array(
+                'labels' => array(
+                    'name'               => __('Sponsors', 'al-huffaz-portal'),
+                    'singular_name'      => __('Sponsor', 'al-huffaz-portal'),
+                    'menu_name'          => __('Sponsors', 'al-huffaz-portal'),
+                    'add_new'            => __('Add New', 'al-huffaz-portal'),
+                    'add_new_item'       => __('Add New Sponsor', 'al-huffaz-portal'),
+                    'edit_item'          => __('Edit Sponsor', 'al-huffaz-portal'),
+                    'new_item'           => __('New Sponsor', 'al-huffaz-portal'),
+                    'view_item'          => __('View Sponsor', 'al-huffaz-portal'),
+                    'search_items'       => __('Search Sponsors', 'al-huffaz-portal'),
+                    'not_found'          => __('No sponsors found', 'al-huffaz-portal'),
+                    'not_found_in_trash' => __('No sponsors found in trash', 'al-huffaz-portal'),
+                ),
+                'public'              => true,
+                'publicly_queryable'  => true,
+                'show_ui'             => true,
+                'show_in_menu'        => true,
+                'show_in_rest'        => true,
+                'menu_icon'           => 'dashicons-heart',
+                'capability_type'     => 'post',
+                'hierarchical'        => false,
+                'supports'            => array('title', 'custom-fields'),
+                'has_archive'         => false,
+                'rewrite'             => array('slug' => 'sponsor', 'with_front' => false),
+                'query_var'           => true,
+            ));
+        }
     }
 
     /**
@@ -260,6 +292,24 @@ class Post_Types {
             'linked'              => array('type' => 'boolean', 'label' => 'Linked'),
             'verified_by'         => array('type' => 'integer', 'label' => 'Verified By'),
             'verified_at'         => array('type' => 'datetime', 'label' => 'Verified At'),
+        );
+    }
+
+    /**
+     * Get sponsor CPT meta fields
+     */
+    public static function get_sponsor_fields() {
+        return array(
+            'sponsor_user_id'        => array('type' => 'integer', 'label' => 'User ID'),
+            'sponsor_name'           => array('type' => 'string', 'label' => 'Name'),
+            'sponsor_email'          => array('type' => 'string', 'label' => 'Email'),
+            'sponsor_phone'          => array('type' => 'string', 'label' => 'Phone'),
+            'sponsor_country'        => array('type' => 'string', 'label' => 'Country'),
+            'sponsor_whatsapp'       => array('type' => 'string', 'label' => 'WhatsApp'),
+            'account_status'         => array('type' => 'string', 'label' => 'Account Status'),
+            'created_date'           => array('type' => 'datetime', 'label' => 'Created Date'),
+            'reactivated_date'       => array('type' => 'datetime', 'label' => 'Reactivated Date'),
+            'account_deleted_date'   => array('type' => 'datetime', 'label' => 'Account Deleted Date'),
         );
     }
 }
