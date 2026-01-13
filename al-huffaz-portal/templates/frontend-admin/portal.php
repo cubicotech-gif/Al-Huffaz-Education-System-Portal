@@ -1155,9 +1155,18 @@ body {
                 <button class="ahp-nav-item" data-panel="sponsors">
                     <i class="fas fa-hand-holding-heart"></i>
                     <span><?php _e('Sponsors', 'al-huffaz-portal'); ?></span>
-                    <?php if ($pending_sponsors_count > 0): ?>
-                    <span class="ahp-nav-badge danger"><?php echo $pending_sponsors_count; ?></span>
-                    <?php endif; ?>
+                    <?php
+                    // DEBUG: Log the pending count
+                    error_log('SPONSORS TAB - pending_sponsors_count: ' . $pending_sponsors_count);
+                    if ($pending_sponsors_count > 0):
+                        error_log('SPONSORS TAB - Rendering badge with count: ' . $pending_sponsors_count);
+                    ?>
+                    <span class="ahp-nav-badge danger" id="sponsors-main-badge"><?php echo $pending_sponsors_count; ?></span>
+                    <?php
+                    else:
+                        error_log('SPONSORS TAB - NOT rendering badge, count is: ' . $pending_sponsors_count);
+                    endif;
+                    ?>
                 </button>
                 <button class="ahp-nav-item" data-panel="sponsor-users">
                     <i class="fas fa-users-cog"></i>
@@ -3474,6 +3483,28 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Call refreshDashboardStats() on page load to set initial badges
     refreshDashboardStats();
+
+    // DEBUG: Check if badge exists in DOM after page load
+    setTimeout(function() {
+        console.log('=== BADGE DEBUG CHECK ===');
+        const sponsorsBadge = document.querySelector('#sponsors-main-badge');
+        const sponsorsTab = document.querySelector('[data-panel="sponsors"]');
+        const allBadgesInTab = sponsorsTab ? sponsorsTab.querySelectorAll('.ahp-nav-badge') : [];
+
+        console.log('Badge with ID sponsors-main-badge:', sponsorsBadge);
+        console.log('Sponsors tab element:', sponsorsTab);
+        console.log('All badges in sponsors tab:', allBadgesInTab);
+        console.log('Sponsors tab HTML:', sponsorsTab ? sponsorsTab.innerHTML : 'Tab not found');
+
+        if (sponsorsBadge) {
+            console.log('Badge found! Computed styles:', window.getComputedStyle(sponsorsBadge));
+            console.log('Badge display:', window.getComputedStyle(sponsorsBadge).display);
+            console.log('Badge visibility:', window.getComputedStyle(sponsorsBadge).visibility);
+            console.log('Badge opacity:', window.getComputedStyle(sponsorsBadge).opacity);
+        } else {
+            console.error('Badge NOT found in DOM!');
+        }
+    }, 2000); // Wait 2 seconds for all async operations to complete
 
     // CRITICAL FIX: Auto-refresh badges every 30 seconds to catch new payment submissions
     setInterval(function() {
