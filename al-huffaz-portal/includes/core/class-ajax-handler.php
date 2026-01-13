@@ -1350,9 +1350,43 @@ Thank you for your support.', 'al-huffaz-portal'),
         $student_counts = wp_count_posts('student');
         $total_students = isset($student_counts->publish) ? (int)$student_counts->publish : 0;
 
-        // FIXED: Count sponsors by user role (not CPT) - sponsors are WP users
-        $sponsor_users = get_users(array('role' => 'alhuffaz_sponsor'));
-        $total_sponsors = count($sponsor_users);
+        // FIXED: Count ACTIVE sponsors from sponsor CPT (approved sponsors with active sponsorships)
+        // Sponsor CPT is the single source of truth for sponsor profiles
+        $sponsor_cpts = get_posts(array(
+            'post_type' => 'sponsor',
+            'post_status' => 'publish',
+            'posts_per_page' => -1,
+            'meta_query' => array(
+                array(
+                    'key' => 'account_status',
+                    'value' => 'approved',
+                ),
+            ),
+            'fields' => 'ids'
+        ));
+
+        // Count only sponsors with active sponsorships
+        $total_sponsors = 0;
+        foreach ($sponsor_cpts as $sponsor_cpt_id) {
+            $sponsor_user_id = get_post_meta($sponsor_cpt_id, 'sponsor_user_id', true);
+            if ($sponsor_user_id) {
+                // Check if sponsor has active sponsorships
+                $active_sponsorships = get_posts(array(
+                    'post_type' => 'sponsorship',
+                    'posts_per_page' => 1,
+                    'meta_query' => array(
+                        'relation' => 'AND',
+                        array('key' => 'sponsor_user_id', 'value' => $sponsor_user_id),
+                        array('key' => 'verification_status', 'value' => 'approved'),
+                        array('key' => 'linked', 'value' => 'yes'),
+                    ),
+                    'fields' => 'ids',
+                ));
+                if (!empty($active_sponsorships)) {
+                    $total_sponsors++;
+                }
+            }
+        }
 
         // Category counts
         $hifz_count = 0;
@@ -1406,35 +1440,53 @@ Thank you for your support.', 'al-huffaz-portal'),
         ));
         $pending_sponsor_users_count = count($pending_sponsor_users);
 
-        // FIXED: Inactive sponsors count (sponsors with no active sponsorships)
+        // FIXED: Inactive sponsors count (approved sponsors with no active sponsorships)
         $inactive_sponsors_count = 0;
-        $all_sponsor_users = get_users(array('role' => 'alhuffaz_sponsor'));
-        foreach ($all_sponsor_users as $sponsor_user) {
-            $active_sponsorships = get_posts(array(
-                'post_type' => 'sponsorship',
-                'posts_per_page' => -1,
-                'meta_query' => array(
-                    'relation' => 'AND',
-                    array('key' => 'sponsor_user_id', 'value' => $sponsor_user->ID),
-                    array('key' => 'verification_status', 'value' => 'approved'),
-                    array('key' => 'linked', 'value' => 'yes'),
+        $all_sponsor_cpts = get_posts(array(
+            'post_type' => 'sponsor',
+            'post_status' => 'publish',
+            'posts_per_page' => -1,
+            'meta_query' => array(
+                array(
+                    'key' => 'account_status',
+                    'value' => 'approved',
                 ),
-                'fields' => 'ids',
-            ));
-            if (empty($active_sponsorships)) {
-                $inactive_sponsors_count++;
+            ),
+            'fields' => 'ids'
+        ));
+
+        foreach ($all_sponsor_cpts as $sponsor_cpt_id) {
+            $sponsor_user_id = get_post_meta($sponsor_cpt_id, 'sponsor_user_id', true);
+            if ($sponsor_user_id) {
+                $active_sponsorships = get_posts(array(
+                    'post_type' => 'sponsorship',
+                    'posts_per_page' => 1,
+                    'meta_query' => array(
+                        'relation' => 'AND',
+                        array('key' => 'sponsor_user_id', 'value' => $sponsor_user_id),
+                        array('key' => 'verification_status', 'value' => 'approved'),
+                        array('key' => 'linked', 'value' => 'yes'),
+                    ),
+                    'fields' => 'ids',
+                ));
+                if (empty($active_sponsorships)) {
+                    $inactive_sponsors_count++;
+                }
             }
         }
 
-        // Pending sponsorships count (payment approval requests)
+        // FIXED: Pending sponsorships count - Check BOTH old and new meta keys for backwards compatibility
         $pending_sponsorships_count = 0;
         if (post_type_exists('sponsorship')) {
             $pending_sponsorships = get_posts(array(
                 'post_type' => 'sponsorship',
                 'post_status' => 'any',
                 'posts_per_page' => -1,
-                'meta_key' => 'verification_status',
-                'meta_value' => 'pending',
+                'meta_query' => array(
+                    'relation' => 'OR',
+                    array('key' => 'verification_status', 'value' => 'pending'),  // New format
+                    array('key' => '_status', 'value' => 'pending'),              // Old format (legacy)
+                ),
                 'fields' => 'ids'
             ));
             $pending_sponsorships_count = count($pending_sponsorships);
@@ -2814,6 +2866,82 @@ The student is now available for sponsorship again.', 'al-huffaz-portal'),
         update_user_meta($user_id, 'account_status', 'approved');
         update_user_meta($user_id, 'account_status_date', current_time('mysql'));
 
+        // Auto-create or reconnect Sponsor CPT when user is approved
+        $existing_sponsor_cpt = get_user_meta($user_id, 'sponsor_cpt_id', true);
+        $sponsor_email = $user->user_email;
+
+        // Check if sponsor CPT already exists (linked to this user)
+        if (!$existing_sponsor_cpt || !get_post($existing_sponsor_cpt)) {
+            // Check if a sponsor CPT exists with this email (re-registration scenario)
+            $existing_cpts = get_posts(array(
+                'post_type'      => 'sponsor',
+                'posts_per_page' => 1,
+                'post_status'    => 'any',
+                'meta_query'     => array(
+                    array(
+                        'key'   => 'sponsor_email',
+                        'value' => $sponsor_email,
+                    ),
+                ),
+            ));
+
+            if (!empty($existing_cpts)) {
+                // Re-registration: Reconnect existing sponsor CPT to new user account
+                $sponsor_cpt_id = $existing_cpts[0]->ID;
+
+                // Update CPT with new user ID
+                update_post_meta($sponsor_cpt_id, 'sponsor_user_id', $user_id);
+                update_post_meta($sponsor_cpt_id, 'account_status', 'approved');
+                update_post_meta($sponsor_cpt_id, 'reactivated_date', current_time('mysql'));
+
+                // Link user to existing sponsor CPT
+                update_user_meta($user_id, 'sponsor_cpt_id', $sponsor_cpt_id);
+
+                // Log reconnection
+                if (class_exists('AlHuffaz\\Core\\Helpers')) {
+                    Helpers::log_activity('sponsor_cpt_reconnected', 'post', $sponsor_cpt_id,
+                        sprintf('Sponsor CPT reconnected to user: %s (ID: %d)', $sponsor_email, $user_id)
+                    );
+                }
+            } else {
+                // New registration: Create new sponsor CPT
+                $sponsor_name = $user->display_name;
+                $sponsor_phone = get_user_meta($user_id, 'sponsor_phone', true);
+                $sponsor_country = get_user_meta($user_id, 'sponsor_country', true);
+                $sponsor_whatsapp = get_user_meta($user_id, 'sponsor_whatsapp', true);
+
+                // Create sponsor CPT
+                $sponsor_cpt_id = wp_insert_post(array(
+                    'post_type'   => 'sponsor',
+                    'post_title'  => $sponsor_name . ' (' . $sponsor_email . ')',
+                    'post_status' => 'publish',
+                    'post_author' => 1, // Admin user
+                ));
+
+                if ($sponsor_cpt_id && !is_wp_error($sponsor_cpt_id)) {
+                    // Store sponsor profile data in CPT meta
+                    update_post_meta($sponsor_cpt_id, 'sponsor_user_id', $user_id);
+                    update_post_meta($sponsor_cpt_id, 'sponsor_name', $sponsor_name);
+                    update_post_meta($sponsor_cpt_id, 'sponsor_email', $sponsor_email);
+                    update_post_meta($sponsor_cpt_id, 'sponsor_phone', $sponsor_phone);
+                    update_post_meta($sponsor_cpt_id, 'sponsor_country', $sponsor_country);
+                    update_post_meta($sponsor_cpt_id, 'sponsor_whatsapp', $sponsor_whatsapp);
+                    update_post_meta($sponsor_cpt_id, 'account_status', 'approved');
+                    update_post_meta($sponsor_cpt_id, 'created_date', current_time('mysql'));
+
+                    // Link user to sponsor CPT
+                    update_user_meta($user_id, 'sponsor_cpt_id', $sponsor_cpt_id);
+
+                    // Log CPT creation
+                    if (class_exists('AlHuffaz\\Core\\Helpers')) {
+                        Helpers::log_activity('sponsor_cpt_created', 'post', $sponsor_cpt_id,
+                            sprintf('Sponsor CPT auto-created for user: %s (ID: %d)', $sponsor_email, $user_id)
+                        );
+                    }
+                }
+            }
+        }
+
         // Log activity
         if (class_exists('AlHuffaz\\Core\\Helpers')) {
             Helpers::log_activity('sponsor_user_approved', 'user', $user_id,
@@ -2913,26 +3041,7 @@ If you have any questions, please contact us.', 'al-huffaz-portal'),
             wp_send_json_error(array('message' => __('User not found.', 'al-huffaz-portal')));
         }
 
-        // FIXED: Check if user has active sponsorships
-        $active_sponsorships = get_posts(array(
-            'post_type' => 'sponsorship',
-            'posts_per_page' => -1,
-            'meta_query' => array(
-                'relation' => 'AND',
-                array('key' => 'sponsor_user_id', 'value' => $user_id),
-                array('key' => 'verification_status', 'value' => 'approved'),
-                array('key' => 'linked', 'value' => 'yes'),
-            ),
-            'fields' => 'ids',
-        ));
-
-        if (!empty($active_sponsorships)) {
-            wp_send_json_error(array(
-                'message' => __('Cannot delete user with active sponsorships. Please cancel all sponsorships first.', 'al-huffaz-portal')
-            ));
-        }
-
-        // FIXED: Delete all sponsorship records
+        // FIXED: Unlink all sponsorships (don't delete them - keep for historical records)
         $all_sponsorships = get_posts(array(
             'post_type' => 'sponsorship',
             'posts_per_page' => -1,
@@ -2942,14 +3051,32 @@ If you have any questions, please contact us.', 'al-huffaz-portal'),
             'fields' => 'ids',
         ));
 
+        // Unlink students from all sponsorships
         foreach ($all_sponsorships as $sponsorship_id) {
-            wp_delete_post($sponsorship_id, true);
+            $student_id = get_post_meta($sponsorship_id, 'student_id', true);
+
+            // Unlink the sponsorship
+            update_post_meta($sponsorship_id, 'linked', 'no');
+            update_post_meta($sponsorship_id, 'verification_status', 'cancelled');
+            update_post_meta($sponsorship_id, 'cancelled_date', current_time('mysql'));
+
+            // Unlink student from sponsor
+            if ($student_id) {
+                update_post_meta($student_id, 'is_sponsored', false);
+                update_post_meta($student_id, 'sponsor_id', 0);
+            }
         }
 
-        // Delete payments
-        global $wpdb;
-        $payments_table = $wpdb->prefix . 'alhuffaz_payments';
-        $wpdb->delete($payments_table, array('sponsor_id' => $user_id));
+        // Update Sponsor CPT: Mark as deleted but keep for historical records
+        $sponsor_cpt_id = get_user_meta($user_id, 'sponsor_cpt_id', true);
+        if ($sponsor_cpt_id && get_post($sponsor_cpt_id)) {
+            update_post_meta($sponsor_cpt_id, 'account_status', 'deleted');
+            update_post_meta($sponsor_cpt_id, 'account_deleted_date', current_time('mysql'));
+            update_post_meta($sponsor_cpt_id, 'sponsor_user_id', 0); // Disconnect from user account
+
+            // Keep sponsor CPT for records - don't delete it
+            // This allows re-registration to reconnect to same sponsor CPT
+        }
 
         // Log activity before deleting
         if (class_exists('AlHuffaz\\Core\\Helpers')) {
@@ -4152,30 +4279,36 @@ With gratitude,
     public function get_sponsor_stats() {
         $this->verify_admin_nonce();
 
-        // Get pending sponsorships count
+        // FIXED: Get pending sponsorships count - Check BOTH old and new meta keys
         $pending_posts = get_posts(array(
             'post_type' => 'sponsorship',
             'post_status' => 'any',
             'posts_per_page' => -1,
-            'meta_key' => 'verification_status',
-            'meta_value' => 'pending',
+            'meta_query' => array(
+                'relation' => 'OR',
+                array('key' => 'verification_status', 'value' => 'pending'),  // New format
+                array('key' => '_status', 'value' => 'pending'),              // Old format (legacy)
+            ),
             'fields' => 'ids'
         ));
         $pending_count = count($pending_posts);
 
-        // Get approved sponsorships count
+        // FIXED: Get approved sponsorships count - Check BOTH old and new meta keys
         $approved_posts = get_posts(array(
             'post_type' => 'sponsorship',
             'post_status' => 'any',
             'posts_per_page' => -1,
-            'meta_key' => 'verification_status',
-            'meta_value' => 'approved',
+            'meta_query' => array(
+                'relation' => 'OR',
+                array('key' => 'verification_status', 'value' => 'approved'),  // New format
+                array('key' => '_status', 'value' => 'approved'),              // Old format (legacy)
+            ),
             'fields' => 'ids'
         ));
         $approved_count = count($approved_posts);
 
         wp_send_json_success(array(
-            'pending_count' => $pending_count,
+            'pending_sponsorships_count' => $pending_count,
             'approved_count' => $approved_count,
         ));
     }
