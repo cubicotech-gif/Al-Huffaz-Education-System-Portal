@@ -3133,10 +3133,16 @@ If you have any questions, please contact us.', 'al-huffaz-portal'),
             update_post_meta($sponsorship_id, 'verification_status', 'cancelled');
             update_post_meta($sponsorship_id, 'cancelled_date', current_time('mysql'));
 
-            // Unlink student from sponsor
+            // Unlink student from sponsor - Use CORRECT meta keys
             if ($student_id) {
-                update_post_meta($student_id, 'is_sponsored', false);
-                update_post_meta($student_id, 'sponsor_id', 0);
+                // FIXED: Use current meta keys, not legacy ones
+                delete_post_meta($student_id, 'already_sponsored');
+                delete_post_meta($student_id, 'sponsored_date');
+                delete_post_meta($student_id, 'sponsor_cpt_id');
+
+                // Also clean up legacy keys if they exist
+                delete_post_meta($student_id, 'is_sponsored');
+                delete_post_meta($student_id, 'sponsor_id');
             }
         }
 
@@ -4256,10 +4262,20 @@ With gratitude,
         );
 
         if ($status) {
+            // Filter by specific status
             $args['meta_query'] = array(
                 array(
                     'key' => 'verification_status',
                     'value' => $status,
+                ),
+            );
+        } else {
+            // FIXED: Exclude cancelled sponsorships (from deleted sponsors) by default
+            $args['meta_query'] = array(
+                array(
+                    'key' => 'verification_status',
+                    'value' => 'cancelled',
+                    'compare' => '!=',
                 ),
             );
         }

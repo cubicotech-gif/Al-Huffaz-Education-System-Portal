@@ -127,11 +127,13 @@ function sponsor_cleanup_orphaned_markers() {
     
     // Update last cleanup timestamp
     update_option('sponsor_last_cleanup', time());
-    
+
     // Log cleanup if any orphans were found
     if ($cleaned > 0) {
         error_log("Al-Huffaz Sponsor: Cleaned up {$cleaned} orphaned sponsorship markers");
     }
+
+    return $cleaned;
 }
 
 // Helper function to build sponsor admin redirect URL
@@ -177,16 +179,68 @@ add_action('wp_ajax_sponsor_cleanup_now', 'ajax_sponsor_cleanup_now');
 // Manual cleanup AJAX handler
 function ajax_sponsor_cleanup_now() {
     check_ajax_referer('sponsor_admin_ajax', 'nonce');
-    
+
     if (!current_user_can('administrator') && !current_user_can('school_admin')) {
         wp_send_json_error('Access denied');
     }
-    
+
     // Force cleanup
     delete_option('sponsor_last_cleanup');
-    sponsor_cleanup_orphaned_markers();
-    
-    wp_send_json_success('Cleanup completed! Orphaned markers removed.');
+    $cleaned = sponsor_cleanup_orphaned_markers();
+
+    // ALSO run migration to clean up legacy meta keys
+    $migrated = sponsor_migrate_legacy_meta_keys();
+
+    wp_send_json_success(sprintf(
+        'Cleanup completed! %d orphaned students freed, %d legacy meta keys migrated.',
+        $cleaned,
+        $migrated
+    ));
+}
+
+// One-time migration to clean up legacy meta keys from old delete bug
+function sponsor_migrate_legacy_meta_keys() {
+    global $wpdb;
+
+    $migrated = 0;
+
+    // Find students with old 'is_sponsored' key but no new 'already_sponsored' key
+    $legacy_students = $wpdb->get_results("
+        SELECT DISTINCT pm.post_id
+        FROM {$wpdb->postmeta} pm
+        INNER JOIN {$wpdb->posts} p ON pm.post_id = p.ID
+        WHERE p.post_type = 'student'
+        AND pm.meta_key = 'is_sponsored'
+        AND pm.meta_value = '1'
+        AND pm.post_id NOT IN (
+            SELECT post_id FROM {$wpdb->postmeta}
+            WHERE meta_key = 'already_sponsored'
+        )
+    ");
+
+    foreach ($legacy_students as $row) {
+        $student_id = $row->post_id;
+
+        // Check if there's an active sponsorship
+        $active = get_posts(array(
+            'post_type' => 'sponsorship',
+            'post_status' => 'publish',
+            'posts_per_page' => 1,
+            'meta_query' => array(
+                array('key' => 'student_id', 'value' => $student_id),
+                array('key' => 'linked', 'value' => 'yes'),
+            )
+        ));
+
+        if (empty($active)) {
+            // No active sponsorship - clean up legacy keys
+            delete_post_meta($student_id, 'is_sponsored');
+            delete_post_meta($student_id, 'sponsor_id');
+            $migrated++;
+        }
+    }
+
+    return $migrated;
 }
 
 // AJAX: Approve Registration
