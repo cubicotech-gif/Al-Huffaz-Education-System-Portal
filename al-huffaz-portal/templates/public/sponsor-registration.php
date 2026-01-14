@@ -398,15 +398,13 @@ jQuery(document).ready(function($) {
         // Clear previous messages
         $messages.html('');
 
-        const formData = new FormData(this);
-        formData.append('action', 'alhuffaz_register_sponsor');
+        // Serialize form data properly for AJAX
+        const formData = $form.serialize() + '&action=alhuffaz_register_sponsor';
 
         $.ajax({
             url: '<?php echo admin_url('admin-ajax.php'); ?>',
             type: 'POST',
             data: formData,
-            processData: false,
-            contentType: false,
             success: function(response) {
                 if (response.success) {
                     // Success - redirect to login with success message
