@@ -49,6 +49,9 @@ class Ajax_Handler {
         add_action('wp_ajax_alhuffaz_upload_image', array($this, 'upload_image'));
 
         // Public AJAX actions
+        add_action('wp_ajax_alhuffaz_get_register_nonce', array($this, 'get_register_nonce'));
+        add_action('wp_ajax_nopriv_alhuffaz_get_register_nonce', array($this, 'get_register_nonce'));
+
         add_action('wp_ajax_alhuffaz_register_sponsor', array($this, 'register_sponsor'));
         add_action('wp_ajax_nopriv_alhuffaz_register_sponsor', array($this, 'register_sponsor'));
 
@@ -3382,11 +3385,26 @@ With gratitude,
      * Register new sponsor account (Public AJAX)
      * Creates user with alhuffaz_sponsor role and pending_approval status
      */
+    /**
+     * Get a fresh registration nonce
+     * Used as a fallback when the page nonce is expired or invalid
+     */
+    public function get_register_nonce() {
+        wp_send_json_success(array(
+            'nonce' => wp_create_nonce('alhuffaz_sponsor_registration'),
+        ));
+    }
+
     public function register_sponsor() {
         // Verify nonce
-        if (!isset($_POST['sponsor_register_nonce']) ||
-            !wp_verify_nonce($_POST['sponsor_register_nonce'], 'alhuffaz_sponsor_registration')) {
-            wp_send_json_error(array('message' => __('Security verification failed.', 'al-huffaz-portal')));
+        if (!isset($_POST['sponsor_register_nonce'])) {
+            error_log('AlHuffaz Registration: Nonce field is missing from POST data');
+            wp_send_json_error(array('message' => __('Security verification failed. Please refresh the page and try again.', 'al-huffaz-portal')));
+        }
+
+        if (!wp_verify_nonce($_POST['sponsor_register_nonce'], 'alhuffaz_sponsor_registration')) {
+            error_log('AlHuffaz Registration: Nonce verification failed. Nonce: ' . $_POST['sponsor_register_nonce']);
+            wp_send_json_error(array('message' => __('Security verification failed. Please refresh the page and try again.', 'al-huffaz-portal')));
         }
 
         // Get form data
