@@ -41,9 +41,7 @@ $countries = Helpers::get_countries();
 
         <div id="alhuffaz-register-messages"></div>
 
-        <form id="alhuffaz-sponsor-registration-form" method="post">
-            <?php wp_nonce_field('alhuffaz_sponsor_registration', 'sponsor_register_nonce'); ?>
-
+        <form id="alhuffaz-sponsor-registration-form" method="post" data-nonce="<?php echo esc_attr(wp_create_nonce('alhuffaz_sponsor_registration')); ?>" data-ajax-url="<?php echo esc_url(admin_url('admin-ajax.php')); ?>">
             <div class="alhuffaz-form-row">
                 <div class="alhuffaz-form-group">
                     <label for="sponsor_name">
@@ -385,46 +383,113 @@ $countries = Helpers::get_countries();
 
 <script>
 jQuery(document).ready(function($) {
+    let retryWithFreshNonce = false;
+
+    function submitRegistration(useStoredNonce) {
+        const $form = $('#alhuffaz-sponsor-registration-form');
+        const $btn = $form.find('button[type="submit"]');
+        const $messages = $('#alhuffaz-register-messages');
+        const ajaxUrl = $form.data('ajax-url');
+
+        if (useStoredNonce) {
+            // Try with the nonce already stored in form data
+            const nonce = $form.data('nonce');
+            if (!nonce) {
+                console.error('Registration nonce is missing');
+                $messages.html('<div class="message error"><i class="fas fa-exclamation-circle"></i> <span><?php _e('Security token is missing. Please refresh the page and try again.', 'al-huffaz-portal'); ?></span></div>');
+                $btn.prop('disabled', false).html('<i class="fas fa-user-plus"></i> <?php _e('Register Account', 'al-huffaz-portal'); ?>');
+                return;
+            }
+            proceedWithSubmission(nonce);
+        } else {
+            // Fetch a fresh nonce and retry
+            $btn.html('<i class="fas fa-spinner fa-spin"></i> <?php _e('Refreshing security token...', 'al-huffaz-portal'); ?>');
+
+            $.ajax({
+                url: ajaxUrl,
+                type: 'POST',
+                data: { action: 'alhuffaz_get_register_nonce' },
+                success: function(response) {
+                    if (response.success && response.data.nonce) {
+                        // Update form with fresh nonce
+                        $form.data('nonce', response.data.nonce);
+                        proceedWithSubmission(response.data.nonce);
+                    } else {
+                        $messages.html('<div class="message error"><i class="fas fa-exclamation-circle"></i> <span><?php _e('Could not refresh security token. Please refresh the page and try again.', 'al-huffaz-portal'); ?></span></div>');
+                        $btn.prop('disabled', false).html('<i class="fas fa-user-plus"></i> <?php _e('Register Account', 'al-huffaz-portal'); ?>');
+                    }
+                },
+                error: function() {
+                    $messages.html('<div class="message error"><i class="fas fa-exclamation-circle"></i> <span><?php _e('Network error. Please check your connection and try again.', 'al-huffaz-portal'); ?></span></div>');
+                    $btn.prop('disabled', false).html('<i class="fas fa-user-plus"></i> <?php _e('Register Account', 'al-huffaz-portal'); ?>');
+                }
+            });
+        }
+
+        function proceedWithSubmission(nonce) {
+            $btn.html('<i class="fas fa-spinner fa-spin"></i> <?php _e('Creating Account...', 'al-huffaz-portal'); ?>');
+
+            // Serialize form data and add action + nonce
+            const formData = $form.serialize() +
+                '&action=alhuffaz_register_sponsor' +
+                '&sponsor_register_nonce=' + encodeURIComponent(nonce);
+
+            $.ajax({
+                url: ajaxUrl,
+                type: 'POST',
+                data: formData,
+                success: function(response) {
+                    if (response.success) {
+                        // Success - redirect to login with success message
+                        window.location.href = '<?php echo esc_url(add_query_arg('registered', 'success', Helpers::get_login_url())); ?>';
+                    } else {
+                        // Check if it's a security verification error and we haven't retried yet
+                        if (response.data.message &&
+                            response.data.message.indexOf('Security verification') !== -1 &&
+                            !retryWithFreshNonce) {
+                            retryWithFreshNonce = true;
+                            $messages.html('<div class="message error"><i class="fas fa-exclamation-circle"></i> <span><?php _e('Security token expired. Retrying with fresh token...', 'al-huffaz-portal'); ?></span></div>');
+                            setTimeout(function() {
+                                submitRegistration(false); // Retry with fresh nonce
+                            }, 500);
+                            return;
+                        }
+
+                        // Error - show message
+                        $messages.html('<div class="message error"><i class="fas fa-exclamation-circle"></i> <span>' + response.data.message + '</span></div>');
+                        $btn.prop('disabled', false).html('<i class="fas fa-user-plus"></i> <?php _e('Register Account', 'al-huffaz-portal'); ?>');
+
+                        // Scroll to message
+                        $('html, body').animate({
+                            scrollTop: $messages.offset().top - 100
+                        }, 300);
+                    }
+                },
+                error: function() {
+                    $messages.html('<div class="message error"><i class="fas fa-exclamation-circle"></i> <span><?php _e('An error occurred. Please try again.', 'al-huffaz-portal'); ?></span></div>');
+                    $btn.prop('disabled', false).html('<i class="fas fa-user-plus"></i> <?php _e('Register Account', 'al-huffaz-portal'); ?>');
+                }
+            });
+        }
+    }
+
     $('#alhuffaz-sponsor-registration-form').on('submit', function(e) {
         e.preventDefault();
 
-        const $form = $(this);
-        const $btn = $form.find('button[type="submit"]');
+        const $btn = $(this).find('button[type="submit"]');
         const $messages = $('#alhuffaz-register-messages');
 
         // Disable button
-        $btn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin"></i> <?php _e('Creating Account...', 'al-huffaz-portal'); ?>');
+        $btn.prop('disabled', true);
 
         // Clear previous messages
         $messages.html('');
 
-        // Serialize form data properly for AJAX
-        const formData = $form.serialize() + '&action=alhuffaz_register_sponsor';
+        // Reset retry flag
+        retryWithFreshNonce = false;
 
-        $.ajax({
-            url: '<?php echo admin_url('admin-ajax.php'); ?>',
-            type: 'POST',
-            data: formData,
-            success: function(response) {
-                if (response.success) {
-                    // Success - redirect to login with success message
-                    window.location.href = '<?php echo esc_url(add_query_arg('registered', 'success', Helpers::get_login_url())); ?>';
-                } else {
-                    // Error - show message
-                    $messages.html('<div class="message error"><i class="fas fa-exclamation-circle"></i> <span>' + response.data.message + '</span></div>');
-                    $btn.prop('disabled', false).html('<i class="fas fa-user-plus"></i> <?php _e('Register Account', 'al-huffaz-portal'); ?>');
-
-                    // Scroll to message
-                    $('html, body').animate({
-                        scrollTop: $messages.offset().top - 100
-                    }, 300);
-                }
-            },
-            error: function() {
-                $messages.html('<div class="message error"><i class="fas fa-exclamation-circle"></i> <span><?php _e('An error occurred. Please try again.', 'al-huffaz-portal'); ?></span></div>');
-                $btn.prop('disabled', false).html('<i class="fas fa-user-plus"></i> <?php _e('Register Account', 'al-huffaz-portal'); ?>');
-            }
-        });
+        // Start with stored nonce
+        submitRegistration(true);
     });
 });
 </script>
