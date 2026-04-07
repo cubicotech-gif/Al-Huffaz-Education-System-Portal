@@ -980,7 +980,28 @@ body {
 @keyframes spin { to { transform: rotate(360deg); } }
 
 /* Pagination */
-.ahp-portal .ahp-pagination { display: flex !important; justify-content: center !important; gap: 6px !important; padding: 20px !important; }
+.ahp-portal .ahp-pagination { display: flex !important; justify-content: center !important; align-items: center !important; gap: 6px !important; padding: 20px !important; flex-wrap: wrap !important; }
+.ahp-portal .ahp-pagination .ahp-page-ellipsis { padding: 0 6px !important; color: var(--ahp-text-muted) !important; font-weight: 600 !important; }
+.ahp-portal .ahp-pagination .ahp-btn[disabled] { opacity: 0.45 !important; cursor: not-allowed !important; pointer-events: none !important; }
+
+/* Students count line */
+.ahp-portal .ahp-students-count {
+    font-size: 13px !important;
+    color: var(--ahp-text-muted) !important;
+    margin-bottom: 12px !important;
+    font-weight: 500 !important;
+    min-height: 18px !important;
+}
+.ahp-portal .ahp-students-count strong {
+    color: var(--ahp-text) !important;
+    font-weight: 700 !important;
+}
+.ahp-portal .ahp-row-num {
+    text-align: center !important;
+    color: var(--ahp-text-muted) !important;
+    font-weight: 600 !important;
+    font-variant-numeric: tabular-nums !important;
+}
 
 /* Mobile Menu Toggle */
 .ahp-portal .ahp-menu-toggle {
@@ -1323,6 +1344,23 @@ body {
                     </div>
                 </div>
 
+                <?php
+                // Build grade and category filter options from plugin settings,
+                // so the toolbar stays in sync with whatever the admin configures.
+                $admin_grade_levels = get_option('alhuffaz_grade_levels', array());
+                if (!is_array($admin_grade_levels) || empty($admin_grade_levels)) {
+                    $admin_grade_levels = array(
+                        'kg1' => 'KG 1', 'kg2' => 'KG 2',
+                        'class1' => 'Class 1', 'class2' => 'Class 2', 'class3' => 'Class 3',
+                        'level1' => 'Level 1', 'level2' => 'Level 2', 'level3' => 'Level 3',
+                        'shb' => 'SHB', 'shg' => 'SHG',
+                    );
+                }
+                $admin_islamic_cats = get_option('alhuffaz_islamic_categories', array());
+                if (!is_array($admin_islamic_cats) || empty($admin_islamic_cats)) {
+                    $admin_islamic_cats = array('hifz' => 'Hifz', 'nazra' => 'Nazra', 'qaidah' => 'Qaidah');
+                }
+                ?>
                 <div class="ahp-toolbar">
                     <div class="ahp-search">
                         <i class="fas fa-search"></i>
@@ -1330,24 +1368,38 @@ body {
                     </div>
                     <select class="ahp-filter" id="filterGrade">
                         <option value=""><?php _e('All Grades', 'al-huffaz-portal'); ?></option>
-                        <option value="kg1">KG 1</option>
-                        <option value="kg2">KG 2</option>
-                        <option value="class1">Class 1</option>
-                        <option value="class2">Class 2</option>
-                        <option value="class3">Class 3</option>
-                        <option value="level1">Level 1</option>
-                        <option value="level2">Level 2</option>
-                        <option value="level3">Level 3</option>
-                        <option value="shb">SHB</option>
-                        <option value="shg">SHG</option>
+                        <?php foreach ($admin_grade_levels as $g_slug => $g_label): ?>
+                            <option value="<?php echo esc_attr($g_slug); ?>"><?php echo esc_html($g_label); ?></option>
+                        <?php endforeach; ?>
                     </select>
                     <select class="ahp-filter" id="filterCategory">
                         <option value=""><?php _e('All Categories', 'al-huffaz-portal'); ?></option>
-                        <option value="hifz">Hifz</option>
-                        <option value="nazra">Nazra</option>
-                        <option value="qaidah">Qaidah</option>
+                        <?php foreach ($admin_islamic_cats as $c_slug => $c_label): ?>
+                            <option value="<?php echo esc_attr($c_slug); ?>"><?php echo esc_html($c_label); ?></option>
+                        <?php endforeach; ?>
+                    </select>
+                    <select class="ahp-filter" id="filterGender">
+                        <option value=""><?php _e('Any Gender', 'al-huffaz-portal'); ?></option>
+                        <option value="male"><?php _e('Male', 'al-huffaz-portal'); ?></option>
+                        <option value="female"><?php _e('Female', 'al-huffaz-portal'); ?></option>
+                    </select>
+                    <select class="ahp-filter" id="filterSponsored">
+                        <option value=""><?php _e('Any Sponsorship', 'al-huffaz-portal'); ?></option>
+                        <option value="yes"><?php _e('Sponsored', 'al-huffaz-portal'); ?></option>
+                        <option value="no"><?php _e('Not Sponsored', 'al-huffaz-portal'); ?></option>
+                    </select>
+                    <select class="ahp-filter" id="filterSort">
+                        <option value="title|ASC"><?php _e('Name (A → Z)', 'al-huffaz-portal'); ?></option>
+                        <option value="title|DESC"><?php _e('Name (Z → A)', 'al-huffaz-portal'); ?></option>
+                        <option value="gr_number|ASC"><?php _e('GR # (Low → High)', 'al-huffaz-portal'); ?></option>
+                        <option value="gr_number|DESC"><?php _e('GR # (High → Low)', 'al-huffaz-portal'); ?></option>
+                        <option value="grade_level|ASC"><?php _e('Grade (Low → High)', 'al-huffaz-portal'); ?></option>
+                        <option value="date|DESC"><?php _e('Recently Added', 'al-huffaz-portal'); ?></option>
+                        <option value="date|ASC"><?php _e('Oldest First', 'al-huffaz-portal'); ?></option>
                     </select>
                 </div>
+
+                <div id="studentsCount" class="ahp-students-count"></div>
 
                 <div class="ahp-card">
                     <div class="ahp-card-body" style="padding:0;">
@@ -1355,6 +1407,7 @@ body {
                             <table class="ahp-table">
                                 <thead>
                                     <tr>
+                                        <th style="width:56px;text-align:center;">#</th>
                                         <th><?php _e('Student', 'al-huffaz-portal'); ?></th>
                                         <th><?php _e('GR #', 'al-huffaz-portal'); ?></th>
                                         <th><?php _e('Grade', 'al-huffaz-portal'); ?></th>
@@ -1364,7 +1417,7 @@ body {
                                     </tr>
                                 </thead>
                                 <tbody id="studentsTableBody">
-                                    <tr><td colspan="6" class="ahp-loading"><div class="ahp-spinner"></div></td></tr>
+                                    <tr><td colspan="7" class="ahp-loading"><div class="ahp-spinner"></div></td></tr>
                                 </tbody>
                             </table>
                         </div>
@@ -2638,61 +2691,164 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 
     // ==================== STUDENTS LIST ====================
+    // Per-page constant — kept as a single source of truth so row numbering,
+    // pagination, and the count line all stay in sync.
+    const STUDENTS_PER_PAGE = 15;
+    let lastTotalStudents = 0;
+
+    // Grade label map injected from PHP so the table badge shows the configured
+    // label (e.g. "Class 1") instead of the raw uppercased slug ("CLASS1").
+    window.alhuffazGradeLabels = window.alhuffazGradeLabels || <?php echo wp_json_encode($admin_grade_levels); ?>;
+
+    function escapeHtml(str) {
+        if (str === null || str === undefined) return '';
+        return String(str)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#039;');
+    }
+
     function loadStudents(page = 1) {
         currentPage = page;
-        const search = document.getElementById('searchInput').value;
-        const grade = document.getElementById('filterGrade').value;
-        const category = document.getElementById('filterCategory').value;
-        document.getElementById('studentsTableBody').innerHTML = '<tr><td colspan="6" class="ahp-loading"><div class="ahp-spinner"></div></td></tr>';
+        const search    = document.getElementById('searchInput').value;
+        const grade     = document.getElementById('filterGrade').value;
+        const category  = document.getElementById('filterCategory').value;
+        const genderEl  = document.getElementById('filterGender');
+        const sponsEl   = document.getElementById('filterSponsored');
+        const sortEl    = document.getElementById('filterSort');
+        const gender    = genderEl ? genderEl.value : '';
+        const sponsored = sponsEl  ? sponsEl.value  : '';
+        const sortVal   = sortEl   ? sortEl.value   : 'title|ASC';
+        const [orderby, order] = sortVal.split('|');
+
+        document.getElementById('studentsTableBody').innerHTML =
+            '<tr><td colspan="7" class="ahp-loading"><div class="ahp-spinner"></div></td></tr>';
 
         fetch(ajaxUrl, {
             method: 'POST',
             headers: {'Content-Type': 'application/x-www-form-urlencoded'},
-            body: new URLSearchParams({action: 'alhuffaz_get_students', nonce, page, search, grade, category, per_page: 15})
+            body: new URLSearchParams({
+                action: 'alhuffaz_get_students',
+                nonce, page, search, grade, category, gender, sponsored,
+                orderby, order,
+                per_page: STUDENTS_PER_PAGE
+            })
         })
         .then(r => r.json())
         .then(data => {
             if (data.success) {
-                renderStudents(data.data.students);
-                renderPagination(data.data.total_pages, page);
+                lastTotalStudents = parseInt(data.data.total, 10) || 0;
+                renderStudents(data.data.students, page);
+                renderPagination(data.data.total_pages, page, lastTotalStudents);
+                renderStudentsCount(page, (data.data.students || []).length, lastTotalStudents);
             } else {
-                document.getElementById('studentsTableBody').innerHTML = '<tr><td colspan="6" style="text-align:center;padding:40px;">Error loading students</td></tr>';
+                document.getElementById('studentsTableBody').innerHTML =
+                    '<tr><td colspan="7" style="text-align:center;padding:40px;">Error loading students</td></tr>';
+                renderStudentsCount(page, 0, 0);
             }
+        })
+        .catch(() => {
+            document.getElementById('studentsTableBody').innerHTML =
+                '<tr><td colspan="7" style="text-align:center;padding:40px;">Network error</td></tr>';
         });
     }
 
-    function renderStudents(students) {
-        const tbody = document.getElementById('studentsTableBody');
-        if (!students || !students.length) {
-            tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:40px;color:var(--ahp-text-muted);">No students found</td></tr>';
+    function renderStudentsCount(page, shown, total) {
+        const el = document.getElementById('studentsCount');
+        if (!el) return;
+        if (!total) {
+            el.innerHTML = '<?php echo esc_js(__('No students match the current filters.', 'al-huffaz-portal')); ?>';
             return;
         }
-        tbody.innerHTML = students.map(s => `
+        const start = (page - 1) * STUDENTS_PER_PAGE + 1;
+        const end   = (page - 1) * STUDENTS_PER_PAGE + shown;
+        const lblShowing  = '<?php echo esc_js(__('Showing', 'al-huffaz-portal')); ?>';
+        const lblOf       = '<?php echo esc_js(__('of', 'al-huffaz-portal')); ?>';
+        const lblStudents = '<?php echo esc_js(__('students', 'al-huffaz-portal')); ?>';
+        el.innerHTML = lblShowing + ' <strong>' + start + '–' + end + '</strong> ' + lblOf + ' <strong>' + total + '</strong> ' + lblStudents;
+    }
+
+    function renderStudents(students, page) {
+        const tbody = document.getElementById('studentsTableBody');
+        if (!students || !students.length) {
+            tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:40px;color:var(--ahp-text-muted);">No students found</td></tr>';
+            return;
+        }
+        const labelMap = window.alhuffazGradeLabels || {};
+        tbody.innerHTML = students.map((s, idx) => {
+            const rowNum = (page - 1) * STUDENTS_PER_PAGE + idx + 1;
+            const gradeSlug = s.grade_level || '';
+            const gradeLabel = gradeSlug
+                ? (labelMap[gradeSlug] || gradeSlug.toUpperCase())
+                : '-';
+            const catRaw = s.islamic_studies_category || '';
+            const catLabel = catRaw
+                ? (catRaw.charAt(0).toUpperCase() + catRaw.slice(1))
+                : '-';
+            const safeName = escapeHtml(s.name || '-');
+            const safeFather = escapeHtml(s.father_name || '-');
+            const safeGr = escapeHtml(s.gr_number || '-');
+            return `
             <tr>
+                <td class="ahp-row-num">${rowNum}</td>
                 <td><div class="ahp-student-cell">
-                    ${s.photo ? `<img src="${s.photo}" class="ahp-student-avatar">` : `<div class="ahp-student-avatar">${(s.name||'S').charAt(0).toUpperCase()}</div>`}
-                    <span>${s.name||'-'}</span>
+                    ${s.photo ? `<img src="${escapeHtml(s.photo)}" class="ahp-student-avatar">` : `<div class="ahp-student-avatar">${escapeHtml((s.name||'S').charAt(0).toUpperCase())}</div>`}
+                    <span>${safeName}</span>
                 </div></td>
-                <td>${s.gr_number||'-'}</td>
-                <td><span class="ahp-badge ahp-badge-primary">${(s.grade_level||'-').toUpperCase()}</span></td>
-                <td><span class="ahp-badge ahp-badge-success">${s.islamic_studies_category ? s.islamic_studies_category.charAt(0).toUpperCase() + s.islamic_studies_category.slice(1) : '-'}</span></td>
-                <td>${s.father_name||'-'}</td>
+                <td>${safeGr}</td>
+                <td><span class="ahp-badge ahp-badge-primary">${escapeHtml(gradeLabel)}</span></td>
+                <td><span class="ahp-badge ahp-badge-success">${escapeHtml(catLabel)}</span></td>
+                <td>${safeFather}</td>
                 <td><div class="ahp-cell-actions">
-                    <a href="${s.permalink||'#'}" class="ahp-btn ahp-btn-secondary ahp-btn-icon" target="_blank"><i class="fas fa-eye"></i></a>
+                    <a href="${escapeHtml(s.permalink||'#')}" class="ahp-btn ahp-btn-secondary ahp-btn-icon" target="_blank"><i class="fas fa-eye"></i></a>
                     <button class="ahp-btn ahp-btn-primary ahp-btn-icon" onclick="editStudent(${s.id})"><i class="fas fa-edit"></i></button>
                     <button class="ahp-btn ahp-btn-danger ahp-btn-icon" onclick="deleteStudent(${s.id})"><i class="fas fa-trash"></i></button>
                 </div></td>
-            </tr>
-        `).join('');
+            </tr>`;
+        }).join('');
     }
 
-    function renderPagination(totalPages, current) {
+    function renderPagination(totalPages, current, total) {
         const container = document.getElementById('pagination');
-        if (totalPages <= 1) { container.innerHTML = ''; return; }
+        if (!totalPages || totalPages <= 1) { container.innerHTML = ''; return; }
+
+        const btn = (label, page, opts = {}) => {
+            const isActive   = !!opts.active;
+            const isDisabled = !!opts.disabled;
+            const cls = 'ahp-btn ahp-btn-sm ' + (isActive ? 'ahp-btn-primary' : 'ahp-btn-secondary');
+            const dis = isDisabled ? ' disabled' : '';
+            return `<button class="${cls}"${dis} onclick="loadStudentsPage(${page})">${label}</button>`;
+        };
+
         let html = '';
-        for (let i = 1; i <= Math.min(totalPages, 10); i++) {
-            html += `<button class="ahp-btn ${i === current ? 'ahp-btn-primary' : 'ahp-btn-secondary'} ahp-btn-sm" onclick="loadStudentsPage(${i})">${i}</button>`;
+
+        // Prev
+        html += btn('<i class="fas fa-chevron-left"></i>', Math.max(1, current - 1), { disabled: current === 1 });
+
+        // Windowed pages with first/last + ellipses.
+        const window_size = 2; // pages on each side of current
+        const pages = new Set();
+        pages.add(1);
+        pages.add(totalPages);
+        for (let i = current - window_size; i <= current + window_size; i++) {
+            if (i >= 1 && i <= totalPages) pages.add(i);
         }
+        const sorted = Array.from(pages).sort((a, b) => a - b);
+
+        let prev = 0;
+        sorted.forEach(p => {
+            if (prev && p - prev > 1) {
+                html += '<span class="ahp-page-ellipsis">…</span>';
+            }
+            html += btn(String(p), p, { active: p === current });
+            prev = p;
+        });
+
+        // Next
+        html += btn('<i class="fas fa-chevron-right"></i>', Math.min(totalPages, current + 1), { disabled: current === totalPages });
+
         container.innerHTML = html;
     }
     window.loadStudentsPage = (p) => loadStudents(p);
@@ -2701,6 +2857,12 @@ document.addEventListener('DOMContentLoaded', function() {
     document.getElementById('searchInput').addEventListener('input', () => { clearTimeout(searchTimeout); searchTimeout = setTimeout(() => loadStudents(1), 300); });
     document.getElementById('filterGrade').addEventListener('change', () => loadStudents(1));
     document.getElementById('filterCategory').addEventListener('change', () => loadStudents(1));
+    const _filterGender    = document.getElementById('filterGender');
+    const _filterSponsored = document.getElementById('filterSponsored');
+    const _filterSort      = document.getElementById('filterSort');
+    if (_filterGender)    _filterGender.addEventListener('change',    () => loadStudents(1));
+    if (_filterSponsored) _filterSponsored.addEventListener('change', () => loadStudents(1));
+    if (_filterSort)      _filterSort.addEventListener('change',      () => loadStudents(1));
 
     // ==================== EDIT/DELETE STUDENT ====================
     window.editStudent = function(id) {

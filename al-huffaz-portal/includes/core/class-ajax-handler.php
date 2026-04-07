@@ -698,6 +698,17 @@ class Ajax_Handler {
         $category  = isset($_POST['category']) ? sanitize_text_field($_POST['category']) : '';
         $gender    = isset($_POST['gender']) ? sanitize_text_field($_POST['gender']) : '';
         $sponsored = isset($_POST['sponsored']) ? sanitize_text_field($_POST['sponsored']) : '';
+        $orderby   = isset($_POST['orderby']) ? sanitize_text_field($_POST['orderby']) : 'title';
+        $order     = isset($_POST['order']) ? strtoupper(sanitize_text_field($_POST['order'])) : 'ASC';
+
+        // Whitelist sort options to keep query safe and predictable.
+        $allowed_orderby = array('title', 'date', 'gr_number', 'grade_level');
+        if (!in_array($orderby, $allowed_orderby, true)) {
+            $orderby = 'title';
+        }
+        if ($order !== 'ASC' && $order !== 'DESC') {
+            $order = 'ASC';
+        }
 
         $args = array(
             'post_type'      => 'student',
@@ -707,6 +718,19 @@ class Ajax_Handler {
             'orderby'        => 'title',
             'order'          => 'ASC',
         );
+
+        // Apply sort. Meta-key sorts need orderby=meta_value + meta_key.
+        if ($orderby === 'gr_number' || $orderby === 'grade_level') {
+            $args['orderby']  = 'meta_value';
+            $args['meta_key'] = $orderby;
+            $args['order']    = $order;
+        } elseif ($orderby === 'date') {
+            $args['orderby'] = 'date';
+            $args['order']   = $order;
+        } else {
+            $args['orderby'] = 'title';
+            $args['order']   = $order;
+        }
 
         // Handle search - search by name or GR number
         if ($search) {
