@@ -277,6 +277,20 @@ $available_students = get_posts(array(
     ),
 ));
 
+// Build the grade filter options from grades that actually appear in the
+// current available-students list, labeled via the global grade settings.
+$all_grade_labels = get_option('alhuffaz_grade_levels', array());
+$available_grade_options = array();
+foreach ($available_students as $_avail_student) {
+    $_g = get_post_meta($_avail_student->ID, 'grade_level', true);
+    if ($_g && !isset($available_grade_options[$_g])) {
+        $available_grade_options[$_g] = isset($all_grade_labels[$_g])
+            ? $all_grade_labels[$_g]
+            : strtoupper($_g);
+    }
+}
+asort($available_grade_options);
+
 $portal_url = get_permalink();
 $nonce = wp_create_nonce('alhuffaz_public_nonce');
 ?>
@@ -838,6 +852,109 @@ body {
     display: grid !important;
     grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)) !important;
     gap: 24px !important;
+}
+
+/* ==================== AVAILABLE STUDENTS TOOLBAR ==================== */
+.sp-toolbar {
+    display: flex !important;
+    flex-wrap: wrap !important;
+    align-items: center !important;
+    gap: 12px !important;
+    background: var(--sp-card) !important;
+    border: 1px solid var(--sp-border) !important;
+    border-radius: 12px !important;
+    padding: 14px 16px !important;
+    margin-bottom: 20px !important;
+}
+
+.sp-toolbar-search {
+    flex: 1 1 220px !important;
+    min-width: 180px !important;
+    padding: 10px 14px !important;
+    border: 1px solid var(--sp-border) !important;
+    border-radius: 8px !important;
+    background: var(--sp-bg) !important;
+    color: var(--sp-text) !important;
+    font-size: 14px !important;
+    outline: none !important;
+    transition: border-color 0.15s, box-shadow 0.15s !important;
+}
+
+.sp-toolbar-search:focus {
+    border-color: var(--sp-primary) !important;
+    box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.15) !important;
+}
+
+.sp-toolbar-select {
+    padding: 10px 14px !important;
+    border: 1px solid var(--sp-border) !important;
+    border-radius: 8px !important;
+    background: var(--sp-bg) !important;
+    color: var(--sp-text) !important;
+    font-size: 14px !important;
+    cursor: pointer !important;
+    outline: none !important;
+    min-width: 170px !important;
+}
+
+.sp-toolbar-select:focus {
+    border-color: var(--sp-primary) !important;
+    box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.15) !important;
+}
+
+.sp-toolbar-label {
+    font-size: 12px !important;
+    font-weight: 600 !important;
+    color: var(--sp-text-secondary) !important;
+    text-transform: uppercase !important;
+    letter-spacing: 0.04em !important;
+}
+
+.sp-toolbar-count {
+    margin-left: auto !important;
+    font-size: 13px !important;
+    color: var(--sp-text-secondary) !important;
+    font-weight: 500 !important;
+}
+
+.sp-toolbar-reset {
+    background: transparent !important;
+    border: 1px solid var(--sp-border) !important;
+    color: var(--sp-text-secondary) !important;
+    padding: 9px 14px !important;
+    border-radius: 8px !important;
+    font-size: 13px !important;
+    cursor: pointer !important;
+    transition: all 0.15s !important;
+}
+
+.sp-toolbar-reset:hover {
+    background: var(--sp-bg) !important;
+    color: var(--sp-text) !important;
+    border-color: var(--sp-text-secondary) !important;
+}
+
+.sp-no-results {
+    grid-column: 1 / -1 !important;
+    text-align: center !important;
+    padding: 48px 24px !important;
+    color: var(--sp-text-secondary) !important;
+    background: var(--sp-card) !important;
+    border: 1px dashed var(--sp-border) !important;
+    border-radius: 12px !important;
+}
+
+.sp-no-results i {
+    font-size: 32px !important;
+    margin-bottom: 12px !important;
+    color: var(--sp-text-secondary) !important;
+    opacity: 0.6 !important;
+}
+
+@media (max-width: 640px) {
+    .sp-toolbar { flex-direction: column !important; align-items: stretch !important; }
+    .sp-toolbar-count { margin-left: 0 !important; text-align: center !important; }
+    .sp-toolbar-select, .sp-toolbar-search { width: 100% !important; min-width: 0 !important; }
 }
 
 .sp-student-card {
@@ -2136,7 +2253,36 @@ body {
                 </div>
             </div>
             <?php else: ?>
-            <div class="sp-students-grid">
+            <div class="sp-toolbar" id="availStudentsToolbar">
+                <input type="search" class="sp-toolbar-search" id="availStudentSearch"
+                       placeholder="<?php esc_attr_e('Search by student name…', 'al-huffaz-portal'); ?>"
+                       autocomplete="off">
+
+                <select class="sp-toolbar-select" id="availStudentGradeFilter"
+                        aria-label="<?php esc_attr_e('Filter by grade', 'al-huffaz-portal'); ?>">
+                    <option value=""><?php _e('All grades / classes', 'al-huffaz-portal'); ?></option>
+                    <?php foreach ($available_grade_options as $grade_slug => $grade_label): ?>
+                        <option value="<?php echo esc_attr($grade_slug); ?>"><?php echo esc_html($grade_label); ?></option>
+                    <?php endforeach; ?>
+                </select>
+
+                <select class="sp-toolbar-select" id="availStudentSort"
+                        aria-label="<?php esc_attr_e('Sort students', 'al-huffaz-portal'); ?>">
+                    <option value="name-asc"><?php _e('Name (A → Z)', 'al-huffaz-portal'); ?></option>
+                    <option value="name-desc"><?php _e('Name (Z → A)', 'al-huffaz-portal'); ?></option>
+                    <option value="grade-asc"><?php _e('Grade (Low → High)', 'al-huffaz-portal'); ?></option>
+                    <option value="fee-asc"><?php _e('Monthly fee (Low → High)', 'al-huffaz-portal'); ?></option>
+                    <option value="fee-desc"><?php _e('Monthly fee (High → Low)', 'al-huffaz-portal'); ?></option>
+                </select>
+
+                <button type="button" class="sp-toolbar-reset" id="availStudentReset">
+                    <i class="fas fa-rotate-left"></i> <?php _e('Reset', 'al-huffaz-portal'); ?>
+                </button>
+
+                <span class="sp-toolbar-count" id="availStudentCount"></span>
+            </div>
+
+            <div class="sp-students-grid" id="availStudentsGrid">
                 <?php foreach ($available_students as $student):
                     $student_id = $student->ID;
                     $photo_id = get_post_meta($student_id, 'student_photo', true);
@@ -2160,7 +2306,10 @@ body {
                     $amount_6months = $monthly_fee * 6;  // 6 months of tuition
                     $amount_yearly = ($monthly_fee * 12) + $one_time_fees;  // Full year + one-time fees
                 ?>
-                <div class="sp-student-card">
+                <div class="sp-student-card"
+                     data-student-name="<?php echo esc_attr(strtolower($student->post_title)); ?>"
+                     data-student-grade="<?php echo esc_attr($grade); ?>"
+                     data-student-fee="<?php echo esc_attr($monthly_fee); ?>">
                     <div class="sp-student-header">
                         <?php if ($photo_url): ?>
                             <img src="<?php echo esc_url($photo_url); ?>" class="sp-student-photo" alt="">
@@ -2198,6 +2347,11 @@ body {
                     </div>
                 </div>
                 <?php endforeach; ?>
+                <div class="sp-no-results" id="availStudentsNoResults" style="display:none;">
+                    <i class="fas fa-search"></i>
+                    <h3><?php _e('No matching students', 'al-huffaz-portal'); ?></h3>
+                    <p><?php _e('Try changing your search or filter to see more students.', 'al-huffaz-portal'); ?></p>
+                </div>
             </div>
             <?php endif; ?>
         </div>
@@ -3003,6 +3157,97 @@ body {
         // Open my students panel
         showPanel('my-students');
     }
+
+    // ==================== AVAILABLE STUDENTS: FILTER + SORT ====================
+    (function initAvailableStudentsToolbar() {
+        const grid = document.getElementById('availStudentsGrid');
+        if (!grid) return; // empty state -> no toolbar rendered
+
+        const searchInput  = document.getElementById('availStudentSearch');
+        const gradeFilter  = document.getElementById('availStudentGradeFilter');
+        const sortSelect   = document.getElementById('availStudentSort');
+        const resetBtn     = document.getElementById('availStudentReset');
+        const countLabel   = document.getElementById('availStudentCount');
+        const noResults    = document.getElementById('availStudentsNoResults');
+
+        const cards = Array.from(grid.querySelectorAll('.sp-student-card'));
+        const totalCount = cards.length;
+
+        function updateCount(visible) {
+            if (!countLabel) return;
+            if (visible === totalCount) {
+                countLabel.textContent = 'Showing ' + totalCount + ' student' + (totalCount === 1 ? '' : 's');
+            } else {
+                countLabel.textContent = 'Showing ' + visible + ' of ' + totalCount;
+            }
+        }
+
+        function applyFilters() {
+            const term  = (searchInput.value || '').trim().toLowerCase();
+            const grade = gradeFilter.value || '';
+            let visible = 0;
+
+            cards.forEach(card => {
+                const cardName  = card.dataset.studentName  || '';
+                const cardGrade = card.dataset.studentGrade || '';
+                const matchesTerm  = !term  || cardName.indexOf(term) !== -1;
+                const matchesGrade = !grade || cardGrade === grade;
+
+                if (matchesTerm && matchesGrade) {
+                    card.style.display = '';
+                    visible++;
+                } else {
+                    card.style.display = 'none';
+                }
+            });
+
+            if (noResults) noResults.style.display = (visible === 0) ? 'block' : 'none';
+            updateCount(visible);
+        }
+
+        function applySort() {
+            const mode = sortSelect.value;
+            const sorted = cards.slice().sort((a, b) => {
+                const an = a.dataset.studentName  || '';
+                const bn = b.dataset.studentName  || '';
+                const ag = a.dataset.studentGrade || '';
+                const bg = b.dataset.studentGrade || '';
+                const af = parseFloat(a.dataset.studentFee) || 0;
+                const bf = parseFloat(b.dataset.studentFee) || 0;
+
+                switch (mode) {
+                    case 'name-desc': return bn.localeCompare(an);
+                    case 'fee-asc':   return af - bf;
+                    case 'fee-desc':  return bf - af;
+                    case 'grade-asc': return ag.localeCompare(bg) || an.localeCompare(bn);
+                    case 'name-asc':
+                    default:          return an.localeCompare(bn);
+                }
+            });
+
+            // Reattach in new order; the no-results placeholder must stay last.
+            sorted.forEach(card => grid.appendChild(card));
+            if (noResults) grid.appendChild(noResults);
+        }
+
+        function refresh() {
+            applySort();
+            applyFilters();
+        }
+
+        searchInput.addEventListener('input', applyFilters);
+        gradeFilter.addEventListener('change', applyFilters);
+        sortSelect.addEventListener('change', refresh);
+        resetBtn.addEventListener('click', function() {
+            searchInput.value = '';
+            gradeFilter.value = '';
+            sortSelect.value  = 'name-asc';
+            refresh();
+        });
+
+        // Initial render: sort by name A→Z and show count.
+        refresh();
+    })();
 
     // Auto-dismiss success alert after 8 seconds
     const successAlert = document.getElementById('payment-success-alert');
