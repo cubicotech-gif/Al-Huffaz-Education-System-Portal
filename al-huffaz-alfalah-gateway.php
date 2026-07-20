@@ -8,6 +8,8 @@ Author: Al-Huffaz Development
 
 defined('ABSPATH') || exit;
 
+define('AHALFA_VER', '1.3.0');
+
 /* ============================================================================
  * 0. CONFIG
  * All secrets live in WP options (Settings > Alfa Gateway), never in code/git.
@@ -113,7 +115,12 @@ function ahalfa_dispatch() {
     $path = trim((string) parse_url($uri, PHP_URL_PATH), '/');
     if ($path === '') return;
 
-    $map = array('alfalah-pay' => 'pay', 'alfalah-return' => 'return', 'alfalah-listener' => 'listener');
+    $map = array(
+        'alfalah-ping'     => 'ping',
+        'alfalah-pay'      => 'pay',
+        'alfalah-return'   => 'return',
+        'alfalah-listener' => 'listener',
+    );
     $route = '';
     foreach ($map as $slug => $r) {
         if (preg_match('#(^|/)' . preg_quote($slug, '#') . '/?$#', $path)) { $route = $r; break; }
@@ -121,11 +128,27 @@ function ahalfa_dispatch() {
     if (!$route) return;
 
     switch ($route) {
+        case 'ping':     ahalfa_handle_ping();     break;
         case 'pay':      ahalfa_handle_pay();      break;
         case 'return':   ahalfa_handle_return();   break;
         case 'listener': ahalfa_handle_listener(); break;
     }
     exit;
+}
+
+// Plain-text proof that the current plugin code is executing on this request.
+function ahalfa_handle_ping() {
+    nocache_headers();
+    header('Content-Type: text/plain; charset=utf-8');
+    $s = ahalfa_settings();
+    echo "ALFALAH GATEWAY OK\n";
+    echo "version=" . AHALFA_VER . "\n";
+    echo "enabled=" . $s['enabled'] . "\n";
+    echo "environment=" . $s['environment'] . "\n";
+    echo "merchant_id=" . ($s['merchant_id'] !== '' ? 'set' : 'EMPTY') . "\n";
+    echo "key1=" . ($s['key1'] !== '' ? 'set' : 'EMPTY') . "\n";
+    echo "logged_in=" . (is_user_logged_in() ? 'yes' : 'no') . "\n";
+    echo "time=" . current_time('mysql') . "\n";
 }
 
 /* ============================================================================
@@ -501,7 +524,8 @@ function ahalfa_settings_page() {
     $f = function ($k) use ($s) { return isset($s[$k]) ? esc_attr($s[$k]) : ''; };
     ?>
     <div class="wrap">
-      <h1>Alfa Payment Gateway (Bank Alfalah)</h1>
+      <h1>Alfa Payment Gateway (Bank Alfalah) <span style="font-size:13px;color:#059669;">v<?php echo esc_html(AHALFA_VER); ?></span></h1>
+      <p>Diagnostic (open in a new tab): <a href="<?php echo esc_url(home_url('/alfalah-ping/')); ?>" target="_blank"><?php echo esc_html(home_url('/alfalah-ping/')); ?></a></p>
       <p><strong>Return URL:</strong> <code><?php echo esc_html(home_url('/alfalah-return/')); ?></code><br>
          <strong>Listener URL:</strong> <code><?php echo esc_html(home_url('/alfalah-listener/')); ?></code></p>
       <form method="post" action="options.php">
