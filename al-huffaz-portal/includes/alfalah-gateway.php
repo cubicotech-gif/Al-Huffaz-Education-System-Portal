@@ -10,7 +10,7 @@
 
 defined('ABSPATH') || exit;
 
-if (!defined('AHALFA_VER')) { define('AHALFA_VER', '1.9.0'); }
+if (!defined('AHALFA_VER')) { define('AHALFA_VER', '1.10.0'); }
 
 /* ============================================================================
  * 0. CONFIG
@@ -290,6 +290,19 @@ function ahalfa_handle_ping() {
         echo "alfalah_handshake=NO -> " . $p->get_error_message() . "\n";
     } else {
         echo "alfalah_handshake=yes (http " . wp_remote_retrieve_response_code($p) . ")\n";
+    }
+
+    // (c) Same POST but forcing TLS 1.2 — if THIS succeeds, the fix is a TLS pin
+    //     (code side). If it also fails, the block is IP/firewall (Bank Alfalah side).
+    $tls12 = defined('CURL_SSLVERSION_TLSv1_2') ? CURL_SSLVERSION_TLSv1_2 : 6;
+    $force_tls = function ($h) use ($tls12) { curl_setopt($h, CURLOPT_SSLVERSION, $tls12); };
+    add_action('http_api_curl', $force_tls);
+    $p2 = wp_remote_post($urls['handshake'], array('timeout' => 20, 'body' => array('probe' => '1')));
+    remove_action('http_api_curl', $force_tls);
+    if (is_wp_error($p2)) {
+        echo "alfalah_handshake_tls12=NO -> " . $p2->get_error_message() . "\n";
+    } else {
+        echo "alfalah_handshake_tls12=yes (http " . wp_remote_retrieve_response_code($p2) . ")\n";
     }
     echo "time=" . current_time('mysql') . "\n";
 }
