@@ -10,7 +10,7 @@
 
 defined('ABSPATH') || exit;
 
-if (!defined('AHALFA_VER')) { define('AHALFA_VER', '1.8.0'); }
+if (!defined('AHALFA_VER')) { define('AHALFA_VER', '1.9.0'); }
 
 /* ============================================================================
  * 0. CONFIG
@@ -273,13 +273,23 @@ function ahalfa_handle_ping() {
     echo "module_loaded=" . (function_exists('ahalfa_settings_page') ? 'yes' : 'no') . "\n";
     echo "main_plugin=" . (class_exists('Al_Huffaz_Portal') ? 'active' : 'NOT-active') . "\n";
 
-    // Outbound connectivity test to Bank Alfalah (the thing the handshake needs).
     $urls = ahalfa_urls($s['environment']);
-    $t = wp_remote_get($urls['handshake'], array('timeout' => 20));
-    if (is_wp_error($t)) {
-        echo "gateway_reachable=NO -> " . $t->get_error_message() . "\n";
+
+    // (a) General outbound HTTPS + our public IP (Bank Alfalah may need to whitelist it).
+    $g = wp_remote_get('https://api.ipify.org?format=text', array('timeout' => 15));
+    if (is_wp_error($g)) {
+        echo "outbound_https=NO -> " . $g->get_error_message() . "\n";
     } else {
-        echo "gateway_reachable=yes (http " . wp_remote_retrieve_response_code($t) . ")\n";
+        echo "outbound_https=yes (http " . wp_remote_retrieve_response_code($g) . ")\n";
+        echo "server_public_ip=" . trim(wp_remote_retrieve_body($g)) . "\n";
+    }
+
+    // (b) Alfalah handshake endpoint via POST (the exact method the real handshake uses).
+    $p = wp_remote_post($urls['handshake'], array('timeout' => 20, 'body' => array('probe' => '1')));
+    if (is_wp_error($p)) {
+        echo "alfalah_handshake=NO -> " . $p->get_error_message() . "\n";
+    } else {
+        echo "alfalah_handshake=yes (http " . wp_remote_retrieve_response_code($p) . ")\n";
     }
     echo "time=" . current_time('mysql') . "\n";
 }
