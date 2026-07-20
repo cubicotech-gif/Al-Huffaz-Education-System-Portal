@@ -10,7 +10,7 @@
 
 defined('ABSPATH') || exit;
 
-if (!defined('AHALFA_VER')) { define('AHALFA_VER', '1.7.0'); }
+if (!defined('AHALFA_VER')) { define('AHALFA_VER', '1.8.0'); }
 
 /* ============================================================================
  * 0. CONFIG
@@ -272,6 +272,15 @@ function ahalfa_handle_ping() {
     echo "logged_in=" . (is_user_logged_in() ? 'yes' : 'no') . "\n";
     echo "module_loaded=" . (function_exists('ahalfa_settings_page') ? 'yes' : 'no') . "\n";
     echo "main_plugin=" . (class_exists('Al_Huffaz_Portal') ? 'active' : 'NOT-active') . "\n";
+
+    // Outbound connectivity test to Bank Alfalah (the thing the handshake needs).
+    $urls = ahalfa_urls($s['environment']);
+    $t = wp_remote_get($urls['handshake'], array('timeout' => 20));
+    if (is_wp_error($t)) {
+        echo "gateway_reachable=NO -> " . $t->get_error_message() . "\n";
+    } else {
+        echo "gateway_reachable=yes (http " . wp_remote_retrieve_response_code($t) . ")\n";
+    }
     echo "time=" . current_time('mysql') . "\n";
 }
 
@@ -386,7 +395,7 @@ function ahalfa_handle_pay() {
 
     if (is_wp_error($resp)) {
         ahalfa_log('Handshake WP_Error: ' . $resp->get_error_message());
-        ahalfa_die('Could not reach the payment gateway. Please try again.');
+        ahalfa_die('Could not reach the payment gateway: ' . $resp->get_error_message());
     }
     $json = json_decode(wp_remote_retrieve_body($resp), true);
     ahalfa_log(array('handshake_response' => $json, 'order_ref' => $order_ref));
