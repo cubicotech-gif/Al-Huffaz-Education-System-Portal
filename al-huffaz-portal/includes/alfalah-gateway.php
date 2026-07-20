@@ -10,7 +10,7 @@
 
 defined('ABSPATH') || exit;
 
-if (!defined('AHALFA_VER')) { define('AHALFA_VER', '1.6.0'); }
+if (!defined('AHALFA_VER')) { define('AHALFA_VER', '1.7.0'); }
 
 /* ============================================================================
  * 0. CONFIG
@@ -110,6 +110,25 @@ function ahalfa_calc_amount($student_id, $type) {
                           $amount = $monthly + ($one_time / 12);        break;
     }
     return array('type' => $type, 'amount' => (int) round($amount));
+}
+
+// Amount by DURATION in months, matching the Sponsor Portal's plan buttons:
+// 1mo = monthly_fee, 3mo = x3, 6mo = x6, 12mo = x12 + one-time fees.
+function ahalfa_calc_by_duration($student_id, $months) {
+    $months  = (int) $months;
+    if (!in_array($months, array(1, 3, 6, 12), true)) { $months = 1; }
+    $monthly = (float) get_post_meta($student_id, 'monthly_tuition_fee', true);
+
+    if ($months === 12) {
+        $one_time = (float) get_post_meta($student_id, 'course_fee', true)
+                  + (float) get_post_meta($student_id, 'uniform_fee', true)
+                  + (float) get_post_meta($student_id, 'annual_fee', true)
+                  + (float) get_post_meta($student_id, 'admission_fee', true);
+        $amount = ($monthly * 12) + $one_time;
+    } else {
+        $amount = $monthly * $months;
+    }
+    return array('months' => $months, 'amount' => (int) round($amount));
 }
 
 /* ============================================================================
@@ -293,9 +312,19 @@ function ahalfa_handle_pay() {
         ahalfa_die('This student has already been sponsored.');
     }
 
-    $calc   = ahalfa_calc_amount($student_id, $type);
-    $type   = $calc['type'];
-    $amount = $calc['amount'];
+    // Prefer duration (months) from the Sponsor Portal; fall back to type.
+    $duration = isset($_GET['duration']) ? intval($_GET['duration']) : 0;
+    if ($duration > 0) {
+        $calc   = ahalfa_calc_by_duration($student_id, $duration);
+        $months = $calc['months'];
+        $amount = $calc['amount'];
+        $type   = $months . ' month' . ($months > 1 ? 's' : '');
+    } else {
+        $calc   = ahalfa_calc_amount($student_id, $type);
+        $type   = $calc['type'];
+        $amount = $calc['amount'];
+        $months = 0;
+    }
     if ($amount < 1) { ahalfa_die('Could not determine a sponsorship amount for this student.'); }
 
     // Unique per-attempt order reference (also our TransactionReferenceNumber).
@@ -317,6 +346,7 @@ function ahalfa_handle_pay() {
     update_post_meta($sponsorship_id, 'student_id',          $student_id);
     update_post_meta($sponsorship_id, 'sponsor_user_id',     $uid);
     update_post_meta($sponsorship_id, 'sponsorship_type',    $type);
+    update_post_meta($sponsorship_id, 'duration_months',     $months);
     update_post_meta($sponsorship_id, 'amount',              $amount);
     update_post_meta($sponsorship_id, 'sponsor_name',        $sponsor_name);
     update_post_meta($sponsorship_id, 'sponsor_email',       $user->user_email);

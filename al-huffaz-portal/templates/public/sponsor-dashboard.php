@@ -2462,6 +2462,28 @@ body {
                 </div>
             </div>
 
+            <?php if ( function_exists('ahalfa_settings') && ahalfa_settings()['enabled'] === 'yes' ) : ?>
+            <div class="sp-card">
+                <div class="sp-card-body" style="text-align:center;">
+                    <button type="button" onclick="ahalfaPayCard()"
+                        style="display:inline-flex;align-items:center;gap:10px;justify-content:center;width:100%;padding:16px;
+                        background:linear-gradient(135deg,#0080ff,#004d99);color:#fff;border:0;border-radius:10px;
+                        font-size:16px;font-weight:700;cursor:pointer;box-shadow:0 6px 18px rgba(0,128,255,.25);">
+                        <i class="fas fa-credit-card"></i> <?php _e('Pay Now with Debit / Credit Card', 'al-huffaz-portal'); ?>
+                    </button>
+                    <p style="color:#94a3b8;font-size:13px;margin:12px 0 0;"><?php _e('Instant &amp; secure via Bank Alfalah — or submit manual proof below.', 'al-huffaz-portal'); ?></p>
+                </div>
+            </div>
+            <script>
+            function ahalfaPayCard(){
+                var sid=document.getElementById('proofStudentId').value;
+                var dur=(document.getElementById('proofDurationVal')||{}).value||'1';
+                if(!sid){alert('Please choose a student and plan first.');return;}
+                window.location.href='<?php echo esc_url(home_url('/alfalah-pay/')); ?>?student='+encodeURIComponent(sid)+'&duration='+encodeURIComponent(dur);
+            }
+            </script>
+            <?php endif; ?>
+
             <div class="sp-card">
                 <div class="sp-card-header">
                     <h3 class="sp-card-title"><i class="fas fa-receipt"></i> <?php _e('Payment Information', 'al-huffaz-portal'); ?></h3>
