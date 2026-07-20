@@ -103,28 +103,30 @@ add_action('init', function () {
 
 add_filter('query_vars', function ($vars) { $vars[] = 'ahalfa'; return $vars; });
 
-add_action('template_redirect', function () {
-    $route = get_query_var('ahalfa');
+// Dispatch on `init` by matching the URL path directly. This runs before
+// WordPress decides a page is a 404, so the endpoints work regardless of
+// whether rewrite rules have been flushed. (Pretty-permalink query_var is a
+// bonus path, but we no longer depend on it.)
+add_action('init', 'ahalfa_dispatch', 99);
+function ahalfa_dispatch() {
+    $uri  = isset($_SERVER['REQUEST_URI']) ? $_SERVER['REQUEST_URI'] : '';
+    $path = trim((string) parse_url($uri, PHP_URL_PATH), '/');
+    if ($path === '') return;
 
-    // Fallback: match the path directly. This makes the endpoints work even if
-    // WordPress rewrite rules haven't been flushed yet (template_redirect still
-    // fires on a 404, so we handle it before the 404 page renders).
-    if (!$route) {
-        $path = trim((string) parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH), '/');
-        $map  = array('alfalah-pay' => 'pay', 'alfalah-return' => 'return', 'alfalah-listener' => 'listener');
-        foreach ($map as $slug => $r) {
-            if (preg_match('#(^|/)' . $slug . '/?$#', $path)) { $route = $r; break; }
-        }
+    $map = array('alfalah-pay' => 'pay', 'alfalah-return' => 'return', 'alfalah-listener' => 'listener');
+    $route = '';
+    foreach ($map as $slug => $r) {
+        if (preg_match('#(^|/)' . preg_quote($slug, '#') . '/?$#', $path)) { $route = $r; break; }
     }
-
     if (!$route) return;
+
     switch ($route) {
         case 'pay':      ahalfa_handle_pay();      break;
         case 'return':   ahalfa_handle_return();   break;
         case 'listener': ahalfa_handle_listener(); break;
     }
     exit;
-});
+}
 
 /* ============================================================================
  * 4. INITIATE  (/alfalah-pay/?student=<id>&type=monthly|quarterly|yearly)
