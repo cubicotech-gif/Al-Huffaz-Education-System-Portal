@@ -10,7 +10,7 @@
 
 defined('ABSPATH') || exit;
 
-if (!defined('AHALFA_VER')) { define('AHALFA_VER', '1.4.0'); }
+if (!defined('AHALFA_VER')) { define('AHALFA_VER', '1.5.0'); }
 
 /* ============================================================================
  * 0. CONFIG
@@ -30,7 +30,30 @@ function ahalfa_settings() {
         'key2'              => '',
         'currency'          => 'PKR',
     );
-    return wp_parse_args(get_option('ahalfa_settings', array()), $defaults);
+    $s = wp_parse_args(get_option('ahalfa_settings', array()), $defaults);
+
+    // Optional wp-config.php overrides — lets you configure without the admin
+    // page (and keeps LIVE secrets out of the database). Any that are defined win.
+    $const_map = array(
+        'enabled'           => 'AHALFA_ENABLED',
+        'environment'       => 'AHALFA_ENV',
+        'merchant_id'       => 'AHALFA_MERCHANT_ID',
+        'store_id'          => 'AHALFA_STORE_ID',
+        'merchant_hash'     => 'AHALFA_MERCHANT_HASH',
+        'merchant_username' => 'AHALFA_MERCHANT_USERNAME',
+        'merchant_password' => 'AHALFA_MERCHANT_PASSWORD',
+        'key1'              => 'AHALFA_KEY1',
+        'key2'              => 'AHALFA_KEY2',
+        'currency'          => 'AHALFA_CURRENCY',
+    );
+    foreach ($const_map as $k => $c) {
+        if (defined($c)) {
+            $v = constant($c);
+            if ($k === 'enabled') { $v = ($v === true || $v === 'yes' || $v === 1 || $v === '1') ? 'yes' : 'no'; }
+            $s[$k] = $v;
+        }
+    }
+    return $s;
 }
 
 function ahalfa_urls($env) {
@@ -139,6 +162,8 @@ function ahalfa_handle_ping() {
     echo "merchant_id=" . ($s['merchant_id'] !== '' ? 'set' : 'EMPTY') . "\n";
     echo "key1=" . ($s['key1'] !== '' ? 'set' : 'EMPTY') . "\n";
     echo "logged_in=" . (is_user_logged_in() ? 'yes' : 'no') . "\n";
+    echo "module_loaded=" . (function_exists('ahalfa_settings_page') ? 'yes' : 'no') . "\n";
+    echo "main_plugin=" . (class_exists('Al_Huffaz_Portal') ? 'active' : 'NOT-active') . "\n";
     echo "time=" . current_time('mysql') . "\n";
 }
 
@@ -494,6 +519,9 @@ function ahalfa_die($msg) {
  * ========================================================================== */
 
 add_action('admin_menu', function () {
+    // Top-level menu (very visible in the sidebar) so it can't hide in a submenu.
+    add_menu_page('Alfa Gateway', 'Alfa Gateway', 'manage_options', 'ahalfa-settings', 'ahalfa_settings_page', 'dashicons-money-alt', 58);
+    // Also keep a Settings submenu for convenience.
     add_options_page('Alfa Gateway', 'Alfa Gateway', 'manage_options', 'ahalfa-settings', 'ahalfa_settings_page');
 });
 add_action('admin_init', function () {
