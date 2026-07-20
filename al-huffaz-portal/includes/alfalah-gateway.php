@@ -1,12 +1,16 @@
 <?php
-/*
-Plugin Name: Al-Huffaz Alfa Payment Gateway (Bank Alfalah)
-Description: Adds Bank Alfalah "Alfa Payment Gateway" (APG) Page-Redirection card payments as an AUTOMATED path alongside the existing manual proof flow. On a verified card payment the sponsorship is auto-activated using the exact same logic as the admin "Verify & Link" button. Manual flow is left 100% untouched.
-Version: 1.0.0 (Phase 1 - Sandbox)
-Author: Al-Huffaz Development
-*/
+/**
+ * Bank Alfalah "Alfa Payment Gateway" (APG) — Page-Redirection card payments.
+ *
+ * Loaded by the main Al-Huffaz Portal plugin (auto-deployed). Adds an AUTOMATED
+ * card-payment path alongside the existing manual proof flow. On a verified card
+ * payment the sponsorship is auto-activated using the exact same logic as the
+ * admin "Verify & Link" button. Manual flow is left 100% untouched.
+ */
 
 defined('ABSPATH') || exit;
+
+if (!defined('AHALFA_VER')) { define('AHALFA_VER', '1.4.0'); }
 
 /* ============================================================================
  * 0. CONFIG
@@ -89,19 +93,8 @@ function ahalfa_calc_amount($student_id, $type) {
  * 3. ROUTES:  /alfalah-pay/  /alfalah-return/  /alfalah-listener/
  * ========================================================================== */
 
-add_action('init', function () {
-    add_rewrite_rule('^alfalah-pay/?$',      'index.php?ahalfa=pay',      'top');
-    add_rewrite_rule('^alfalah-return/?$',   'index.php?ahalfa=return',   'top');
-    add_rewrite_rule('^alfalah-listener/?$', 'index.php?ahalfa=listener', 'top');
-
-    // Self-heal: flush once per version if this file was copied without re-activation.
-    if (get_option('ahalfa_rewrites') !== '1.0.0') {
-        flush_rewrite_rules(false);
-        update_option('ahalfa_rewrites', '1.0.0');
-    }
-});
-
-add_filter('query_vars', function ($vars) { $vars[] = 'ahalfa'; return $vars; });
+// Routing is entirely path-based (see ahalfa_dispatch below) so it needs NO
+// rewrite rules and NO permalink flush — it works the moment the plugin loads.
 
 // Dispatch on `init` by matching the URL path directly. This runs before
 // WordPress decides a page is a 404, so the endpoints work regardless of
@@ -113,7 +106,12 @@ function ahalfa_dispatch() {
     $path = trim((string) parse_url($uri, PHP_URL_PATH), '/');
     if ($path === '') return;
 
-    $map = array('alfalah-pay' => 'pay', 'alfalah-return' => 'return', 'alfalah-listener' => 'listener');
+    $map = array(
+        'alfalah-ping'     => 'ping',
+        'alfalah-pay'      => 'pay',
+        'alfalah-return'   => 'return',
+        'alfalah-listener' => 'listener',
+    );
     $route = '';
     foreach ($map as $slug => $r) {
         if (preg_match('#(^|/)' . preg_quote($slug, '#') . '/?$#', $path)) { $route = $r; break; }
@@ -121,11 +119,27 @@ function ahalfa_dispatch() {
     if (!$route) return;
 
     switch ($route) {
+        case 'ping':     ahalfa_handle_ping();     break;
         case 'pay':      ahalfa_handle_pay();      break;
         case 'return':   ahalfa_handle_return();   break;
         case 'listener': ahalfa_handle_listener(); break;
     }
     exit;
+}
+
+// Plain-text proof that the current plugin code is executing on this request.
+function ahalfa_handle_ping() {
+    nocache_headers();
+    header('Content-Type: text/plain; charset=utf-8');
+    $s = ahalfa_settings();
+    echo "ALFALAH GATEWAY OK\n";
+    echo "version=" . AHALFA_VER . "\n";
+    echo "enabled=" . $s['enabled'] . "\n";
+    echo "environment=" . $s['environment'] . "\n";
+    echo "merchant_id=" . ($s['merchant_id'] !== '' ? 'set' : 'EMPTY') . "\n";
+    echo "key1=" . ($s['key1'] !== '' ? 'set' : 'EMPTY') . "\n";
+    echo "logged_in=" . (is_user_logged_in() ? 'yes' : 'no') . "\n";
+    echo "time=" . current_time('mysql') . "\n";
 }
 
 /* ============================================================================
@@ -501,7 +515,8 @@ function ahalfa_settings_page() {
     $f = function ($k) use ($s) { return isset($s[$k]) ? esc_attr($s[$k]) : ''; };
     ?>
     <div class="wrap">
-      <h1>Alfa Payment Gateway (Bank Alfalah)</h1>
+      <h1>Alfa Payment Gateway (Bank Alfalah) <span style="font-size:13px;color:#059669;">v<?php echo esc_html(AHALFA_VER); ?></span></h1>
+      <p>Diagnostic (open in a new tab): <a href="<?php echo esc_url(home_url('/alfalah-ping/')); ?>" target="_blank"><?php echo esc_html(home_url('/alfalah-ping/')); ?></a></p>
       <p><strong>Return URL:</strong> <code><?php echo esc_html(home_url('/alfalah-return/')); ?></code><br>
          <strong>Listener URL:</strong> <code><?php echo esc_html(home_url('/alfalah-listener/')); ?></code></p>
       <form method="post" action="options.php">
@@ -534,14 +549,39 @@ function ahalfa_settings_page() {
 }
 
 /* ============================================================================
- * 11. ACTIVATION — flush rewrite rules
+ * 11. "PAY WITH CARD" BUTTON — injected into the /sponsor-payment/ page
+ *     WITHOUT editing that file. We open an output buffer on that request and
+ *     insert the button just before the "bank-details" card. If the anchor
+ *     isn't found (page markup changed), it's a safe no-op.
  * ========================================================================== */
 
-register_activation_hook(__FILE__, function () {
-    add_rewrite_rule('^alfalah-pay/?$',      'index.php?ahalfa=pay',      'top');
-    add_rewrite_rule('^alfalah-return/?$',   'index.php?ahalfa=return',   'top');
-    add_rewrite_rule('^alfalah-listener/?$', 'index.php?ahalfa=listener', 'top');
-    flush_rewrite_rules();
-    update_option('ahalfa_rewrites', '1.0.0');
-});
-register_deactivation_hook(__FILE__, function () { flush_rewrite_rules(); });
+add_action('template_redirect', 'ahalfa_maybe_buffer_payment_page', 1);
+function ahalfa_maybe_buffer_payment_page() {
+    $s = ahalfa_settings();
+    if ($s['enabled'] !== 'yes') return;
+
+    $path = trim((string) parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH), '/');
+    $is_payment_page = get_query_var('sponsor_payment') || preg_match('#(^|/)sponsor-payment/?$#', $path);
+    if (!$is_payment_page) return;
+    if (empty($_GET['student']) || empty($_GET['type'])) return;
+
+    ob_start('ahalfa_inject_pay_button');
+}
+
+function ahalfa_inject_pay_button($html) {
+    if (strpos($html, 'class="bank-details"') === false) { return $html; }
+
+    $student = intval($_GET['student']);
+    $type    = sanitize_text_field($_GET['type']);
+    $url     = esc_url(home_url('/alfalah-pay/?student=' . $student . '&type=' . rawurlencode($type)));
+
+    $btn  = '<a href="' . $url . '" style="display:block;margin:20px 0 4px;padding:16px;text-align:center;'
+          . 'background:linear-gradient(135deg,#0080ff,#004d99);color:#fff;font-weight:700;font-size:16px;'
+          . 'border-radius:10px;text-decoration:none;box-shadow:0 6px 18px rgba(0,128,255,.25);">'
+          . '<i class="fas fa-credit-card"></i> &nbsp;Pay Now with Debit / Credit Card</a>'
+          . '<p style="text-align:center;color:#94a3b8;font-size:13px;margin:0 0 14px;">'
+          . '— or transfer manually and upload proof below —</p>';
+
+    // Insert once, right before the bank-details card.
+    return preg_replace('/<div class="bank-details">/', $btn . '<div class="bank-details">', $html, 1);
+}

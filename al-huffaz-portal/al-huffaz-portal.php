@@ -92,6 +92,9 @@ final class Al_Huffaz_Portal {
         require_once ALHUFFAZ_PLUGIN_DIR . 'includes/public/class-sponsor-dashboard.php';
         require_once ALHUFFAZ_PLUGIN_DIR . 'includes/public/class-student-display.php';
         require_once ALHUFFAZ_PLUGIN_DIR . 'includes/public/class-payment-form.php';
+
+        // Bank Alfalah (APG) card payment gateway — automated path alongside manual proof.
+        require_once ALHUFFAZ_PLUGIN_DIR . 'includes/alfalah-gateway.php';
     }
 
     /**

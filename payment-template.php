@@ -345,15 +345,7 @@ get_header();
                 <div class="label">Total Amount to Pay</div>
                 <div class="amount">PKR <?php echo number_format($amount); ?></div>
             </div>
-
-            <?php if ( function_exists('ahalfa_settings') ) { $ahalfa_cfg = ahalfa_settings(); if ( $ahalfa_cfg['enabled'] === 'yes' ) { ?>
-            <a href="<?php echo esc_url( home_url('/alfalah-pay/?student=' . intval($student_id) . '&type=' . rawurlencode($sponsorship_type)) ); ?>"
-               style="display:block;margin-top:20px;padding:16px;text-align:center;background:linear-gradient(135deg,#0080ff,#004d99);color:#fff;font-weight:700;font-size:16px;border-radius:10px;text-decoration:none;box-shadow:0 6px 18px rgba(0,128,255,.25);">
-               <i class="fas fa-credit-card"></i> &nbsp;Pay Now with Debit / Credit Card
-            </a>
-            <p style="text-align:center;color:#94a3b8;font-size:13px;margin:14px 0 4px;">— or transfer manually and upload proof below —</p>
-            <?php } } ?>
-
+            
             <div class="bank-details">
                 <h3><i class="fas fa-university"></i> Payment Details</h3>
                 
