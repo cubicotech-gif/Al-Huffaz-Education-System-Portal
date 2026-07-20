@@ -105,6 +105,18 @@ add_filter('query_vars', function ($vars) { $vars[] = 'ahalfa'; return $vars; })
 
 add_action('template_redirect', function () {
     $route = get_query_var('ahalfa');
+
+    // Fallback: match the path directly. This makes the endpoints work even if
+    // WordPress rewrite rules haven't been flushed yet (template_redirect still
+    // fires on a 404, so we handle it before the 404 page renders).
+    if (!$route) {
+        $path = trim((string) parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH), '/');
+        $map  = array('alfalah-pay' => 'pay', 'alfalah-return' => 'return', 'alfalah-listener' => 'listener');
+        foreach ($map as $slug => $r) {
+            if (preg_match('#(^|/)' . $slug . '/?$#', $path)) { $route = $r; break; }
+        }
+    }
+
     if (!$route) return;
     switch ($route) {
         case 'pay':      ahalfa_handle_pay();      break;
