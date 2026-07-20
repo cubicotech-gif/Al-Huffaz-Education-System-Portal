@@ -10,7 +10,7 @@
 
 defined('ABSPATH') || exit;
 
-if (!defined('AHALFA_VER')) { define('AHALFA_VER', '1.5.0'); }
+if (!defined('AHALFA_VER')) { define('AHALFA_VER', '1.6.0'); }
 
 /* ============================================================================
  * 0. CONFIG
@@ -131,6 +131,7 @@ function ahalfa_dispatch() {
 
     $map = array(
         'alfalah-ping'     => 'ping',
+        'alfalah-setup'    => 'setup',
         'alfalah-pay'      => 'pay',
         'alfalah-return'   => 'return',
         'alfalah-listener' => 'listener',
@@ -143,11 +144,99 @@ function ahalfa_dispatch() {
 
     switch ($route) {
         case 'ping':     ahalfa_handle_ping();     break;
+        case 'setup':    ahalfa_handle_setup();    break;
         case 'pay':      ahalfa_handle_pay();      break;
         case 'return':   ahalfa_handle_return();   break;
         case 'listener': ahalfa_handle_listener(); break;
     }
     exit;
+}
+
+/**
+ * Admin-only setup page at /alfalah-setup/ — a front-end route (uses the same
+ * path dispatch as /alfalah-ping/, which we know works) so credentials can be
+ * saved even when the wp-admin menu won't show. GET renders a pre-filled,
+ * nonce-protected form; POST saves it to the ahalfa_settings option.
+ */
+function ahalfa_handle_setup() {
+    if (!is_user_logged_in() || !current_user_can('manage_options')) {
+        ahalfa_die('You must be logged in as a site administrator to open this page.');
+    }
+    nocache_headers();
+
+    // Save on POST.
+    if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
+        if (empty($_POST['ahalfa_setup_nonce']) || !wp_verify_nonce($_POST['ahalfa_setup_nonce'], 'ahalfa_setup')) {
+            ahalfa_die('Security check failed. Please reload the page and try again.');
+        }
+        $cur = get_option('ahalfa_settings', array());
+        if (!is_array($cur)) { $cur = array(); }
+        $cur['enabled']     = (isset($_POST['enabled']) && $_POST['enabled'] === 'yes') ? 'yes' : 'no';
+        $cur['environment'] = (isset($_POST['environment']) && $_POST['environment'] === 'live') ? 'live' : 'sandbox';
+        foreach (array('merchant_id','store_id','merchant_hash','merchant_username','merchant_password','key1','key2','currency') as $k) {
+            if (isset($_POST[$k])) { $cur[$k] = trim(wp_unslash($_POST[$k])); }
+        }
+        if (empty($cur['currency'])) { $cur['currency'] = 'PKR'; }
+        update_option('ahalfa_settings', $cur);
+
+        $ping = esc_url(home_url('/alfalah-ping/'));
+        echo '<!doctype html><meta charset="utf-8"><title>Saved</title>'
+           . '<div style="font-family:system-ui,Arial;max-width:560px;margin:60px auto;padding:28px;'
+           . 'border:1px solid #e5e7eb;border-radius:12px">'
+           . '<h2 style="color:#059669">✅ Alfa Gateway settings saved</h2>'
+           . '<p>enabled=' . esc_html($cur['enabled']) . ', environment=' . esc_html($cur['environment'])
+           . ', merchant_id=' . ($cur['merchant_id'] !== '' ? 'set' : 'EMPTY')
+           . ', key1=' . (!empty($cur['key1']) ? 'set' : 'EMPTY') . '</p>'
+           . '<p><a href="' . $ping . '" target="_blank">Open /alfalah-ping/ to verify »</a></p>'
+           . '<p style="color:#6b7280;font-size:14px">You can now go sponsor a student and use the '
+           . '"Pay with Card" button.</p></div>';
+        return;
+    }
+
+    // Render the form (GET). Prefill from URL params, else existing settings.
+    $s = ahalfa_settings();
+    $val = function ($k) use ($s) {
+        if (isset($_GET[$k])) { return wp_unslash($_GET[$k]); }
+        return isset($s[$k]) ? $s[$k] : '';
+    };
+    $enabled_checked = (isset($_GET['enabled']) ? $_GET['enabled'] === 'yes' : ($s['enabled'] === 'yes'));
+    $env = isset($_GET['environment']) ? $_GET['environment'] : $s['environment'];
+
+    $field = function ($label, $name, $value) {
+        return '<label style="display:block;margin:12px 0 4px;font-weight:600">' . esc_html($label) . '</label>'
+             . '<input name="' . esc_attr($name) . '" value="' . esc_attr($value) . '" '
+             . 'style="width:100%;padding:10px;border:1px solid #cbd5e1;border-radius:8px;font-size:14px">';
+    };
+    ?><!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+    <title>Alfa Gateway Setup</title></head>
+    <body style="font-family:system-ui,Arial;background:#f5f6f8;margin:0;padding:24px">
+    <form method="post" action="<?php echo esc_url(home_url('/alfalah-setup/')); ?>"
+          style="max-width:620px;margin:20px auto;background:#fff;padding:28px 32px;border-radius:12px;box-shadow:0 6px 24px rgba(0,0,0,.08)">
+      <h1 style="margin:0 0 4px">Alfa Gateway Setup <span style="font-size:13px;color:#059669">v<?php echo esc_html(AHALFA_VER); ?></span></h1>
+      <p style="color:#6b7280;margin:0 0 16px">Saves your Bank Alfalah credentials without needing the wp-admin menu.</p>
+      <input type="hidden" name="ahalfa_setup_nonce" value="<?php echo esc_attr(wp_create_nonce('ahalfa_setup')); ?>">
+      <label style="display:flex;align-items:center;gap:8px;margin:8px 0;font-weight:600">
+        <input type="checkbox" name="enabled" value="yes" <?php echo $enabled_checked ? 'checked' : ''; ?>> Enable card payments
+      </label>
+      <label style="display:block;margin:12px 0 4px;font-weight:600">Environment</label>
+      <select name="environment" style="width:100%;padding:10px;border:1px solid #cbd5e1;border-radius:8px">
+        <option value="sandbox" <?php echo $env !== 'live' ? 'selected' : ''; ?>>Sandbox (testing)</option>
+        <option value="live" <?php echo $env === 'live' ? 'selected' : ''; ?>>Live (production)</option>
+      </select>
+      <?php
+      echo $field('Merchant ID', 'merchant_id', $val('merchant_id'));
+      echo $field('Store ID', 'store_id', $val('store_id'));
+      echo $field('Merchant Hash', 'merchant_hash', $val('merchant_hash'));
+      echo $field('Merchant Username', 'merchant_username', $val('merchant_username'));
+      echo $field('Merchant Password', 'merchant_password', $val('merchant_password'));
+      echo $field('Key1', 'key1', $val('key1'));
+      echo $field('Key2', 'key2', $val('key2'));
+      echo $field('Currency', 'currency', $val('currency') !== '' ? $val('currency') : 'PKR');
+      ?>
+      <button type="submit" style="margin-top:20px;width:100%;padding:14px;background:linear-gradient(135deg,#0080ff,#004d99);
+        color:#fff;border:0;border-radius:10px;font-size:16px;font-weight:700;cursor:pointer">Save Settings</button>
+    </form>
+    </body></html><?php
 }
 
 // Plain-text proof that the current plugin code is executing on this request.
