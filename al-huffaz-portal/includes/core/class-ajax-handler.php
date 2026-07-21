@@ -2440,9 +2440,9 @@ The student is now available for sponsorship again.', 'al-huffaz-portal'),
         // Get sponsorship details
         $sponsorship = $sponsorships[0];
         $profile['sponsorship'] = array(
-            'type' => get_post_meta($sponsorship->ID, '_sponsorship_type', true),
-            'amount' => floatval(get_post_meta($sponsorship->ID, '_amount', true)),
-            'start_date' => get_post_meta($sponsorship->ID, '_created_at', true) ?: $sponsorship->post_date,
+            'type' => get_post_meta($sponsorship->ID, 'sponsorship_type', true),
+            'amount' => floatval(get_post_meta($sponsorship->ID, 'amount', true)),
+            'start_date' => get_post_meta($sponsorship->ID, 'created_at', true) ?: $sponsorship->post_date,
         );
 
         wp_send_json_success(array(

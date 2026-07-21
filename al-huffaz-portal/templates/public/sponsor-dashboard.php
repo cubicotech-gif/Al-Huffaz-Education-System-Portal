@@ -1954,7 +1954,7 @@ body {
                 </div>
                 <div class="sp-card-body">
                     <?php foreach ($data['pending_sponsorships'] as $pending): ?>
-                    <div style="display: flex; justify-content: space-between; align-items: center; padding: 16px; background: #fef3c7; border-radius: 12px; border-left: 4px solid #f59e0b; margin-bottom: 12px;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; padding: 16px; background: #fef3c7; border-radius: 12px; border-left: 4px solid #f59e0b; margin-bottom: 12px;">
                         <div>
                             <h5 style="margin: 0 0 4px 0; font-size: 15px; font-weight: 600; color: #78350f;"><?php echo esc_html($pending['student_name']); ?></h5>
                             <p style="margin: 0; font-size: 13px; color: #92400e;">
@@ -1962,7 +1962,16 @@ body {
                                 • <i class="fas fa-calendar"></i> <?php echo esc_html($pending['submitted_at']); ?>
                             </p>
                         </div>
-                        <span class="sp-badge sp-badge-warning"><i class="fas fa-clock"></i> <?php _e('Pending', 'al-huffaz-portal'); ?></span>
+                        <div style="display: flex; gap: 8px; align-items: center;">
+                            <?php if ( function_exists('ahalfa_settings') && ahalfa_settings()['enabled'] === 'yes' ) : ?>
+                            <a href="<?php echo esc_url( home_url('/alfalah-pay/?sponsorship=' . intval($pending['id'])) ); ?>" class="sp-btn sp-btn-success sp-btn-sm">
+                                <i class="fas fa-credit-card"></i> <?php _e('Pay Now', 'al-huffaz-portal'); ?>
+                            </a>
+                            <?php endif; ?>
+                            <button type="button" class="sp-btn sp-btn-secondary sp-btn-sm" onclick="cancelSponsorship(<?php echo intval($pending['id']); ?>, '<?php echo esc_js($pending['student_name']); ?>')">
+                                <i class="fas fa-times"></i> <?php _e('Cancel', 'al-huffaz-portal'); ?>
+                            </button>
+                        </div>
                     </div>
                     <?php endforeach; ?>
                 </div>
@@ -2377,59 +2386,24 @@ body {
             <?php else: ?>
             <div class="sp-card">
                 <div class="sp-card-header">
-                    <h3 class="sp-card-title"><i class="fas fa-upload"></i> <?php _e('Submit Payment Proof', 'al-huffaz-portal'); ?></h3>
+                    <h3 class="sp-card-title"><i class="fas fa-credit-card"></i> <?php _e('Make a Payment', 'al-huffaz-portal'); ?></h3>
                 </div>
                 <div class="sp-card-body">
-                    <form id="paymentForm" enctype="multipart/form-data">
-                        <input type="hidden" name="action" value="alhuffaz_submit_payment">
-                        <input type="hidden" name="nonce" value="<?php echo $nonce; ?>">
-
-                        <div class="sp-form-row">
-                            <div class="sp-form-group">
-                                <label class="sp-form-label"><?php _e('Select Student', 'al-huffaz-portal'); ?></label>
-                                <select name="student_id" class="sp-form-select" required>
-                                    <option value=""><?php _e('Choose a student...', 'al-huffaz-portal'); ?></option>
-                                    <?php foreach ($data['sponsorships'] as $s): ?>
-                                    <option value="<?php echo $s['student_id']; ?>"><?php echo esc_html($s['student_name']); ?></option>
-                                    <?php endforeach; ?>
-                                </select>
-                            </div>
-                            <div class="sp-form-group">
-                                <label class="sp-form-label"><?php _e('Amount (PKR)', 'al-huffaz-portal'); ?></label>
-                                <input type="number" name="amount" class="sp-form-input" placeholder="Enter amount" required>
-                            </div>
+                    <div class="sp-empty" style="padding: 16px 0;">
+                        <p style="margin-bottom: 16px; color: var(--sp-text-secondary);">
+                            <?php _e('Payments are made per sponsorship. Complete a pending payment from your Dashboard, or start a new one from "Sponsor a Student".', 'al-huffaz-portal'); ?>
+                        </p>
+                        <div style="display: flex; gap: 10px; justify-content: center; flex-wrap: wrap;">
+                            <?php if (!empty($data['pending_sponsorships'])): ?>
+                            <button class="sp-btn sp-btn-success" onclick="showPanel('dashboard')">
+                                <i class="fas fa-clock"></i> <?php _e('Pending Payments', 'al-huffaz-portal'); ?>
+                            </button>
+                            <?php endif; ?>
+                            <button class="sp-btn sp-btn-primary" onclick="showPanel('available-students')">
+                                <i class="fas fa-hand-holding-heart"></i> <?php _e('Sponsor a Student', 'al-huffaz-portal'); ?>
+                            </button>
                         </div>
-
-                        <div class="sp-form-row">
-                            <div class="sp-form-group">
-                                <label class="sp-form-label"><?php _e('Payment Method', 'al-huffaz-portal'); ?></label>
-                                <select name="payment_method" class="sp-form-select" required>
-                                    <option value=""><?php _e('Select method...', 'al-huffaz-portal'); ?></option>
-                                    <option value="bank_transfer"><?php _e('Bank Transfer', 'al-huffaz-portal'); ?></option>
-                                    <option value="wire_transfer"><?php _e('Wire Transfer', 'al-huffaz-portal'); ?></option>
-                                    <option value="other_international"><?php _e('Other International Transfer', 'al-huffaz-portal'); ?></option>
-                                </select>
-                            </div>
-                            <div class="sp-form-group">
-                                <label class="sp-form-label"><?php _e('Transaction Reference', 'al-huffaz-portal'); ?></label>
-                                <input type="text" name="transaction_ref" class="sp-form-input" placeholder="Transaction ID or reference">
-                            </div>
-                        </div>
-
-                        <div class="sp-form-group">
-                            <label class="sp-form-label"><?php _e('Bank Name', 'al-huffaz-portal'); ?> <span style="color: var(--sp-text-muted); font-weight: normal;">(<?php _e('Optional', 'al-huffaz-portal'); ?>)</span></label>
-                            <input type="text" name="bank_name" class="sp-form-input" placeholder="<?php _e('Enter your bank name', 'al-huffaz-portal'); ?>">
-                        </div>
-
-                        <div class="sp-form-group">
-                            <label class="sp-form-label"><?php _e('Payment Proof (Screenshot)', 'al-huffaz-portal'); ?></label>
-                            <input type="file" name="payment_proof" class="sp-form-input" accept="image/*" required>
-                        </div>
-
-                        <button type="submit" class="sp-btn sp-btn-success">
-                            <i class="fas fa-paper-plane"></i> <?php _e('Submit Payment', 'al-huffaz-portal'); ?>
-                        </button>
-                    </form>
+                    </div>
                 </div>
             </div>
             <?php endif; ?>
@@ -2673,6 +2647,17 @@ body {
         panels.forEach(panel => {
             panel.classList.toggle('active', panel.id === 'panel-' + panelId);
         });
+
+        // Reset the payment-proof panel when navigating away, so a stale
+        // student/amount can never be submitted or paid against the wrong student.
+        if (panelId !== 'payment-proof') {
+            ['proofStudentId', 'proofAmountVal', 'proofDurationVal'].forEach(function(id) {
+                var el = document.getElementById(id); if (el) el.value = '';
+            });
+            ['proofStudentName', 'proofAmount', 'proofDuration'].forEach(function(id) {
+                var el = document.getElementById(id); if (el) el.textContent = '-';
+            });
+        }
 
         // Scroll to top
         window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -3178,6 +3163,22 @@ body {
     } else if (openTab === 'my-students') {
         // Open my students panel
         showPanel('my-students');
+    }
+
+    // Card-payment return message (from the Alfa gateway /alfalah-return/)
+    const alfalahPayment = urlParams.get('alfalah_payment');
+    if (alfalahPayment) {
+        if (alfalahPayment === 'success') {
+            showToast('✅ Payment successful — your sponsorship is now active!', 'success');
+        } else if (alfalahPayment === 'failed') {
+            showToast('Payment was not completed. You can retry it from Pending Payments.', 'error');
+        } else {
+            showToast('We could not confirm your payment. Please retry or contact us.', 'error');
+        }
+        // Strip the param so the message does not re-fire on refresh.
+        const _u = new URL(window.location.href);
+        _u.searchParams.delete('alfalah_payment');
+        window.history.replaceState({}, '', _u.toString());
     }
 
     // ==================== AVAILABLE STUDENTS: FILTER + SORT ====================

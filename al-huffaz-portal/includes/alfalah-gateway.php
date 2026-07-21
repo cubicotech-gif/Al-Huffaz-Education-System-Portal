@@ -10,7 +10,7 @@
 
 defined('ABSPATH') || exit;
 
-if (!defined('AHALFA_VER')) { define('AHALFA_VER', '1.11.0'); }
+if (!defined('AHALFA_VER')) { define('AHALFA_VER', '1.12.0'); }
 
 /* ============================================================================
  * 0. CONFIG
@@ -258,52 +258,27 @@ function ahalfa_handle_setup() {
     </body></html><?php
 }
 
-// Plain-text proof that the current plugin code is executing on this request.
+// Admin-only status/health page for the gateway.
 function ahalfa_handle_ping() {
+    if (!is_user_logged_in() || !current_user_can('manage_options')) {
+        ahalfa_die('Administrators only.');
+    }
     nocache_headers();
     header('Content-Type: text/plain; charset=utf-8');
     $s = ahalfa_settings();
-    echo "ALFALAH GATEWAY OK\n";
+    echo "ALFA GATEWAY STATUS\n";
     echo "version=" . AHALFA_VER . "\n";
     echo "enabled=" . $s['enabled'] . "\n";
     echo "environment=" . $s['environment'] . "\n";
     echo "merchant_id=" . ($s['merchant_id'] !== '' ? 'set' : 'EMPTY') . "\n";
-    echo "key1=" . ($s['key1'] !== '' ? 'set' : 'EMPTY') . "\n";
-    echo "logged_in=" . (is_user_logged_in() ? 'yes' : 'no') . "\n";
-    echo "module_loaded=" . (function_exists('ahalfa_settings_page') ? 'yes' : 'no') . "\n";
-    echo "main_plugin=" . (class_exists('Al_Huffaz_Portal') ? 'active' : 'NOT-active') . "\n";
+    echo "keys=" . ($s['key1'] !== '' && $s['key2'] !== '' ? 'set' : 'EMPTY') . "\n";
 
+    // Reachability to the ACTIVE environment's handshake host.
     $urls = ahalfa_urls($s['environment']);
-
-    // (a) General outbound HTTPS + our public IP (Bank Alfalah may need to whitelist it).
-    $g = wp_remote_get('https://api.ipify.org?format=text', array('timeout' => 15));
-    if (is_wp_error($g)) {
-        echo "outbound_https=NO -> " . $g->get_error_message() . "\n";
-    } else {
-        echo "outbound_https=yes (http " . wp_remote_retrieve_response_code($g) . ")\n";
-        echo "server_public_ip=" . trim(wp_remote_retrieve_body($g)) . "\n";
-    }
-
-    // (b) Reach BOTH Alfalah environments with a POST (the real handshake method),
-    //     plus each host root with a GET. If production responds but sandbox resets,
-    //     the sandbox host is the culprit (your live WooCommerce site uses production).
-    $probes = array(
-        'sandbox_hs_post'  => array('POST', 'https://sandbox.bankalfalah.com/HS/HS/HS'),
-        'prod_hs_post'     => array('POST', 'https://payments.bankalfalah.com/HS/HS/HS'),
-        'sandbox_root_get' => array('GET',  'https://sandbox.bankalfalah.com/'),
-        'prod_root_get'    => array('GET',  'https://payments.bankalfalah.com/'),
-    );
-    foreach ($probes as $label => $spec) {
-        list($method, $url) = $spec;
-        $r = ($method === 'POST')
-            ? wp_remote_post($url, array('timeout' => 15, 'body' => array('probe' => '1')))
-            : wp_remote_get($url, array('timeout' => 15));
-        if (is_wp_error($r)) {
-            echo "$label=NO -> " . $r->get_error_message() . "\n";
-        } else {
-            echo "$label=yes (http " . wp_remote_retrieve_response_code($r) . ")\n";
-        }
-    }
+    $r = wp_remote_post($urls['handshake'], array('timeout' => 15, 'body' => array('probe' => '1')));
+    echo "gateway_reachable=" . (is_wp_error($r)
+        ? ('NO -> ' . $r->get_error_message())
+        : ('yes (http ' . wp_remote_retrieve_response_code($r) . ')')) . "\n";
     echo "time=" . current_time('mysql') . "\n";
 }
 
@@ -331,66 +306,112 @@ function ahalfa_handle_pay() {
         ahalfa_die('Your sponsor account is awaiting admin approval.');
     }
 
-    $student_id = isset($_GET['student']) ? intval($_GET['student']) : 0;
-    $type       = isset($_GET['type']) ? sanitize_text_field($_GET['type']) : 'monthly';
+    $existing = isset($_GET['sponsorship']) ? intval($_GET['sponsorship']) : 0;
 
-    if (!$student_id || get_post_type($student_id) !== 'student') {
-        ahalfa_die('Invalid student.');
-    }
-    if (get_post_meta($student_id, 'donation_eligible', true) !== 'yes') {
-        ahalfa_die('This student is not open for sponsorship.');
-    }
-    if (get_post_meta($student_id, 'already_sponsored', true) === 'yes') {
-        ahalfa_die('This student has already been sponsored.');
-    }
+    if ($existing) {
+        // ---- Resume/pay an EXISTING pending sponsorship (from the dashboard "Pay Now") ----
+        if (get_post_type($existing) !== 'sponsorship'
+            || (int) get_post_meta($existing, 'sponsor_user_id', true) !== $uid) {
+            ahalfa_die('Sponsorship not found.');
+        }
+        if (get_post_meta($existing, 'verification_status', true) === 'approved') {
+            ahalfa_die('This sponsorship is already active.');
+        }
+        $sponsorship_id = $existing;
+        $student_id     = (int) get_post_meta($existing, 'student_id', true);
+        $amount         = (int) get_post_meta($existing, 'amount', true);
+        $type           = get_post_meta($existing, 'sponsorship_type', true) ?: 'monthly';
+        $months         = (int) get_post_meta($existing, 'duration_months', true);
 
-    // Prefer duration (months) from the Sponsor Portal; fall back to type.
-    $duration = isset($_GET['duration']) ? intval($_GET['duration']) : 0;
-    if ($duration > 0) {
-        $calc   = ahalfa_calc_by_duration($student_id, $duration);
-        $months = $calc['months'];
-        $amount = $calc['amount'];
-        $type   = $months . ' month' . ($months > 1 ? 's' : '');
+        if (!$student_id || get_post_meta($student_id, 'already_sponsored', true) === 'yes') {
+            ahalfa_die('This student has already been sponsored.');
+        }
+        if ($amount < 1) { ahalfa_die('Could not determine the amount for this sponsorship.'); }
+
+        // Reuse the record — just refresh the gateway attempt (no new post).
+        $order_ref = 'AH' . $student_id . 'U' . $uid . 'T' . time() . wp_rand(100, 999);
+        update_post_meta($sponsorship_id, 'gateway',           'alfalah');
+        update_post_meta($sponsorship_id, 'payment_method',    'alfalah_card');
+        update_post_meta($sponsorship_id, 'gateway_order_ref', $order_ref);
+        update_post_meta($sponsorship_id, 'gateway_status',    'initiated');
+
     } else {
-        $calc   = ahalfa_calc_amount($student_id, $type);
-        $type   = $calc['type'];
-        $amount = $calc['amount'];
-        $months = 0;
+        // ---- Fresh payment initiated from a student's plan selection ----
+        $student_id = isset($_GET['student']) ? intval($_GET['student']) : 0;
+        $type       = isset($_GET['type']) ? sanitize_text_field($_GET['type']) : 'monthly';
+
+        if (!$student_id || get_post_type($student_id) !== 'student') {
+            ahalfa_die('Invalid student.');
+        }
+        if (get_post_meta($student_id, 'donation_eligible', true) !== 'yes') {
+            ahalfa_die('This student is not open for sponsorship.');
+        }
+        if (get_post_meta($student_id, 'already_sponsored', true) === 'yes') {
+            ahalfa_die('This student has already been sponsored.');
+        }
+
+        // Prefer duration (months) from the Sponsor Portal; fall back to type.
+        $duration = isset($_GET['duration']) ? intval($_GET['duration']) : 0;
+        if ($duration > 0) {
+            $calc   = ahalfa_calc_by_duration($student_id, $duration);
+            $months = $calc['months'];
+            $amount = $calc['amount'];
+            $type   = $months . ' month' . ($months > 1 ? 's' : '');
+        } else {
+            $calc   = ahalfa_calc_amount($student_id, $type);
+            $type   = $calc['type'];
+            $amount = $calc['amount'];
+            $months = 0;
+        }
+        if ($amount < 1) { ahalfa_die('Could not determine a sponsorship amount for this student.'); }
+
+        // Guard against duplicates: reuse this sponsor's existing open pending
+        // record for the same student instead of stacking new ones.
+        $dupe = get_posts(array(
+            'post_type'   => 'sponsorship',
+            'post_status' => array('pending', 'draft'),
+            'numberposts' => 1,
+            'fields'      => 'ids',
+            'author'      => $uid,
+            'meta_query'  => array(
+                array('key' => 'student_id', 'value' => $student_id),
+                array('key' => 'verification_status', 'value' => array('pending', 'pending_gateway'), 'compare' => 'IN'),
+            ),
+        ));
+        $order_ref    = 'AH' . $student_id . 'U' . $uid . 'T' . time() . wp_rand(100, 999);
+        $student_name = get_the_title($student_id);
+        $sponsor_name = trim($user->first_name . ' ' . $user->last_name);
+        if ($sponsor_name === '') { $sponsor_name = $user->display_name; }
+
+        if ($dupe) {
+            $sponsorship_id = (int) $dupe[0];
+        } else {
+            $sponsorship_id = wp_insert_post(array(
+                'post_title'  => $sponsor_name . ' → ' . $student_name . ' (' . ucfirst($type) . ') [Card]',
+                'post_type'   => 'sponsorship',
+                'post_status' => 'pending',
+                'post_author' => $uid,
+            ));
+            if (!$sponsorship_id || is_wp_error($sponsorship_id)) { ahalfa_die('Could not start the payment. Please try again.'); }
+        }
+
+        update_post_meta($sponsorship_id, 'student_id',          $student_id);
+        update_post_meta($sponsorship_id, 'sponsor_user_id',     $uid);
+        update_post_meta($sponsorship_id, 'sponsorship_type',    $type);
+        update_post_meta($sponsorship_id, 'duration_months',     $months);
+        update_post_meta($sponsorship_id, 'amount',              $amount);
+        update_post_meta($sponsorship_id, 'sponsor_name',        $sponsor_name);
+        update_post_meta($sponsorship_id, 'sponsor_email',       $user->user_email);
+        update_post_meta($sponsorship_id, 'sponsor_phone',       get_user_meta($uid, 'sponsor_phone', true));
+        update_post_meta($sponsorship_id, 'sponsor_country',     get_user_meta($uid, 'sponsor_country', true));
+        update_post_meta($sponsorship_id, 'payment_method',      'alfalah_card');
+        update_post_meta($sponsorship_id, 'gateway',             'alfalah');
+        update_post_meta($sponsorship_id, 'gateway_order_ref',   $order_ref);
+        update_post_meta($sponsorship_id, 'gateway_status',      'initiated');
+        update_post_meta($sponsorship_id, 'submission_date',     current_time('mysql'));
+        update_post_meta($sponsorship_id, 'verification_status', 'pending_gateway');
+        update_post_meta($sponsorship_id, 'linked',              'no');
     }
-    if ($amount < 1) { ahalfa_die('Could not determine a sponsorship amount for this student.'); }
-
-    // Unique per-attempt order reference (also our TransactionReferenceNumber).
-    $order_ref = 'AH' . $student_id . 'U' . $uid . 'T' . time() . wp_rand(100, 999);
-
-    // Create the pending sponsorship (mirrors the manual flow's record shape).
-    $student_name = get_the_title($student_id);
-    $sponsor_name = trim($user->first_name . ' ' . $user->last_name);
-    if ($sponsor_name === '') { $sponsor_name = $user->display_name; }
-
-    $sponsorship_id = wp_insert_post(array(
-        'post_title'  => $sponsor_name . ' → ' . $student_name . ' (' . ucfirst($type) . ') [Card]',
-        'post_type'   => 'sponsorship',
-        'post_status' => 'pending',
-        'post_author' => $uid,
-    ));
-    if (!$sponsorship_id || is_wp_error($sponsorship_id)) { ahalfa_die('Could not start the payment. Please try again.'); }
-
-    update_post_meta($sponsorship_id, 'student_id',          $student_id);
-    update_post_meta($sponsorship_id, 'sponsor_user_id',     $uid);
-    update_post_meta($sponsorship_id, 'sponsorship_type',    $type);
-    update_post_meta($sponsorship_id, 'duration_months',     $months);
-    update_post_meta($sponsorship_id, 'amount',              $amount);
-    update_post_meta($sponsorship_id, 'sponsor_name',        $sponsor_name);
-    update_post_meta($sponsorship_id, 'sponsor_email',       $user->user_email);
-    update_post_meta($sponsorship_id, 'sponsor_phone',       get_user_meta($uid, 'sponsor_phone', true));
-    update_post_meta($sponsorship_id, 'sponsor_country',     get_user_meta($uid, 'sponsor_country', true));
-    update_post_meta($sponsorship_id, 'payment_method',      'alfalah_card');
-    update_post_meta($sponsorship_id, 'gateway',             'alfalah');
-    update_post_meta($sponsorship_id, 'gateway_order_ref',   $order_ref);
-    update_post_meta($sponsorship_id, 'gateway_status',      'initiated');
-    update_post_meta($sponsorship_id, 'submission_date',     current_time('mysql'));
-    update_post_meta($sponsorship_id, 'verification_status', 'pending_gateway');
-    update_post_meta($sponsorship_id, 'linked',              'no');
 
     // --- Handshake (server-to-server) ---
     $urls = ahalfa_urls($s['environment']);
@@ -632,9 +653,11 @@ function ahalfa_find_by_order_ref($order_ref) {
 }
 
 function ahalfa_redirect_result($result, $student_id) {
+    // On success the sponsorship is now active → show My Students; otherwise the
+    // dashboard (with the pending item + its Pay Now/Cancel actions).
     $url = add_query_arg(array(
         'alfalah_payment' => $result,          // success | failed | error
-        'open_tab'        => 'payments',
+        'open_tab'        => ($result === 'success' ? 'my-students' : 'dashboard'),
     ), home_url('/sponsor-dashboard/'));
     wp_safe_redirect($url);
     exit;
