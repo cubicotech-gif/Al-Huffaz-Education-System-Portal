@@ -258,52 +258,27 @@ function ahalfa_handle_setup() {
     </body></html><?php
 }
 
-// Plain-text proof that the current plugin code is executing on this request.
+// Admin-only status/health page for the gateway.
 function ahalfa_handle_ping() {
+    if (!is_user_logged_in() || !current_user_can('manage_options')) {
+        ahalfa_die('Administrators only.');
+    }
     nocache_headers();
     header('Content-Type: text/plain; charset=utf-8');
     $s = ahalfa_settings();
-    echo "ALFALAH GATEWAY OK\n";
+    echo "ALFA GATEWAY STATUS\n";
     echo "version=" . AHALFA_VER . "\n";
     echo "enabled=" . $s['enabled'] . "\n";
     echo "environment=" . $s['environment'] . "\n";
     echo "merchant_id=" . ($s['merchant_id'] !== '' ? 'set' : 'EMPTY') . "\n";
-    echo "key1=" . ($s['key1'] !== '' ? 'set' : 'EMPTY') . "\n";
-    echo "logged_in=" . (is_user_logged_in() ? 'yes' : 'no') . "\n";
-    echo "module_loaded=" . (function_exists('ahalfa_settings_page') ? 'yes' : 'no') . "\n";
-    echo "main_plugin=" . (class_exists('Al_Huffaz_Portal') ? 'active' : 'NOT-active') . "\n";
+    echo "keys=" . ($s['key1'] !== '' && $s['key2'] !== '' ? 'set' : 'EMPTY') . "\n";
 
+    // Reachability to the ACTIVE environment's handshake host.
     $urls = ahalfa_urls($s['environment']);
-
-    // (a) General outbound HTTPS + our public IP (Bank Alfalah may need to whitelist it).
-    $g = wp_remote_get('https://api.ipify.org?format=text', array('timeout' => 15));
-    if (is_wp_error($g)) {
-        echo "outbound_https=NO -> " . $g->get_error_message() . "\n";
-    } else {
-        echo "outbound_https=yes (http " . wp_remote_retrieve_response_code($g) . ")\n";
-        echo "server_public_ip=" . trim(wp_remote_retrieve_body($g)) . "\n";
-    }
-
-    // (b) Reach BOTH Alfalah environments with a POST (the real handshake method),
-    //     plus each host root with a GET. If production responds but sandbox resets,
-    //     the sandbox host is the culprit (your live WooCommerce site uses production).
-    $probes = array(
-        'sandbox_hs_post'  => array('POST', 'https://sandbox.bankalfalah.com/HS/HS/HS'),
-        'prod_hs_post'     => array('POST', 'https://payments.bankalfalah.com/HS/HS/HS'),
-        'sandbox_root_get' => array('GET',  'https://sandbox.bankalfalah.com/'),
-        'prod_root_get'    => array('GET',  'https://payments.bankalfalah.com/'),
-    );
-    foreach ($probes as $label => $spec) {
-        list($method, $url) = $spec;
-        $r = ($method === 'POST')
-            ? wp_remote_post($url, array('timeout' => 15, 'body' => array('probe' => '1')))
-            : wp_remote_get($url, array('timeout' => 15));
-        if (is_wp_error($r)) {
-            echo "$label=NO -> " . $r->get_error_message() . "\n";
-        } else {
-            echo "$label=yes (http " . wp_remote_retrieve_response_code($r) . ")\n";
-        }
-    }
+    $r = wp_remote_post($urls['handshake'], array('timeout' => 15, 'body' => array('probe' => '1')));
+    echo "gateway_reachable=" . (is_wp_error($r)
+        ? ('NO -> ' . $r->get_error_message())
+        : ('yes (http ' . wp_remote_retrieve_response_code($r) . ')')) . "\n";
     echo "time=" . current_time('mysql') . "\n";
 }
 
