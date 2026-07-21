@@ -10,7 +10,7 @@
 
 defined('ABSPATH') || exit;
 
-if (!defined('AHALFA_VER')) { define('AHALFA_VER', '1.10.0'); }
+if (!defined('AHALFA_VER')) { define('AHALFA_VER', '1.11.0'); }
 
 /* ============================================================================
  * 0. CONFIG
@@ -284,25 +284,25 @@ function ahalfa_handle_ping() {
         echo "server_public_ip=" . trim(wp_remote_retrieve_body($g)) . "\n";
     }
 
-    // (b) Alfalah handshake endpoint via POST (the exact method the real handshake uses).
-    $p = wp_remote_post($urls['handshake'], array('timeout' => 20, 'body' => array('probe' => '1')));
-    if (is_wp_error($p)) {
-        echo "alfalah_handshake=NO -> " . $p->get_error_message() . "\n";
-    } else {
-        echo "alfalah_handshake=yes (http " . wp_remote_retrieve_response_code($p) . ")\n";
-    }
-
-    // (c) Same POST but forcing TLS 1.2 — if THIS succeeds, the fix is a TLS pin
-    //     (code side). If it also fails, the block is IP/firewall (Bank Alfalah side).
-    $tls12 = defined('CURL_SSLVERSION_TLSv1_2') ? CURL_SSLVERSION_TLSv1_2 : 6;
-    $force_tls = function ($h) use ($tls12) { curl_setopt($h, CURLOPT_SSLVERSION, $tls12); };
-    add_action('http_api_curl', $force_tls);
-    $p2 = wp_remote_post($urls['handshake'], array('timeout' => 20, 'body' => array('probe' => '1')));
-    remove_action('http_api_curl', $force_tls);
-    if (is_wp_error($p2)) {
-        echo "alfalah_handshake_tls12=NO -> " . $p2->get_error_message() . "\n";
-    } else {
-        echo "alfalah_handshake_tls12=yes (http " . wp_remote_retrieve_response_code($p2) . ")\n";
+    // (b) Reach BOTH Alfalah environments with a POST (the real handshake method),
+    //     plus each host root with a GET. If production responds but sandbox resets,
+    //     the sandbox host is the culprit (your live WooCommerce site uses production).
+    $probes = array(
+        'sandbox_hs_post'  => array('POST', 'https://sandbox.bankalfalah.com/HS/HS/HS'),
+        'prod_hs_post'     => array('POST', 'https://payments.bankalfalah.com/HS/HS/HS'),
+        'sandbox_root_get' => array('GET',  'https://sandbox.bankalfalah.com/'),
+        'prod_root_get'    => array('GET',  'https://payments.bankalfalah.com/'),
+    );
+    foreach ($probes as $label => $spec) {
+        list($method, $url) = $spec;
+        $r = ($method === 'POST')
+            ? wp_remote_post($url, array('timeout' => 15, 'body' => array('probe' => '1')))
+            : wp_remote_get($url, array('timeout' => 15));
+        if (is_wp_error($r)) {
+            echo "$label=NO -> " . $r->get_error_message() . "\n";
+        } else {
+            echo "$label=yes (http " . wp_remote_retrieve_response_code($r) . ")\n";
+        }
     }
     echo "time=" . current_time('mysql') . "\n";
 }
